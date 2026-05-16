@@ -26,7 +26,10 @@ function timeAgo(iso: string): string {
 export default function RetailerActivityFeed({ items }: { items: ActivityItem[] }) {
   if (!items.length) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500">
+      <div
+        className="rounded-2xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500"
+        data-testid="activity-feed"
+      >
         No activity yet — your store updates will appear here.
       </div>
     );

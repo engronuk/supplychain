@@ -1,6 +1,7 @@
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useSession } from "@/context/SessionContext";
 import NotificationsPopover from "@/components/NotificationsPopover";
+import RetailerAssistantBubble from "@/components/RetailerAssistantBubble";
 import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard,
@@ -45,10 +46,26 @@ function navForRole(role) {
 
 export default function Layout() {
   const { session, signOut } = useSession();
+  const navigate = useNavigate();
   if (!session) return null;
   const { role, entity } = session;
   const RoleIcon = ROLE_ICON[role] || Store;
   const nav = navForRole(role);
+
+  const handleAssistantUiAction = (a) => {
+    if (a.action === "open_smart_reorder" || a.action === "show_low_stock") {
+      navigate("/dashboard");
+      // dashboard listens for a custom event to open the panel
+      setTimeout(() => window.dispatchEvent(new CustomEvent("retailer:open-smart-reorder")), 100);
+    } else if (a.action === "open_voice_order") {
+      navigate("/dashboard");
+      setTimeout(() => window.dispatchEvent(new CustomEvent("retailer:open-voice-order")), 100);
+    }
+  };
+
+  const handleAssistantRefresh = () => {
+    window.dispatchEvent(new CustomEvent("retailer:refresh-dashboard"));
+  };
 
   return (
     <div className="min-h-screen flex bg-slate-50">
@@ -116,6 +133,14 @@ export default function Layout() {
           <Outlet />
         </main>
       </div>
+
+      {/* Retailer-only floating AI assistant bubble */}
+      {role === "retailer" && (
+        <RetailerAssistantBubble
+          onUiAction={handleAssistantUiAction}
+          onRefresh={handleAssistantRefresh}
+        />
+      )}
     </div>
   );
 }

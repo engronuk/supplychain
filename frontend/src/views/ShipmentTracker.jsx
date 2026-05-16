@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Truck, PackageCheck, Plus, Trash2, ArrowRight, RotateCw } from "lucide-react";
 import { toast } from "sonner";
+import retailerAnalyticsService from "@/services/retailerAnalyticsService";
 
 const STATUSES = ["all", "pending", "in_transit", "received"];
 

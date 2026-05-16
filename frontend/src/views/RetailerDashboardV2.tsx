@@ -99,12 +99,21 @@ export default function RetailerDashboardV2() {
     });
     const onUp = () => setOnline(true);
     const onDown = () => setOnline(false);
+    const onOpenReorder = () => setOpenReorder(true);
+    const onOpenVoice = () => setOpenVoice(true);
+    const onRefresh = () => loadAll();
     window.addEventListener("online", onUp);
     window.addEventListener("offline", onDown);
+    window.addEventListener("retailer:open-smart-reorder", onOpenReorder);
+    window.addEventListener("retailer:open-voice-order", onOpenVoice);
+    window.addEventListener("retailer:refresh-dashboard", onRefresh);
     return () => {
       off();
       window.removeEventListener("online", onUp);
       window.removeEventListener("offline", onDown);
+      window.removeEventListener("retailer:open-smart-reorder", onOpenReorder);
+      window.removeEventListener("retailer:open-voice-order", onOpenVoice);
+      window.removeEventListener("retailer:refresh-dashboard", onRefresh);
     };
   }, [retailerId, loadAll]);
 

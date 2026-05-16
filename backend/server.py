@@ -1500,6 +1500,247 @@ async def retailer_activity(retailer_id: str, limit: int = 30):
     return items[:limit]
 
 
+# ----------------------------- Retailer AI Assistant -------------------------
+class AssistantMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+
+
+class AssistantPayload(BaseModel):
+    message: str
+    history: List[AssistantMessage] = Field(default_factory=list)
+    session_id: Optional[str] = None
+
+
+async def _build_retailer_context(retailer_id: str) -> str:
+    """Compact JSON-ish context the LLM can reference. Strictly scoped to this retailer."""
+    retailer = await db.retailers.find_one({"id": retailer_id}, {"_id": 0})
+    if not retailer:
+        raise HTTPException(404, "Retailer not found")
+    distributor = await db.distributors.find_one({"id": retailer["distributor_id"]}, {"_id": 0})
+    inv = await _retailer_inventory_enriched(retailer_id)
+    # Today + last-7d sales totals
+    today = datetime.now(timezone.utc).date()
+    seven_ago = (today - timedelta(days=6)).isoformat()
+    sales = await db.daily_sales.aggregate([
+        {"$match": {"retailer_id": retailer_id, "date": {"$gte": seven_ago}}},
+        {"$group": {"_id": "$product_id", "units": {"$sum": "$units"}, "revenue": {"$sum": "$revenue"}}},
+    ]).to_list(50)
+    products = {p["id"]: p for p in await db.products.find({}, {"_id": 0}).to_list(5000)}
+    sales_by_pid = {s["_id"]: s for s in sales}
+
+    inv_summary = []
+    for it in inv:
+        p = it.get("product") or {}
+        s = sales_by_pid.get(it["product_id"], {})
+        inv_summary.append({
+            "product": p.get("name", "?"),
+            "sku": p.get("sku", ""),
+            "stock": int(it["quantity"]),
+            "reorder_level": int(it["reorder_level"]),
+            "velocity_per_day": float(it.get("velocity", 0)),
+            "days_remaining": it["days_remaining"],
+            "urgency": it["urgency"],
+            "sales_7d_units": int(s.get("units", 0)),
+            "sales_7d_revenue": round(float(s.get("revenue", 0)), 2),
+        })
+
+    # Recent shipments (last 5)
+    ships = await db.shipments.find(
+        {"retailer_id": retailer_id}, {"_id": 0}
+    ).sort("created_at", -1).to_list(5)
+    distributors = {d["id"]: d for d in await db.distributors.find({}, {"_id": 0}).to_list(2000)}
+    ship_summary = []
+    for s in ships:
+        ship_summary.append({
+            "tracking_code": s.get("tracking_code"),
+            "status": s.get("status"),
+            "from": distributors.get(s.get("distributor_id", ""), {}).get("name", ""),
+            "items": [
+                {
+                    "product": products.get(it["product_id"], {}).get("name", "?"),
+                    "qty": int(it["quantity"]),
+                }
+                for it in s.get("items", [])
+            ],
+            "created_at": s.get("created_at"),
+        })
+
+    # Open requests
+    open_reqs = await db.requests.count_documents({
+        "retailer_id": retailer_id, "status": {"$in": ["pending", "approved"]}
+    })
+
+    import json as _json
+    context = {
+        "retailer": {
+            "name": retailer["name"],
+            "region": retailer.get("region", ""),
+            "city": retailer.get("city", ""),
+            "distributor": (distributor or {}).get("name", ""),
+        },
+        "inventory": inv_summary,
+        "recent_shipments": ship_summary,
+        "open_requests": open_reqs,
+        "as_of": now_iso(),
+    }
+    return _json.dumps(context, indent=2)
+
+
+_SYSTEM_PROMPT_TEMPLATE = """You are "Aisle", the in-store AI assistant for the retailer "{retailer_name}".
+
+You help the retailer answer questions about THEIR own store and take actions for them.
+
+Strict rules:
+1. You ONLY have access to the data of "{retailer_name}". Never speculate about other retailers, distributors or manufacturers in the network. If asked about other retailers, politely explain you can only see this store's data.
+2. Be concise. Use short paragraphs and bullet points. Speak in plain shopkeeper-friendly language.
+3. Use Nigerian Naira (₦) for money. Numbers like "5 days of cover left", "₦12,400 sold today".
+4. When the user asks to *do* something (reorder, restock, place order), respond with a short confirmation message AND append a single fenced JSON block at the end with action details.
+
+Action JSON schema (only when needed):
+```json
+{{"action": "reorder", "items": [{{"product_name": "OMO Multi-Active Detergent", "quantity": 30}}]}}
+```
+Other actions:
+- {{"action": "open_smart_reorder"}}  — open the AI smart reorder panel
+- {{"action": "open_voice_order"}}     — open voice order modal
+- {{"action": "show_low_stock"}}       — focus the low stock list
+
+Only emit ONE action JSON block per response, and only when the user clearly asked for an action.
+If you don't have enough info, ask one short clarifying question instead.
+
+Today is {today}. Here is THIS RETAILER's live data (do not invent values outside this):
+
+{context}
+"""
+
+
+@api_router.post("/retailer/{retailer_id}/assistant")
+async def retailer_assistant(retailer_id: str, payload: AssistantPayload):
+    api_key = os.environ.get("EMERGENT_LLM_KEY")
+    if not api_key:
+        raise HTTPException(500, "Assistant unavailable: missing LLM key")
+
+    retailer = await db.retailers.find_one({"id": retailer_id}, {"_id": 0})
+    if not retailer:
+        raise HTTPException(404, "Retailer not found")
+
+    try:
+        from emergentintegrations.llm.chat import LlmChat, UserMessage  # type: ignore
+    except Exception as e:
+        raise HTTPException(500, f"emergentintegrations unavailable: {e}")
+
+    context_blob = await _build_retailer_context(retailer_id)
+    system_prompt = _SYSTEM_PROMPT_TEMPLATE.format(
+        retailer_name=retailer["name"],
+        today=datetime.now(timezone.utc).date().isoformat(),
+        context=context_blob,
+    )
+
+    session_id = payload.session_id or f"retailer-{retailer_id}"
+
+    chat = LlmChat(
+        api_key=api_key,
+        session_id=session_id,
+        system_message=system_prompt,
+    ).with_model("anthropic", "claude-haiku-4-5-20251001")
+
+    # Replay short history (last 8 turns) so multi-turn works without DB persistence
+    for h in payload.history[-8:]:
+        if h.role == "user":
+            try:
+                await chat.send_message(UserMessage(text=h.content))
+            except Exception:
+                # If replay fails just continue — model still has system prompt + new message
+                break
+
+    try:
+        response = await chat.send_message(UserMessage(text=payload.message))
+    except Exception as e:
+        logger.exception("Assistant call failed")
+        raise HTTPException(502, f"Assistant error: {e}")
+
+    text = str(response or "").strip()
+
+    # Parse trailing ```json block for action commands
+    action: Optional[Dict[str, Any]] = None
+    import re
+    import json as _json
+    m = re.search(r"```json\s*(\{.*?\})\s*```", text, re.DOTALL)
+    spoken = text
+    if m:
+        try:
+            action = _json.loads(m.group(1))
+            spoken = (text[: m.start()] + text[m.end():]).strip()
+        except Exception:
+            action = None
+
+    return {
+        "reply": spoken,
+        "action": action,
+        "session_id": session_id,
+    }
+
+
+class AssistantActionPayload(BaseModel):
+    action: Dict[str, Any]
+
+
+@api_router.post("/retailer/{retailer_id}/assistant/execute")
+async def retailer_assistant_execute(retailer_id: str, payload: AssistantActionPayload):
+    """Execute a structured action returned by the assistant (server-side validated)."""
+    retailer = await db.retailers.find_one({"id": retailer_id}, {"_id": 0})
+    if not retailer:
+        raise HTTPException(404, "Retailer not found")
+
+    a = payload.action or {}
+    kind = a.get("action")
+    if kind == "reorder":
+        items_in = a.get("items", []) or []
+        # Map product names -> ids by case-insensitive contains, scoped to this retailer's inventory products
+        all_products = await db.products.find({}, {"_id": 0}).to_list(5000)
+        items: List[Dict[str, Any]] = []
+        unresolved: List[str] = []
+        for it in items_in:
+            name = str(it.get("product_name", "")).strip().lower()
+            qty = int(it.get("quantity", 0) or 0)
+            if not name or qty <= 0:
+                continue
+            best = None
+            best_score = 0
+            for p in all_products:
+                pn = p["name"].lower()
+                if name in pn or pn in name:
+                    score = len(pn) - abs(len(pn) - len(name))
+                    if score > best_score:
+                        best = p
+                        best_score = score
+            if best:
+                items.append({"product_id": best["id"], "quantity": qty})
+            else:
+                unresolved.append(it.get("product_name", "?"))
+        if not items:
+            return {"ok": False, "error": "No products resolved", "unresolved": unresolved}
+
+        req = StockRequest(
+            retailer_id=retailer_id,
+            distributor_id=retailer["distributor_id"],
+            items=[RequestLine(**it) for it in items],
+            note="Reorder via AI assistant",
+        )
+        await db.requests.insert_one(req.model_dump())
+        await push_notification(
+            "distributor", retailer["distributor_id"],
+            "New Stock Request",
+            f"{retailer['name']} sent a reorder via AI assistant ({len(items)} item(s)).",
+            "request",
+        )
+        return {"ok": True, "request_id": req.id, "items_count": len(items), "unresolved": unresolved}
+
+    # Other action kinds are UI-only and handled on the frontend
+    return {"ok": True, "ui_action": kind}
+
+
 # ----------------------------- Register --------------------------------------
 app.include_router(api_router)
 
