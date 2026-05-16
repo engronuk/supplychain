@@ -38,6 +38,13 @@ let webpackConfig = {
     },
     configure: (webpackConfig) => {
 
+      // Ensure .ts/.tsx are resolved alongside .js/.jsx (TypeScript co-existence)
+      const exts = webpackConfig.resolve && webpackConfig.resolve.extensions ? webpackConfig.resolve.extensions : [];
+      const merged = Array.from(new Set([
+        '.ts', '.tsx', '.js', '.jsx', '.mjs', '.json', ...exts,
+      ]));
+      webpackConfig.resolve = { ...(webpackConfig.resolve || {}), extensions: merged };
+
       // Add ignored patterns to reduce watched directories
         webpackConfig.watchOptions = {
           ...webpackConfig.watchOptions,

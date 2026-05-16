@@ -14,6 +14,7 @@ import {
   Store,
   Factory,
   Network,
+  Radar,
 } from "lucide-react";
 
 const ROLE_ICON = {
@@ -29,6 +30,7 @@ function navForRole(role) {
     { to: "/shipments", label: "Shipments", icon: Truck },
   ];
   if (role === "manufacturer") {
+    base.push({ to: "/network-map", label: "Network Map", icon: Radar });
     base.push({ to: "/network", label: "Distributors", icon: Network });
   } else if (role === "distributor") {
     base.push({ to: "/network", label: "Retailers", icon: Network });
