@@ -1,0 +1,1397 @@
+{
+  "root": {
+    "type": "root",
+    "children": [
+      {
+        "type": "text",
+        "id": "0939b943-dfe8-4199-8dc5-4504ff6e94f9",
+        "text": {
+          "ops": [
+            {
+              "insert": "Distributor Stock Orders"
+            },
+            {
+              "insert": "\n",
+              "attributes": {
+                "paragraph": true
+              }
+            }
+          ]
+        },
+        "format": null,
+        "collapsed": false,
+        "completed": false,
+        "children": [
+          {
+            "type": "text",
+            "id": "8023f05d-b3c2-4b49-bee6-5af0825b040d",
+            "text": {
+              "ops": [
+                {
+                  "insert": "DSO-0001: Knorr Bouillon Cubes × 500 — SUARA & CO.",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@dso_dist": "DIST-LAG-001",
+              "@dso_pri": {
+                "type": "Select",
+                "optionId": "dso-pri-high"
+              },
+              "@dso_created": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              },
+              "@dso_dname": "SUARA & CO.",
+              "@dso_pnm": "Knorr Bouillon Cubes",
+              "@dso_note": "Urgent replenishment — multiple retailers critically low",
+              "@dso_stat": {
+                "type": "Select",
+                "optionId": "dso-received"
+              },
+              "@dso_eta": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-20"
+                }
+              },
+              "@dso_qconf": 500,
+              "@dso_qty": 500,
+              "@dso_id": "DSO-0001",
+              "@dso_ship": "SHP-UL-20260515-001",
+              "@dso_sku": "KBC-CUBES"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "6ec571f3-96af-4fb8-a8ad-5e7b521c42c2",
+            "text": {
+              "ops": [
+                {
+                  "insert": "DSO-0002: Lipton Yellow Label Tea × 300 — SUARA & CO.",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@dso_dist": "DIST-LAG-001",
+              "@dso_pri": {
+                "type": "Select",
+                "optionId": "dso-pri-high"
+              },
+              "@dso_created": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-16"
+                }
+              },
+              "@dso_dname": "SUARA & CO.",
+              "@dso_pnm": "Lipton Yellow Label Tea",
+              "@dso_note": "Funtime Retail Shop stock below threshold",
+              "@dso_stat": {
+                "type": "Select",
+                "optionId": "dso-received"
+              },
+              "@dso_eta": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-21",
+                  "time": "00:00:00"
+                }
+              },
+              "@dso_qconf": 300,
+              "@dso_qty": 300,
+              "@dso_id": "DSO-0002",
+              "@dso_ship": "SHP-UL-MP8EWZ78",
+              "@dso_sku": "LYT-TEA"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "d412446a-b1c1-45b3-8b72-db94bb7cad5e",
+            "text": {
+              "ops": [
+                {
+                  "insert": "DSO-0003: Sunlight Dishwashing Liquid × 400 — SUARA & CO.",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@dso_dist": "DIST-LAG-001",
+              "@dso_pri": {
+                "type": "Select",
+                "optionId": "dso-pri-medium"
+              },
+              "@dso_created": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-16"
+                }
+              },
+              "@dso_dname": "SUARA & CO.",
+              "@dso_pnm": "Sunlight Dishwashing Liquid",
+              "@dso_note": "Critical across CityChoice Supermart and Funtime Retail Shop",
+              "@dso_stat": {
+                "type": "Select",
+                "optionId": "dso-pending"
+              },
+              "@dso_eta": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-23"
+                }
+              },
+              "@dso_qconf": 0,
+              "@dso_qty": 400,
+              "@dso_id": "DSO-0003",
+              "@dso_ship": "",
+              "@dso_sku": "SDL-DISH"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "58ea8e71-8202-42d4-8c07-9a2335491ab9",
+            "text": {
+              "ops": [
+                {
+                  "insert": "DSO-0004: Blue Band Margarine × 600 — KANO ROYAL DIST.",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@dso_dist": "DIST-NW-001",
+              "@dso_pri": {
+                "type": "Select",
+                "optionId": "dso-pri-medium"
+              },
+              "@dso_created": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-10"
+                }
+              },
+              "@dso_dname": "KANO ROYAL DIST.",
+              "@dso_pnm": "Blue Band Margarine",
+              "@dso_note": "Received in full. Stock updated.",
+              "@dso_stat": {
+                "type": "Select",
+                "optionId": "dso-received"
+              },
+              "@dso_eta": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-14"
+                }
+              },
+              "@dso_qconf": 600,
+              "@dso_qty": 600,
+              "@dso_id": "DSO-0004",
+              "@dso_ship": "SHP-UL-20260510-004",
+              "@dso_sku": "BBM-MARG"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "330430a0-aa7a-4807-8dad-4d960eb1893f",
+            "text": {
+              "ops": [
+                {
+                  "insert": "DSO-0005: OMO Detergent × 800 — IBADAN PRIME DIST.",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@dso_dist": "DIST-W-001",
+              "@dso_pri": {
+                "type": "Select",
+                "optionId": "dso-pri-high"
+              },
+              "@dso_created": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-14"
+                }
+              },
+              "@dso_dname": "IBADAN PRIME DIST.",
+              "@dso_pnm": "OMO Multi-Active Detergent",
+              "@dso_note": "Approved. Awaiting dispatch from Unilever Aba factory.",
+              "@dso_stat": {
+                "type": "Select",
+                "optionId": "dso-approved"
+              },
+              "@dso_eta": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-19"
+                }
+              },
+              "@dso_qconf": 0,
+              "@dso_qty": 800,
+              "@dso_id": "DSO-0005",
+              "@dso_ship": "SHP-UL-20260516-005",
+              "@dso_sku": "OMO-DET"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "fe7b44cc-bd9c-4152-8fad-60ba00078e1e",
+            "text": {
+              "ops": [
+                {
+                  "insert": "DSO-MP8FORAH: Lipton Yellow Label Tea x500 — SUARA & CO. — Funtime Retail Shop, Ikeja"
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": null,
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@dso_dist": "DIST-LAG-001",
+              "@dso_pri": {
+                "type": "Select",
+                "optionId": "dso-pri-high"
+              },
+              "@dso_created": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-16",
+                  "time": "00:00:00"
+                }
+              },
+              "@dso_dname": "SUARA & CO. — Funtime Retail Shop, Ikeja",
+              "@dso_pnm": "Lipton Yellow Label Tea",
+              "@dso_note": "Stock order from SUARA & CO. — Funtime Retail Shop, Ikeja",
+              "@dso_stat": {
+                "type": "Select",
+                "optionId": "dso-received"
+              },
+              "@dso_eta": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-21",
+                  "time": "00:00:00"
+                }
+              },
+              "@dso_qconf": 500,
+              "@dso_qty": 500,
+              "@dso_id": "DSO-MP8FORAH",
+              "@dso_ship": "SHP-UL-MP8FPLBQ",
+              "@dso_sku": "LYT-TEA"
+            },
+            "children": []
+          }
+        ]
+      }
+    ],
+    "views": {
+      "list": {
+        "id": "list",
+        "type": "list",
+        "rank": "A",
+        "displayedFields": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7"
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A"
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F"
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N"
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V"
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c"
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k"
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s"
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t"
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u"
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF"
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF"
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x"
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y"
+          },
+          "/attributes/@dso_id": {
+            "id": "/attributes/@dso_id",
+            "fieldPath": "/attributes/@dso_id",
+            "rank": "z"
+          },
+          "/attributes/@dso_dist": {
+            "id": "/attributes/@dso_dist",
+            "fieldPath": "/attributes/@dso_dist",
+            "rank": "zV"
+          },
+          "/attributes/@dso_dname": {
+            "id": "/attributes/@dso_dname",
+            "fieldPath": "/attributes/@dso_dname",
+            "rank": "zk"
+          },
+          "/attributes/@dso_sku": {
+            "id": "/attributes/@dso_sku",
+            "fieldPath": "/attributes/@dso_sku",
+            "rank": "zs"
+          },
+          "/attributes/@dso_pnm": {
+            "id": "/attributes/@dso_pnm",
+            "fieldPath": "/attributes/@dso_pnm",
+            "rank": "zw"
+          },
+          "/attributes/@dso_qty": {
+            "id": "/attributes/@dso_qty",
+            "fieldPath": "/attributes/@dso_qty",
+            "rank": "zy"
+          },
+          "/attributes/@dso_qconf": {
+            "id": "/attributes/@dso_qconf",
+            "fieldPath": "/attributes/@dso_qconf",
+            "rank": "zz"
+          },
+          "/attributes/@dso_stat": {
+            "id": "/attributes/@dso_stat",
+            "fieldPath": "/attributes/@dso_stat",
+            "rank": "zzV"
+          },
+          "/attributes/@dso_pri": {
+            "id": "/attributes/@dso_pri",
+            "fieldPath": "/attributes/@dso_pri",
+            "rank": "zzk"
+          },
+          "/attributes/@dso_eta": {
+            "id": "/attributes/@dso_eta",
+            "fieldPath": "/attributes/@dso_eta",
+            "rank": "zzs"
+          },
+          "/attributes/@dso_ship": {
+            "id": "/attributes/@dso_ship",
+            "fieldPath": "/attributes/@dso_ship",
+            "rank": "zzw"
+          },
+          "/attributes/@dso_note": {
+            "id": "/attributes/@dso_note",
+            "fieldPath": "/attributes/@dso_note",
+            "rank": "zzy"
+          },
+          "/attributes/@dso_created": {
+            "id": "/attributes/@dso_created",
+            "fieldPath": "/attributes/@dso_created",
+            "rank": "zzz"
+          }
+        }
+      },
+      "board": {
+        "id": "board",
+        "type": "board",
+        "rank": "B",
+        "displayedFields": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7"
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A"
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F"
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N"
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V"
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c"
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k"
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s"
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t"
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u"
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF"
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF"
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x"
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y"
+          },
+          "/attributes/@dso_id": {
+            "id": "/attributes/@dso_id",
+            "fieldPath": "/attributes/@dso_id",
+            "rank": "z"
+          },
+          "/attributes/@dso_dist": {
+            "id": "/attributes/@dso_dist",
+            "fieldPath": "/attributes/@dso_dist",
+            "rank": "zV"
+          },
+          "/attributes/@dso_dname": {
+            "id": "/attributes/@dso_dname",
+            "fieldPath": "/attributes/@dso_dname",
+            "rank": "zk"
+          },
+          "/attributes/@dso_sku": {
+            "id": "/attributes/@dso_sku",
+            "fieldPath": "/attributes/@dso_sku",
+            "rank": "zs"
+          },
+          "/attributes/@dso_pnm": {
+            "id": "/attributes/@dso_pnm",
+            "fieldPath": "/attributes/@dso_pnm",
+            "rank": "zw"
+          },
+          "/attributes/@dso_qty": {
+            "id": "/attributes/@dso_qty",
+            "fieldPath": "/attributes/@dso_qty",
+            "rank": "zy"
+          },
+          "/attributes/@dso_qconf": {
+            "id": "/attributes/@dso_qconf",
+            "fieldPath": "/attributes/@dso_qconf",
+            "rank": "zz"
+          },
+          "/attributes/@dso_stat": {
+            "id": "/attributes/@dso_stat",
+            "fieldPath": "/attributes/@dso_stat",
+            "rank": "zzV"
+          },
+          "/attributes/@dso_pri": {
+            "id": "/attributes/@dso_pri",
+            "fieldPath": "/attributes/@dso_pri",
+            "rank": "zzk"
+          },
+          "/attributes/@dso_eta": {
+            "id": "/attributes/@dso_eta",
+            "fieldPath": "/attributes/@dso_eta",
+            "rank": "zzs"
+          },
+          "/attributes/@dso_ship": {
+            "id": "/attributes/@dso_ship",
+            "fieldPath": "/attributes/@dso_ship",
+            "rank": "zzw"
+          },
+          "/attributes/@dso_note": {
+            "id": "/attributes/@dso_note",
+            "fieldPath": "/attributes/@dso_note",
+            "rank": "zzy"
+          },
+          "/attributes/@dso_created": {
+            "id": "/attributes/@dso_created",
+            "fieldPath": "/attributes/@dso_created",
+            "rank": "zzz"
+          }
+        }
+      },
+      "mindmap": {
+        "id": "mindmap",
+        "type": "mindmap",
+        "rank": "D",
+        "displayedFields": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7"
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A"
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F"
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N"
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V"
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c"
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k"
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s"
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t"
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u"
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF"
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF"
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x"
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y"
+          },
+          "/attributes/@dso_id": {
+            "id": "/attributes/@dso_id",
+            "fieldPath": "/attributes/@dso_id",
+            "rank": "z"
+          },
+          "/attributes/@dso_dist": {
+            "id": "/attributes/@dso_dist",
+            "fieldPath": "/attributes/@dso_dist",
+            "rank": "zV"
+          },
+          "/attributes/@dso_dname": {
+            "id": "/attributes/@dso_dname",
+            "fieldPath": "/attributes/@dso_dname",
+            "rank": "zk"
+          },
+          "/attributes/@dso_sku": {
+            "id": "/attributes/@dso_sku",
+            "fieldPath": "/attributes/@dso_sku",
+            "rank": "zs"
+          },
+          "/attributes/@dso_pnm": {
+            "id": "/attributes/@dso_pnm",
+            "fieldPath": "/attributes/@dso_pnm",
+            "rank": "zw"
+          },
+          "/attributes/@dso_qty": {
+            "id": "/attributes/@dso_qty",
+            "fieldPath": "/attributes/@dso_qty",
+            "rank": "zy"
+          },
+          "/attributes/@dso_qconf": {
+            "id": "/attributes/@dso_qconf",
+            "fieldPath": "/attributes/@dso_qconf",
+            "rank": "zz"
+          },
+          "/attributes/@dso_stat": {
+            "id": "/attributes/@dso_stat",
+            "fieldPath": "/attributes/@dso_stat",
+            "rank": "zzV"
+          },
+          "/attributes/@dso_pri": {
+            "id": "/attributes/@dso_pri",
+            "fieldPath": "/attributes/@dso_pri",
+            "rank": "zzk"
+          },
+          "/attributes/@dso_eta": {
+            "id": "/attributes/@dso_eta",
+            "fieldPath": "/attributes/@dso_eta",
+            "rank": "zzs"
+          },
+          "/attributes/@dso_ship": {
+            "id": "/attributes/@dso_ship",
+            "fieldPath": "/attributes/@dso_ship",
+            "rank": "zzw"
+          },
+          "/attributes/@dso_note": {
+            "id": "/attributes/@dso_note",
+            "fieldPath": "/attributes/@dso_note",
+            "rank": "zzy"
+          },
+          "/attributes/@dso_created": {
+            "id": "/attributes/@dso_created",
+            "fieldPath": "/attributes/@dso_created",
+            "rank": "zzz"
+          }
+        }
+      },
+      "orgchart": {
+        "id": "orgchart",
+        "type": "orgchart",
+        "rank": "E",
+        "displayedFields": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7"
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A"
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F"
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N"
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V"
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c"
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k"
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s"
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t"
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u"
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF"
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF"
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x"
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y"
+          },
+          "/attributes/@dso_id": {
+            "id": "/attributes/@dso_id",
+            "fieldPath": "/attributes/@dso_id",
+            "rank": "z"
+          },
+          "/attributes/@dso_dist": {
+            "id": "/attributes/@dso_dist",
+            "fieldPath": "/attributes/@dso_dist",
+            "rank": "zV"
+          },
+          "/attributes/@dso_dname": {
+            "id": "/attributes/@dso_dname",
+            "fieldPath": "/attributes/@dso_dname",
+            "rank": "zk"
+          },
+          "/attributes/@dso_sku": {
+            "id": "/attributes/@dso_sku",
+            "fieldPath": "/attributes/@dso_sku",
+            "rank": "zs"
+          },
+          "/attributes/@dso_pnm": {
+            "id": "/attributes/@dso_pnm",
+            "fieldPath": "/attributes/@dso_pnm",
+            "rank": "zw"
+          },
+          "/attributes/@dso_qty": {
+            "id": "/attributes/@dso_qty",
+            "fieldPath": "/attributes/@dso_qty",
+            "rank": "zy"
+          },
+          "/attributes/@dso_qconf": {
+            "id": "/attributes/@dso_qconf",
+            "fieldPath": "/attributes/@dso_qconf",
+            "rank": "zz"
+          },
+          "/attributes/@dso_stat": {
+            "id": "/attributes/@dso_stat",
+            "fieldPath": "/attributes/@dso_stat",
+            "rank": "zzV"
+          },
+          "/attributes/@dso_pri": {
+            "id": "/attributes/@dso_pri",
+            "fieldPath": "/attributes/@dso_pri",
+            "rank": "zzk"
+          },
+          "/attributes/@dso_eta": {
+            "id": "/attributes/@dso_eta",
+            "fieldPath": "/attributes/@dso_eta",
+            "rank": "zzs"
+          },
+          "/attributes/@dso_ship": {
+            "id": "/attributes/@dso_ship",
+            "fieldPath": "/attributes/@dso_ship",
+            "rank": "zzw"
+          },
+          "/attributes/@dso_note": {
+            "id": "/attributes/@dso_note",
+            "fieldPath": "/attributes/@dso_note",
+            "rank": "zzy"
+          },
+          "/attributes/@dso_created": {
+            "id": "/attributes/@dso_created",
+            "fieldPath": "/attributes/@dso_created",
+            "rank": "zzz"
+          }
+        }
+      },
+      "gantt": {
+        "id": "gantt",
+        "type": "gantt",
+        "rank": "F",
+        "columns": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7",
+            "width": 480
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A",
+            "hidden": true
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F",
+            "hidden": true
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N",
+            "hidden": true
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V",
+            "hidden": true
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c",
+            "hidden": true
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k",
+            "hidden": true
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s",
+            "hidden": true
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t",
+            "hidden": true
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u",
+            "hidden": true
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF",
+            "hidden": true
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF",
+            "hidden": true
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x",
+            "hidden": true
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y",
+            "hidden": true
+          },
+          "/attributes/@dso_id": {
+            "id": "/attributes/@dso_id",
+            "fieldPath": "/attributes/@dso_id",
+            "rank": "z",
+            "hidden": false
+          },
+          "/attributes/@dso_dist": {
+            "id": "/attributes/@dso_dist",
+            "fieldPath": "/attributes/@dso_dist",
+            "rank": "zV",
+            "hidden": false
+          },
+          "/attributes/@dso_dname": {
+            "id": "/attributes/@dso_dname",
+            "fieldPath": "/attributes/@dso_dname",
+            "rank": "zk",
+            "hidden": false
+          },
+          "/attributes/@dso_sku": {
+            "id": "/attributes/@dso_sku",
+            "fieldPath": "/attributes/@dso_sku",
+            "rank": "zs",
+            "hidden": false
+          },
+          "/attributes/@dso_pnm": {
+            "id": "/attributes/@dso_pnm",
+            "fieldPath": "/attributes/@dso_pnm",
+            "rank": "zw",
+            "hidden": false
+          },
+          "/attributes/@dso_qty": {
+            "id": "/attributes/@dso_qty",
+            "fieldPath": "/attributes/@dso_qty",
+            "rank": "zy",
+            "hidden": false
+          },
+          "/attributes/@dso_qconf": {
+            "id": "/attributes/@dso_qconf",
+            "fieldPath": "/attributes/@dso_qconf",
+            "rank": "zz",
+            "hidden": false
+          },
+          "/attributes/@dso_stat": {
+            "id": "/attributes/@dso_stat",
+            "fieldPath": "/attributes/@dso_stat",
+            "rank": "zzV",
+            "hidden": false
+          },
+          "/attributes/@dso_pri": {
+            "id": "/attributes/@dso_pri",
+            "fieldPath": "/attributes/@dso_pri",
+            "rank": "zzk",
+            "hidden": false
+          },
+          "/attributes/@dso_eta": {
+            "id": "/attributes/@dso_eta",
+            "fieldPath": "/attributes/@dso_eta",
+            "rank": "zzs",
+            "hidden": false
+          },
+          "/attributes/@dso_ship": {
+            "id": "/attributes/@dso_ship",
+            "fieldPath": "/attributes/@dso_ship",
+            "rank": "zzw",
+            "hidden": false
+          },
+          "/attributes/@dso_note": {
+            "id": "/attributes/@dso_note",
+            "fieldPath": "/attributes/@dso_note",
+            "rank": "zzy",
+            "hidden": false
+          },
+          "/attributes/@dso_created": {
+            "id": "/attributes/@dso_created",
+            "fieldPath": "/attributes/@dso_created",
+            "rank": "zzz",
+            "hidden": false
+          }
+        }
+      },
+      "table": {
+        "id": "table",
+        "type": "table",
+        "rank": "V",
+        "columns": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7",
+            "width": 480
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A",
+            "hidden": true
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F",
+            "hidden": true
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N",
+            "hidden": true
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V",
+            "hidden": true
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c",
+            "hidden": true
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k",
+            "hidden": true
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s",
+            "hidden": true
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t",
+            "hidden": true
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u",
+            "hidden": true
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF",
+            "hidden": true
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF",
+            "hidden": true
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x",
+            "hidden": true
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y",
+            "hidden": true
+          },
+          "/attributes/@dso_id": {
+            "id": "/attributes/@dso_id",
+            "fieldPath": "/attributes/@dso_id",
+            "rank": "z",
+            "hidden": false
+          },
+          "/attributes/@dso_dist": {
+            "id": "/attributes/@dso_dist",
+            "fieldPath": "/attributes/@dso_dist",
+            "rank": "zV",
+            "hidden": false
+          },
+          "/attributes/@dso_dname": {
+            "id": "/attributes/@dso_dname",
+            "fieldPath": "/attributes/@dso_dname",
+            "rank": "zk",
+            "hidden": false
+          },
+          "/attributes/@dso_sku": {
+            "id": "/attributes/@dso_sku",
+            "fieldPath": "/attributes/@dso_sku",
+            "rank": "zs",
+            "hidden": false
+          },
+          "/attributes/@dso_pnm": {
+            "id": "/attributes/@dso_pnm",
+            "fieldPath": "/attributes/@dso_pnm",
+            "rank": "zw",
+            "hidden": false
+          },
+          "/attributes/@dso_qty": {
+            "id": "/attributes/@dso_qty",
+            "fieldPath": "/attributes/@dso_qty",
+            "rank": "zy",
+            "hidden": false
+          },
+          "/attributes/@dso_qconf": {
+            "id": "/attributes/@dso_qconf",
+            "fieldPath": "/attributes/@dso_qconf",
+            "rank": "zz",
+            "hidden": false
+          },
+          "/attributes/@dso_stat": {
+            "id": "/attributes/@dso_stat",
+            "fieldPath": "/attributes/@dso_stat",
+            "rank": "zzV",
+            "hidden": false
+          },
+          "/attributes/@dso_pri": {
+            "id": "/attributes/@dso_pri",
+            "fieldPath": "/attributes/@dso_pri",
+            "rank": "zzk",
+            "hidden": false
+          },
+          "/attributes/@dso_eta": {
+            "id": "/attributes/@dso_eta",
+            "fieldPath": "/attributes/@dso_eta",
+            "rank": "zzs",
+            "hidden": false
+          },
+          "/attributes/@dso_ship": {
+            "id": "/attributes/@dso_ship",
+            "fieldPath": "/attributes/@dso_ship",
+            "rank": "zzw",
+            "hidden": false
+          },
+          "/attributes/@dso_note": {
+            "id": "/attributes/@dso_note",
+            "fieldPath": "/attributes/@dso_note",
+            "rank": "zzy",
+            "hidden": false
+          },
+          "/attributes/@dso_created": {
+            "id": "/attributes/@dso_created",
+            "fieldPath": "/attributes/@dso_created",
+            "rank": "zzz",
+            "hidden": false
+          }
+        }
+      }
+    },
+    "fields": {
+      "@dso_dist": {
+        "type": "string",
+        "displayName": "Distributor ID"
+      },
+      "@dso_pri": {
+        "type": "Select",
+        "displayName": "Priority",
+        "options": {
+          "dso-pri-high": {
+            "id": "dso-pri-high",
+            "name": "High",
+            "color": "#ef4444",
+            "rank": "0"
+          },
+          "dso-pri-medium": {
+            "id": "dso-pri-medium",
+            "name": "Medium",
+            "color": "#f59e0b",
+            "rank": "1"
+          },
+          "dso-pri-low": {
+            "id": "dso-pri-low",
+            "name": "Low",
+            "color": "#10b981",
+            "rank": "2"
+          }
+        }
+      },
+      "@dso_created": {
+        "type": "DateTime",
+        "title": "Date Ordered"
+      },
+      "@dso_dname": {
+        "type": "string",
+        "displayName": "Distributor Name"
+      },
+      "@dso_pnm": {
+        "type": "string",
+        "displayName": "Product Name"
+      },
+      "@dso_note": {
+        "type": "string",
+        "displayName": "Notes"
+      },
+      "@dso_stat": {
+        "type": "Select",
+        "displayName": "Status",
+        "options": {
+          "dso-pending": {
+            "id": "dso-pending",
+            "name": "Pending",
+            "color": "#f59e0b",
+            "rank": "0"
+          },
+          "dso-approved": {
+            "id": "dso-approved",
+            "name": "Approved",
+            "color": "#3b82f6",
+            "rank": "1"
+          },
+          "dso-intransit": {
+            "id": "dso-intransit",
+            "name": "In Transit",
+            "color": "#8b5cf6",
+            "rank": "2"
+          },
+          "dso-received": {
+            "id": "dso-received",
+            "name": "Received",
+            "color": "#10b981",
+            "rank": "3"
+          },
+          "dso-rejected": {
+            "id": "dso-rejected",
+            "name": "Rejected",
+            "color": "#ef4444",
+            "rank": "4"
+          }
+        }
+      },
+      "@dso_eta": {
+        "type": "DateTime",
+        "title": "ETA"
+      },
+      "@dso_qconf": {
+        "type": "number",
+        "displayName": "Quantity Confirmed",
+        "render": {
+          "type": "text"
+        },
+        "format": {
+          "type": "decimal"
+        }
+      },
+      "@dso_qty": {
+        "type": "number",
+        "displayName": "Quantity Requested",
+        "render": {
+          "type": "text"
+        },
+        "format": {
+          "type": "decimal"
+        }
+      },
+      "@dso_id": {
+        "type": "string",
+        "displayName": "Order ID"
+      },
+      "@dso_ship": {
+        "type": "string",
+        "displayName": "Shipment Ref"
+      },
+      "@dso_sku": {
+        "type": "string",
+        "displayName": "Product SKU"
+      }
+    }
+  },
+  "preferences": {
+    "defaultView": "board",
+    "avatar": {
+      "type": "emoji",
+      "value": "📐"
+    }
+  }
+}

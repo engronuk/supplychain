@@ -1,0 +1,1445 @@
+{
+  "root": {
+    "type": "root",
+    "children": [
+      {
+        "type": "text",
+        "id": "4bbf92e9-3208-43d2-b031-08d80405fe5f",
+        "text": {
+          "ops": [
+            {
+              "insert": "Distributor Warehouse Inventory"
+            },
+            {
+              "insert": "\n",
+              "attributes": {
+                "paragraph": true
+              }
+            }
+          ]
+        },
+        "format": null,
+        "collapsed": false,
+        "completed": false,
+        "children": [
+          {
+            "type": "text",
+            "id": "22dd650c-797b-48f1-ac2b-d0cfd1f09b7d",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Blue Band Margarine",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@wi_dist": "DIST-LAG-001",
+              "@wi_sku": "BBM-MARG",
+              "@wi_pnm": "Blue Band Margarine",
+              "@wi_qty": 1200,
+              "@wi_thresh": 300,
+              "@wi_stat": {
+                "type": "Select",
+                "optionId": "wi-healthy"
+              },
+              "@wi_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-16"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "bb3c3363-a8b5-44f3-9c12-19141bf59bfd",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Lipton Yellow Label Tea",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@wi_dist": "DIST-LAG-001",
+              "@wi_sku": "LYT-TEA",
+              "@wi_pnm": "Lipton Yellow Label Tea",
+              "@wi_qty": 680,
+              "@wi_thresh": 200,
+              "@wi_stat": {
+                "type": "Select",
+                "optionId": "wi-healthy"
+              },
+              "@wi_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-16",
+                  "time": "00:00:00"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "b3d960fc-4c0e-442b-b880-78f591612b2a",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Royco Bouillon Cubes",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@wi_dist": "DIST-LAG-001",
+              "@wi_sku": "RBC-CUBES",
+              "@wi_pnm": "Royco Bouillon Cubes",
+              "@wi_qty": 950,
+              "@wi_thresh": 250,
+              "@wi_stat": {
+                "type": "Select",
+                "optionId": "wi-healthy"
+              },
+              "@wi_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-16"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "e273035b-9dcb-46c9-9887-51842584815c",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Knorr Bouillon Cubes",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@wi_dist": "DIST-LAG-001",
+              "@wi_sku": "KBC-CUBES",
+              "@wi_pnm": "Knorr Bouillon Cubes",
+              "@wi_qty": 600,
+              "@wi_thresh": 300,
+              "@wi_stat": {
+                "type": "Select",
+                "optionId": "wi-healthy"
+              },
+              "@wi_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-16"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "db1c8738-4a61-48b0-bee3-94908449ec08",
+            "text": {
+              "ops": [
+                {
+                  "insert": "OMO Multi-Active Detergent",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@wi_dist": "DIST-LAG-001",
+              "@wi_sku": "OMO-DET",
+              "@wi_pnm": "OMO Multi-Active Detergent",
+              "@wi_qty": 2100,
+              "@wi_thresh": 400,
+              "@wi_stat": {
+                "type": "Select",
+                "optionId": "wi-healthy"
+              },
+              "@wi_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-16"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "f55a8218-9a1d-4432-a07e-a9d0a90af10f",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Sunlight Washing Powder",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@wi_dist": "DIST-LAG-001",
+              "@wi_sku": "SWP-WASH",
+              "@wi_pnm": "Sunlight Washing Powder",
+              "@wi_qty": 80,
+              "@wi_thresh": 200,
+              "@wi_stat": {
+                "type": "Select",
+                "optionId": "wi-critical"
+              },
+              "@wi_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-16"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "631e9c81-6446-4ec8-9eb4-973d5967c601",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Sunlight Dishwashing Liquid",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@wi_dist": "DIST-LAG-001",
+              "@wi_sku": "SDL-DISH",
+              "@wi_pnm": "Sunlight Dishwashing Liquid",
+              "@wi_qty": 155,
+              "@wi_thresh": 200,
+              "@wi_stat": {
+                "type": "Select",
+                "optionId": "wi-low"
+              },
+              "@wi_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-16"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "7a859ede-f66a-4df7-b8c6-44a43a25fdf9",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Close-Up Toothpaste",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@wi_dist": "DIST-LAG-001",
+              "@wi_sku": "CUT-TOOTH",
+              "@wi_pnm": "Close-Up Toothpaste",
+              "@wi_qty": 430,
+              "@wi_thresh": 150,
+              "@wi_stat": {
+                "type": "Select",
+                "optionId": "wi-healthy"
+              },
+              "@wi_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-16"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "4dce6abf-3d62-4c42-ad04-88dad0d768d4",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Pepsodent Toothpaste",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@wi_dist": "DIST-LAG-001",
+              "@wi_sku": "PPT-TOOTH",
+              "@wi_pnm": "Pepsodent Toothpaste",
+              "@wi_qty": 310,
+              "@wi_thresh": 150,
+              "@wi_stat": {
+                "type": "Select",
+                "optionId": "wi-healthy"
+              },
+              "@wi_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-16"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "b8f7be16-617f-45be-8f57-3de695de72f6",
+            "text": {
+              "ops": [
+                {
+                  "insert": "LUX Beauty Soap",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@wi_dist": "DIST-LAG-001",
+              "@wi_sku": "LUX-SOAP",
+              "@wi_pnm": "LUX Beauty Soap",
+              "@wi_qty": 760,
+              "@wi_thresh": 200,
+              "@wi_stat": {
+                "type": "Select",
+                "optionId": "wi-healthy"
+              },
+              "@wi_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-16"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "2f5af9fc-01a9-48ce-81fb-79a9d80707a5",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Lifebuoy Soap",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@wi_dist": "DIST-LAG-001",
+              "@wi_sku": "LFS-SOAP",
+              "@wi_pnm": "Lifebuoy Soap",
+              "@wi_qty": 520,
+              "@wi_thresh": 200,
+              "@wi_stat": {
+                "type": "Select",
+                "optionId": "wi-healthy"
+              },
+              "@wi_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-16"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "fc714ad4-4e33-4d97-90c5-be6932b0d18d",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Rexona Deodorant",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@wi_dist": "DIST-LAG-001",
+              "@wi_sku": "RXN-DEO",
+              "@wi_pnm": "Rexona Deodorant",
+              "@wi_qty": 290,
+              "@wi_thresh": 150,
+              "@wi_stat": {
+                "type": "Select",
+                "optionId": "wi-healthy"
+              },
+              "@wi_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-16"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "3258b75e-981b-4136-b356-5b7ce6b93a44",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Pears Baby Products",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@wi_dist": "DIST-LAG-001",
+              "@wi_sku": "PRS-BABY",
+              "@wi_pnm": "Pears Baby Products",
+              "@wi_qty": 640,
+              "@wi_thresh": 150,
+              "@wi_stat": {
+                "type": "Select",
+                "optionId": "wi-healthy"
+              },
+              "@wi_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-16"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "814ca9de-d925-4e4c-82fb-1fc37a24453b",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Vaseline Lotion & Jelly",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@wi_dist": "DIST-LAG-001",
+              "@wi_sku": "VSL-LOT",
+              "@wi_pnm": "Vaseline Lotion & Jelly",
+              "@wi_qty": 870,
+              "@wi_thresh": 200,
+              "@wi_stat": {
+                "type": "Select",
+                "optionId": "wi-healthy"
+              },
+              "@wi_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-16"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "e7f5c424-81fb-4c4f-a0e7-f2060bcea903",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Axe Body Spray",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@wi_dist": "DIST-LAG-001",
+              "@wi_sku": "AXE-BODY",
+              "@wi_pnm": "Axe Body Spray",
+              "@wi_qty": 0,
+              "@wi_thresh": 120,
+              "@wi_stat": {
+                "type": "Select",
+                "optionId": "wi-critical"
+              },
+              "@wi_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-16"
+                }
+              }
+            },
+            "children": []
+          }
+        ]
+      }
+    ],
+    "views": {
+      "list": {
+        "id": "list",
+        "type": "list",
+        "rank": "A",
+        "displayedFields": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7"
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A"
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F"
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N"
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V"
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c"
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k"
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s"
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t"
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u"
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF"
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF"
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x"
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y"
+          },
+          "/attributes/@wi_dist": {
+            "id": "/attributes/@wi_dist",
+            "fieldPath": "/attributes/@wi_dist",
+            "rank": "z"
+          },
+          "/attributes/@wi_sku": {
+            "id": "/attributes/@wi_sku",
+            "fieldPath": "/attributes/@wi_sku",
+            "rank": "zV"
+          },
+          "/attributes/@wi_pnm": {
+            "id": "/attributes/@wi_pnm",
+            "fieldPath": "/attributes/@wi_pnm",
+            "rank": "zk"
+          },
+          "/attributes/@wi_qty": {
+            "id": "/attributes/@wi_qty",
+            "fieldPath": "/attributes/@wi_qty",
+            "rank": "zs"
+          },
+          "/attributes/@wi_thresh": {
+            "id": "/attributes/@wi_thresh",
+            "fieldPath": "/attributes/@wi_thresh",
+            "rank": "zw"
+          },
+          "/attributes/@wi_stat": {
+            "id": "/attributes/@wi_stat",
+            "fieldPath": "/attributes/@wi_stat",
+            "rank": "zy"
+          },
+          "/attributes/@wi_updated": {
+            "id": "/attributes/@wi_updated",
+            "fieldPath": "/attributes/@wi_updated",
+            "rank": "zz"
+          }
+        }
+      },
+      "board": {
+        "id": "board",
+        "type": "board",
+        "rank": "B",
+        "displayedFields": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7"
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A"
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F"
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N"
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V"
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c"
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k"
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s"
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t"
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u"
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF"
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF"
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x"
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y"
+          },
+          "/attributes/@wi_dist": {
+            "id": "/attributes/@wi_dist",
+            "fieldPath": "/attributes/@wi_dist",
+            "rank": "z"
+          },
+          "/attributes/@wi_sku": {
+            "id": "/attributes/@wi_sku",
+            "fieldPath": "/attributes/@wi_sku",
+            "rank": "zV"
+          },
+          "/attributes/@wi_pnm": {
+            "id": "/attributes/@wi_pnm",
+            "fieldPath": "/attributes/@wi_pnm",
+            "rank": "zk"
+          },
+          "/attributes/@wi_qty": {
+            "id": "/attributes/@wi_qty",
+            "fieldPath": "/attributes/@wi_qty",
+            "rank": "zs"
+          },
+          "/attributes/@wi_thresh": {
+            "id": "/attributes/@wi_thresh",
+            "fieldPath": "/attributes/@wi_thresh",
+            "rank": "zw"
+          },
+          "/attributes/@wi_stat": {
+            "id": "/attributes/@wi_stat",
+            "fieldPath": "/attributes/@wi_stat",
+            "rank": "zy"
+          },
+          "/attributes/@wi_updated": {
+            "id": "/attributes/@wi_updated",
+            "fieldPath": "/attributes/@wi_updated",
+            "rank": "zz"
+          }
+        }
+      },
+      "mindmap": {
+        "id": "mindmap",
+        "type": "mindmap",
+        "rank": "D",
+        "displayedFields": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7"
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A"
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F"
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N"
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V"
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c"
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k"
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s"
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t"
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u"
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF"
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF"
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x"
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y"
+          },
+          "/attributes/@wi_dist": {
+            "id": "/attributes/@wi_dist",
+            "fieldPath": "/attributes/@wi_dist",
+            "rank": "z"
+          },
+          "/attributes/@wi_sku": {
+            "id": "/attributes/@wi_sku",
+            "fieldPath": "/attributes/@wi_sku",
+            "rank": "zV"
+          },
+          "/attributes/@wi_pnm": {
+            "id": "/attributes/@wi_pnm",
+            "fieldPath": "/attributes/@wi_pnm",
+            "rank": "zk"
+          },
+          "/attributes/@wi_qty": {
+            "id": "/attributes/@wi_qty",
+            "fieldPath": "/attributes/@wi_qty",
+            "rank": "zs"
+          },
+          "/attributes/@wi_thresh": {
+            "id": "/attributes/@wi_thresh",
+            "fieldPath": "/attributes/@wi_thresh",
+            "rank": "zw"
+          },
+          "/attributes/@wi_stat": {
+            "id": "/attributes/@wi_stat",
+            "fieldPath": "/attributes/@wi_stat",
+            "rank": "zy"
+          },
+          "/attributes/@wi_updated": {
+            "id": "/attributes/@wi_updated",
+            "fieldPath": "/attributes/@wi_updated",
+            "rank": "zz"
+          }
+        }
+      },
+      "orgchart": {
+        "id": "orgchart",
+        "type": "orgchart",
+        "rank": "E",
+        "displayedFields": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7"
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A"
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F"
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N"
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V"
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c"
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k"
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s"
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t"
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u"
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF"
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF"
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x"
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y"
+          },
+          "/attributes/@wi_dist": {
+            "id": "/attributes/@wi_dist",
+            "fieldPath": "/attributes/@wi_dist",
+            "rank": "z"
+          },
+          "/attributes/@wi_sku": {
+            "id": "/attributes/@wi_sku",
+            "fieldPath": "/attributes/@wi_sku",
+            "rank": "zV"
+          },
+          "/attributes/@wi_pnm": {
+            "id": "/attributes/@wi_pnm",
+            "fieldPath": "/attributes/@wi_pnm",
+            "rank": "zk"
+          },
+          "/attributes/@wi_qty": {
+            "id": "/attributes/@wi_qty",
+            "fieldPath": "/attributes/@wi_qty",
+            "rank": "zs"
+          },
+          "/attributes/@wi_thresh": {
+            "id": "/attributes/@wi_thresh",
+            "fieldPath": "/attributes/@wi_thresh",
+            "rank": "zw"
+          },
+          "/attributes/@wi_stat": {
+            "id": "/attributes/@wi_stat",
+            "fieldPath": "/attributes/@wi_stat",
+            "rank": "zy"
+          },
+          "/attributes/@wi_updated": {
+            "id": "/attributes/@wi_updated",
+            "fieldPath": "/attributes/@wi_updated",
+            "rank": "zz"
+          }
+        }
+      },
+      "gantt": {
+        "id": "gantt",
+        "type": "gantt",
+        "rank": "F",
+        "columns": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7",
+            "width": 480
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A",
+            "hidden": true
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F",
+            "hidden": true
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N",
+            "hidden": true
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V",
+            "hidden": true
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c",
+            "hidden": true
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k",
+            "hidden": true
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s",
+            "hidden": true
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t",
+            "hidden": true
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u",
+            "hidden": true
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF",
+            "hidden": true
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF",
+            "hidden": true
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x",
+            "hidden": true
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y",
+            "hidden": true
+          },
+          "/attributes/@wi_dist": {
+            "id": "/attributes/@wi_dist",
+            "fieldPath": "/attributes/@wi_dist",
+            "rank": "z",
+            "hidden": false
+          },
+          "/attributes/@wi_sku": {
+            "id": "/attributes/@wi_sku",
+            "fieldPath": "/attributes/@wi_sku",
+            "rank": "zV",
+            "hidden": false
+          },
+          "/attributes/@wi_pnm": {
+            "id": "/attributes/@wi_pnm",
+            "fieldPath": "/attributes/@wi_pnm",
+            "rank": "zk",
+            "hidden": false
+          },
+          "/attributes/@wi_qty": {
+            "id": "/attributes/@wi_qty",
+            "fieldPath": "/attributes/@wi_qty",
+            "rank": "zs",
+            "hidden": false
+          },
+          "/attributes/@wi_thresh": {
+            "id": "/attributes/@wi_thresh",
+            "fieldPath": "/attributes/@wi_thresh",
+            "rank": "zw",
+            "hidden": false
+          },
+          "/attributes/@wi_stat": {
+            "id": "/attributes/@wi_stat",
+            "fieldPath": "/attributes/@wi_stat",
+            "rank": "zy",
+            "hidden": false
+          },
+          "/attributes/@wi_updated": {
+            "id": "/attributes/@wi_updated",
+            "fieldPath": "/attributes/@wi_updated",
+            "rank": "zz",
+            "hidden": false
+          }
+        }
+      },
+      "table": {
+        "id": "table",
+        "type": "table",
+        "rank": "V",
+        "columns": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7",
+            "width": 480
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A",
+            "hidden": true
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F",
+            "hidden": true
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N",
+            "hidden": true
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V",
+            "hidden": true
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c",
+            "hidden": true
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k",
+            "hidden": true
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s",
+            "hidden": true
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t",
+            "hidden": true
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u",
+            "hidden": true
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF",
+            "hidden": true
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF",
+            "hidden": true
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x",
+            "hidden": true
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y",
+            "hidden": true
+          },
+          "/attributes/@wi_dist": {
+            "id": "/attributes/@wi_dist",
+            "fieldPath": "/attributes/@wi_dist",
+            "rank": "z",
+            "hidden": false
+          },
+          "/attributes/@wi_sku": {
+            "id": "/attributes/@wi_sku",
+            "fieldPath": "/attributes/@wi_sku",
+            "rank": "zV",
+            "hidden": false
+          },
+          "/attributes/@wi_pnm": {
+            "id": "/attributes/@wi_pnm",
+            "fieldPath": "/attributes/@wi_pnm",
+            "rank": "zk",
+            "hidden": false
+          },
+          "/attributes/@wi_qty": {
+            "id": "/attributes/@wi_qty",
+            "fieldPath": "/attributes/@wi_qty",
+            "rank": "zs",
+            "hidden": false
+          },
+          "/attributes/@wi_thresh": {
+            "id": "/attributes/@wi_thresh",
+            "fieldPath": "/attributes/@wi_thresh",
+            "rank": "zw",
+            "hidden": false
+          },
+          "/attributes/@wi_stat": {
+            "id": "/attributes/@wi_stat",
+            "fieldPath": "/attributes/@wi_stat",
+            "rank": "zy",
+            "hidden": false
+          },
+          "/attributes/@wi_updated": {
+            "id": "/attributes/@wi_updated",
+            "fieldPath": "/attributes/@wi_updated",
+            "rank": "zz",
+            "hidden": false
+          }
+        }
+      }
+    },
+    "fields": {
+      "@wi_dist": {
+        "type": "string",
+        "displayName": "Distributor ID"
+      },
+      "@wi_sku": {
+        "type": "string",
+        "displayName": "Product SKU"
+      },
+      "@wi_pnm": {
+        "type": "string",
+        "displayName": "Product Name"
+      },
+      "@wi_qty": {
+        "type": "number",
+        "displayName": "Current Quantity",
+        "render": {
+          "type": "text"
+        },
+        "format": {
+          "type": "decimal"
+        }
+      },
+      "@wi_thresh": {
+        "type": "number",
+        "displayName": "Threshold Level",
+        "render": {
+          "type": "text"
+        },
+        "format": {
+          "type": "decimal"
+        }
+      },
+      "@wi_stat": {
+        "type": "Select",
+        "displayName": "Stock Status",
+        "options": {
+          "wi-healthy": {
+            "id": "wi-healthy",
+            "name": "Healthy",
+            "color": "#10b981",
+            "rank": "0"
+          },
+          "wi-low": {
+            "id": "wi-low",
+            "name": "Low",
+            "color": "#f59e0b",
+            "rank": "1"
+          },
+          "wi-critical": {
+            "id": "wi-critical",
+            "name": "Out of Stock",
+            "color": "#ef4444",
+            "rank": "2"
+          }
+        }
+      },
+      "@wi_updated": {
+        "type": "DateTime",
+        "title": "Last Updated"
+      }
+    }
+  },
+  "preferences": {
+    "defaultView": "table",
+    "avatar": {
+      "type": "emoji",
+      "value": "📓"
+    }
+  }
+}

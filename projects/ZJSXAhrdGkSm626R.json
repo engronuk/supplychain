@@ -1,0 +1,2610 @@
+{
+  "root": {
+    "type": "root",
+    "children": [
+      {
+        "type": "text",
+        "id": "9660327b-e345-4dbf-9d8c-4cd75688a1d6",
+        "text": {
+          "ops": [
+            {
+              "insert": "Retailers Directory"
+            },
+            {
+              "insert": "\n",
+              "attributes": {
+                "paragraph": true
+              }
+            }
+          ]
+        },
+        "format": null,
+        "collapsed": false,
+        "completed": false,
+        "children": [
+          {
+            "type": "text",
+            "id": "922b5e0c-1470-41a0-bb4b-43e74797b47c",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Funtime Retail Shop",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-LAG-001",
+              "@rdist1": "DIST-LAG-001",
+              "@parentDist": "922b5e0c-1470-41a0-bb4b-43e74797b47c",
+              "@rloc1": "22 James Street, Ikeja, Lagos",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-healthy"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              },
+              "@rstore1": "Funtime Retail Shop"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "c0f06933-0069-43a9-8944-7c72f8adc5a3",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Green Basket Mart",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-LAG-002",
+              "@rdist1": "DIST-LAG-001",
+              "@parentDist": "c0f06933-0069-43a9-8944-7c72f8adc5a3",
+              "@rloc1": "14 Admiralty Way, Lekki, Lagos",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-healthy"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              },
+              "@rstore1": "Green Basket Mart"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "55570f95-1906-44b8-a43a-65fd07785aeb",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Daily Needs Store",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-LAG-003",
+              "@rdist1": "DIST-LAG-001",
+              "@parentDist": "55570f95-1906-44b8-a43a-65fd07785aeb",
+              "@rloc1": "8 Herbert Macaulay Rd, Yaba, Lagos",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-healthy"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-14"
+                }
+              },
+              "@rstore1": "Daily Needs Store"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "d78efdea-3860-4bf1-b03d-fed0ebafcfda",
+            "text": {
+              "ops": [
+                {
+                  "insert": "CityChoice Supermart",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-LAG-004",
+              "@rdist1": "DIST-LAG-001",
+              "@parentDist": "d78efdea-3860-4bf1-b03d-fed0ebafcfda",
+              "@rloc1": "31 Bode Thomas St, Surulere, Lagos",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-low"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-13"
+                }
+              },
+              "@rstore1": "CityChoice Supermart"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "3c02b3df-f7b6-4447-8f14-a94349409000",
+            "text": {
+              "ops": [
+                {
+                  "insert": "PrimeSave Store",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-LAG-005",
+              "@rdist1": "DIST-LAG-001",
+              "@parentDist": "3c02b3df-f7b6-4447-8f14-a94349409000",
+              "@rloc1": "5 Ijede Road, Ikorodu, Lagos",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-healthy"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              },
+              "@rstore1": "PrimeSave Store"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "297c2a20-3889-4bd6-90f0-349c28128bb8",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Urban Fresh Mart",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-LAG-006",
+              "@rdist1": "DIST-LAG-001",
+              "@parentDist": "297c2a20-3889-4bd6-90f0-349c28128bb8",
+              "@rloc1": "19 Ado Road, Ajah, Lagos",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-low"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-12"
+                }
+              },
+              "@rstore1": "Urban Fresh Mart"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "b1aaf4e5-c402-4bc6-8279-7de55fa2ea41",
+            "text": {
+              "ops": [
+                {
+                  "insert": "ValuePlus Superstore",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-LAG-007",
+              "@rdist1": "DIST-LAG-001",
+              "@parentDist": "b1aaf4e5-c402-4bc6-8279-7de55fa2ea41",
+              "@rloc1": "11 2nd Avenue, Festac, Lagos",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-healthy"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              },
+              "@rstore1": "ValuePlus Superstore"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "cd52c13f-071e-4e37-ab87-8c60f572a999",
+            "text": {
+              "ops": [
+                {
+                  "insert": "QuickBuy Shop",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-LAG-008",
+              "@rdist1": "DIST-LAG-001",
+              "@parentDist": "cd52c13f-071e-4e37-ab87-8c60f572a999",
+              "@rloc1": "7 Old Abeokuta Rd, Agege, Lagos",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-low"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-11"
+                }
+              },
+              "@rstore1": "QuickBuy Shop"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "bb95e01e-dab3-45e2-829d-44c851a3a0a1",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Metro Retail Hub",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-LAG-009",
+              "@rdist1": "DIST-LAG-001",
+              "@parentDist": "bb95e01e-dab3-45e2-829d-44c851a3a0a1",
+              "@rloc1": "25 Ikorodu Road, Maryland, Lagos",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-healthy"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              },
+              "@rstore1": "Metro Retail Hub"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "6c2eeab2-a3cf-4f81-afe8-547e55cd1797",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Harbor View Store",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-LAG-010",
+              "@rdist1": "DIST-LAG-001",
+              "@parentDist": "6c2eeab2-a3cf-4f81-afe8-547e55cd1797",
+              "@rloc1": "3 Creek Road, Apapa, Lagos",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-critical"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-10"
+                }
+              },
+              "@rstore1": "Harbor View Store"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "d5a71dbc-e47f-4b37-9655-38c399998680",
+            "text": {
+              "ops": [
+                {
+                  "insert": "SmartChoice Mart",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-LAG-011",
+              "@rdist1": "DIST-LAG-001",
+              "@parentDist": "d5a71dbc-e47f-4b37-9655-38c399998680",
+              "@rloc1": "18 Acme Road, Ogba, Lagos",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-healthy"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              },
+              "@rstore1": "SmartChoice Mart"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "d4810108-54d5-4832-ba6e-caaf6382f5ca",
+            "text": {
+              "ops": [
+                {
+                  "insert": "FamilyCare Store",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-LAG-012",
+              "@rdist1": "DIST-LAG-001",
+              "@parentDist": "d4810108-54d5-4832-ba6e-caaf6382f5ca",
+              "@rloc1": "9 Egbeda Road, Alimosho, Lagos",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-healthy"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-14"
+                }
+              },
+              "@rstore1": "FamilyCare Store"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "5e7ec5a7-c784-4aee-a64f-d499239e60f4",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Golden Basket Shop",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-LAG-013",
+              "@rdist1": "DIST-LAG-001",
+              "@parentDist": "5e7ec5a7-c784-4aee-a64f-d499239e60f4",
+              "@rloc1": "6 Monastery Rd, Sangotedo, Lagos",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-low"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-13"
+                }
+              },
+              "@rstore1": "Golden Basket Shop"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "27be2803-9881-44d2-809e-f8234abea06f",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Unity Retail Store",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-MB-001",
+              "@rdist1": "DIST-MB-001",
+              "@parentDist": "27be2803-9881-44d2-809e-f8234abea06f",
+              "@rloc1": "12 Shendam Road, Lafia, Nasarawa",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-healthy"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-14"
+                }
+              },
+              "@rstore1": "Unity Retail Store"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "a480ce9d-1338-4e3b-a09d-0e48cbed6c46",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Capital Mart",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-MB-002",
+              "@rdist1": "DIST-MB-002",
+              "@parentDist": "a480ce9d-1338-4e3b-a09d-0e48cbed6c46",
+              "@rloc1": "45 Garki Road, Abuja, FCT",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-healthy"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              },
+              "@rstore1": "Capital Mart"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "fa5f07bb-7a56-491e-9e3c-4f234a3e8179",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Highland Stores",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-MB-003",
+              "@rdist1": "DIST-MB-003",
+              "@parentDist": "fa5f07bb-7a56-491e-9e3c-4f234a3e8179",
+              "@rloc1": "10 Ahmadu Bello Way, Jos, Plateau",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-low"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-12"
+                }
+              },
+              "@rstore1": "Highland Stores"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "f9034919-af7a-4895-b2a7-1d66406032ad",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Benue Fresh Mart",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-MB-004",
+              "@rdist1": "DIST-MB-004",
+              "@parentDist": "f9034919-af7a-4895-b2a7-1d66406032ad",
+              "@rloc1": "28 Gboko Road, Makurdi, Benue",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-healthy"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              },
+              "@rstore1": "Benue Fresh Mart"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "b8901379-3bb6-4bda-8263-5e1646ebd0bb",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Nasarawa Hub",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-MB-005",
+              "@rdist1": "DIST-MB-005",
+              "@parentDist": "b8901379-3bb6-4bda-8263-5e1646ebd0bb",
+              "@rloc1": "6 Doma Road, Lafia, Nasarawa",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-healthy"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-14"
+                }
+              },
+              "@rstore1": "Nasarawa Hub"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "a4f74fd6-230b-4d77-96dc-81c99247a316",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Niger Value Store",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-MB-006",
+              "@rdist1": "DIST-MB-006",
+              "@parentDist": "a4f74fd6-230b-4d77-96dc-81c99247a316",
+              "@rloc1": "17 Bosso Road, Minna, Niger",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-healthy"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-13"
+                }
+              },
+              "@rstore1": "Niger Value Store"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "8d6bdb05-712f-42ac-a49a-a92c54db7a76",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Confluence Mart",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-MB-007",
+              "@rdist1": "DIST-MB-007",
+              "@parentDist": "8d6bdb05-712f-42ac-a49a-a92c54db7a76",
+              "@rloc1": "21 Lokoja Road, Lokoja, Kogi",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-low"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-11"
+                }
+              },
+              "@rstore1": "Confluence Mart"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "93ec621d-3484-4bda-9b37-c4b60f9b9291",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Desert Line Store",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-NE-001",
+              "@rdist1": "DIST-NE-001",
+              "@parentDist": "93ec621d-3484-4bda-9b37-c4b60f9b9291",
+              "@rloc1": "14 Baga Road, Maiduguri, Borno",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-low"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-12"
+                }
+              },
+              "@rstore1": "Desert Line Store"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "cb344e5e-f5db-4dc3-9061-fea05d7d3277",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Yola City Mart",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-NE-002",
+              "@rdist1": "DIST-NE-002",
+              "@parentDist": "cb344e5e-f5db-4dc3-9061-fea05d7d3277",
+              "@rloc1": "22 Jimeta Road, Yola, Adamawa",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-healthy"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              },
+              "@rstore1": "Yola City Mart"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "81443a2e-cc6a-4786-b50b-119885268f0d",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Bauchi Central Shop",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-NE-003",
+              "@rdist1": "DIST-NE-003",
+              "@parentDist": "81443a2e-cc6a-4786-b50b-119885268f0d",
+              "@rloc1": "6 Jos Road, Bauchi, Bauchi",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-healthy"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-14"
+                }
+              },
+              "@rstore1": "Bauchi Central Shop"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "fa1a6aa5-2e77-4342-8b18-0d50b2724137",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Gombe Value Mart",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-NE-004",
+              "@rdist1": "DIST-NE-004",
+              "@parentDist": "fa1a6aa5-2e77-4342-8b18-0d50b2724137",
+              "@rloc1": "9 Dukku Road, Gombe, Gombe",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-low"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-11"
+                }
+              },
+              "@rstore1": "Gombe Value Mart"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "1c157b90-97aa-4003-9e78-cdfa001150ce",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Kano Mega Store",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-NW-001",
+              "@rdist1": "DIST-NW-001",
+              "@parentDist": "1c157b90-97aa-4003-9e78-cdfa001150ce",
+              "@rloc1": "12 Zoo Road, Kano, Kano",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-healthy"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              },
+              "@rstore1": "Kano Mega Store"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "e4814ef5-29f5-43bb-b34b-e940a042a856",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Kaduna Central Mart",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-NW-002",
+              "@rdist1": "DIST-NW-002",
+              "@parentDist": "e4814ef5-29f5-43bb-b34b-e940a042a856",
+              "@rloc1": "25 Ahmadu Bello Way, Kaduna, Kaduna",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-healthy"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-14"
+                }
+              },
+              "@rstore1": "Kaduna Central Mart"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "d9d3f686-368d-48ac-8cf8-1cc24c1f66c1",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Sokoto Unity Store",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-NW-003",
+              "@rdist1": "DIST-NW-003",
+              "@parentDist": "d9d3f686-368d-48ac-8cf8-1cc24c1f66c1",
+              "@rloc1": "7 Sultan Rd, Sokoto, Sokoto",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-healthy"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              },
+              "@rstore1": "Sokoto Unity Store"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "730a338f-3c56-4264-afd3-00d60b027f07",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Warri Prime Store",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-SC-001",
+              "@rdist1": "DIST-SC-001",
+              "@parentDist": "730a338f-3c56-4264-afd3-00d60b027f07",
+              "@rloc1": "22 Effurun Rd, Warri, Delta",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-low"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-12"
+                }
+              },
+              "@rstore1": "Warri Prime Store"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "dbe986a5-b078-4ba9-a3c1-b9d4baa360c5",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Asaba Retail Hub",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-SC-002",
+              "@rdist1": "DIST-SC-002",
+              "@parentDist": "dbe986a5-b078-4ba9-a3c1-b9d4baa360c5",
+              "@rloc1": "14 Nnebisi Rd, Asaba, Delta",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-healthy"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-14"
+                }
+              },
+              "@rstore1": "Asaba Retail Hub"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "f9ce9a55-cdbe-42f6-8789-d6480a63d25c",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Benin Mega Mart",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-SC-003",
+              "@rdist1": "DIST-SC-003",
+              "@parentDist": "f9ce9a55-cdbe-42f6-8789-d6480a63d25c",
+              "@rloc1": "31 Sapele Rd, Benin City, Edo",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-healthy"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              },
+              "@rstore1": "Benin Mega Mart"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "43fec37e-cd9b-4fb4-8ce8-93309ded623f",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Sapele Trade Store",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-SC-004",
+              "@rdist1": "DIST-SC-004",
+              "@parentDist": "43fec37e-cd9b-4fb4-8ce8-93309ded623f",
+              "@rloc1": "8 Okpe Rd, Sapele, Delta",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-healthy"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-13"
+                }
+              },
+              "@rstore1": "Sapele Trade Store"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "acf2f8ef-05c7-4044-91a1-e9d8f74b80eb",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Coal City Mart",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-SE-001",
+              "@rdist1": "DIST-SE-001",
+              "@parentDist": "acf2f8ef-05c7-4044-91a1-e9d8f74b80eb",
+              "@rloc1": "21 Ogui Rd, Enugu, Enugu",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-healthy"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              },
+              "@rstore1": "Coal City Mart"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "90c4bef9-2b26-4c7e-acef-bbacbd315dd9",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Owerri City Store",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-SE-002",
+              "@rdist1": "DIST-SE-002",
+              "@parentDist": "90c4bef9-2b26-4c7e-acef-bbacbd315dd9",
+              "@rloc1": "15 Wetheral Rd, Owerri, Imo",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-low"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-12"
+                }
+              },
+              "@rstore1": "Owerri City Store"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "98d7a029-af16-44ae-b3ad-61323cb21c20",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Aba Mega Mart",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-SE-003",
+              "@rdist1": "DIST-SE-003",
+              "@parentDist": "98d7a029-af16-44ae-b3ad-61323cb21c20",
+              "@rloc1": "33 Aba-Owerri Rd, Aba, Abia",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-healthy"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              },
+              "@rstore1": "Aba Mega Mart"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "e5128a32-aa32-471b-8df7-e258cc636f02",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Onitsha Main Market Shop",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-SE-004",
+              "@rdist1": "DIST-SE-004",
+              "@parentDist": "e5128a32-aa32-471b-8df7-e258cc636f02",
+              "@rloc1": "7 Niger St, Onitsha, Anambra",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-healthy"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              },
+              "@rstore1": "Onitsha Main Market Shop"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "7c3dedcc-2d01-4727-9b42-64f908cfeef7",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Awka Capital Store",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-SE-005",
+              "@rdist1": "DIST-SE-005",
+              "@parentDist": "7c3dedcc-2d01-4727-9b42-64f908cfeef7",
+              "@rloc1": "14 Zik Ave, Awka, Anambra",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-healthy"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-14"
+                }
+              },
+              "@rstore1": "Awka Capital Store"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "3b42445b-845d-4c4e-b6cd-2c32f4f31c0d",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Ibadan Central Mart",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-W-001",
+              "@rdist1": "DIST-W-001",
+              "@parentDist": "3b42445b-845d-4c4e-b6cd-2c32f4f31c0d",
+              "@rloc1": "22 Dugbe Rd, Ibadan, Oyo",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-healthy"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              },
+              "@rstore1": "Ibadan Central Mart"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "b6559cd2-5926-4fa9-bdfd-ff674b53827a",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Osogbo Retail Store",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-W-002",
+              "@rdist1": "DIST-W-002",
+              "@parentDist": "b6559cd2-5926-4fa9-bdfd-ff674b53827a",
+              "@rloc1": "11 Gbongan Rd, Osogbo, Osun",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-low"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-12"
+                }
+              },
+              "@rstore1": "Osogbo Retail Store"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "e2edfb6d-3288-4db2-adac-58721bbc754e",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Akure City Mart",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-W-003",
+              "@rdist1": "DIST-W-003",
+              "@parentDist": "e2edfb6d-3288-4db2-adac-58721bbc754e",
+              "@rloc1": "7 Oyemekun Rd, Akure, Ondo",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-healthy"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-14"
+                }
+              },
+              "@rstore1": "Akure City Mart"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "d6c42733-e010-4b1d-9879-e2c07fb2ca27",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Ado Ekiti Central Shop",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@rid01": "RET-W-004",
+              "@rdist1": "DIST-W-004",
+              "@parentDist": "d6c42733-e010-4b1d-9879-e2c07fb2ca27",
+              "@rloc1": "15 Ajilosun Rd, Ado-Ekiti, Ekiti",
+              "@rhlth1": {
+                "type": "Select",
+                "optionId": "rhlth-low"
+              },
+              "@ract1": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-11"
+                }
+              },
+              "@rstore1": "Ado Ekiti Central Shop"
+            },
+            "children": []
+          }
+        ]
+      }
+    ],
+    "views": {
+      "list": {
+        "id": "list",
+        "type": "list",
+        "rank": "A",
+        "displayedFields": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7"
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A"
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F"
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N"
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V"
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c"
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k"
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s"
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t"
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u"
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF"
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF"
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x"
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y"
+          },
+          "/attributes/@rid01": {
+            "id": "/attributes/@rid01",
+            "fieldPath": "/attributes/@rid01",
+            "rank": "z"
+          },
+          "/attributes/@rdist1": {
+            "id": "/attributes/@rdist1",
+            "fieldPath": "/attributes/@rdist1",
+            "rank": "zV"
+          },
+          "/attributes/@rloc1": {
+            "id": "/attributes/@rloc1",
+            "fieldPath": "/attributes/@rloc1",
+            "rank": "zk"
+          },
+          "/attributes/@rhlth1": {
+            "id": "/attributes/@rhlth1",
+            "fieldPath": "/attributes/@rhlth1",
+            "rank": "zs"
+          },
+          "/attributes/@ract1": {
+            "id": "/attributes/@ract1",
+            "fieldPath": "/attributes/@ract1",
+            "rank": "zw"
+          },
+          "/attributes/@remail1": {
+            "id": "/attributes/@remail1",
+            "fieldPath": "/attributes/@remail1",
+            "rank": "zy"
+          },
+          "/attributes/@rstore1": {
+            "id": "/attributes/@rstore1",
+            "fieldPath": "/attributes/@rstore1",
+            "rank": "zz"
+          },
+          "c137ff88-61ee-43a6-be0e-9237fbf8088c": {
+            "id": "c137ff88-61ee-43a6-be0e-9237fbf8088c",
+            "fieldPath": "/attributes/@parentDist",
+            "rank": "zzV"
+          }
+        }
+      },
+      "board": {
+        "id": "board",
+        "type": "board",
+        "rank": "B",
+        "displayedFields": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7"
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A"
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F"
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N"
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V"
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c"
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k"
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s"
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t"
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u"
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF"
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF"
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x"
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y"
+          },
+          "/attributes/@rid01": {
+            "id": "/attributes/@rid01",
+            "fieldPath": "/attributes/@rid01",
+            "rank": "z"
+          },
+          "/attributes/@rdist1": {
+            "id": "/attributes/@rdist1",
+            "fieldPath": "/attributes/@rdist1",
+            "rank": "zV"
+          },
+          "/attributes/@rloc1": {
+            "id": "/attributes/@rloc1",
+            "fieldPath": "/attributes/@rloc1",
+            "rank": "zk"
+          },
+          "/attributes/@rhlth1": {
+            "id": "/attributes/@rhlth1",
+            "fieldPath": "/attributes/@rhlth1",
+            "rank": "zs"
+          },
+          "/attributes/@ract1": {
+            "id": "/attributes/@ract1",
+            "fieldPath": "/attributes/@ract1",
+            "rank": "zw"
+          },
+          "/attributes/@remail1": {
+            "id": "/attributes/@remail1",
+            "fieldPath": "/attributes/@remail1",
+            "rank": "zy"
+          },
+          "/attributes/@rstore1": {
+            "id": "/attributes/@rstore1",
+            "fieldPath": "/attributes/@rstore1",
+            "rank": "zz"
+          },
+          "92f0227d-4503-4837-9f61-84cc8cc92e1b": {
+            "id": "92f0227d-4503-4837-9f61-84cc8cc92e1b",
+            "fieldPath": "/attributes/@parentDist",
+            "rank": "zzV"
+          }
+        }
+      },
+      "mindmap": {
+        "id": "mindmap",
+        "type": "mindmap",
+        "rank": "D",
+        "displayedFields": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7"
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A"
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F"
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N"
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V"
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c"
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k"
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s"
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t"
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u"
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF"
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF"
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x"
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y"
+          },
+          "/attributes/@rid01": {
+            "id": "/attributes/@rid01",
+            "fieldPath": "/attributes/@rid01",
+            "rank": "z"
+          },
+          "/attributes/@rdist1": {
+            "id": "/attributes/@rdist1",
+            "fieldPath": "/attributes/@rdist1",
+            "rank": "zV"
+          },
+          "/attributes/@rloc1": {
+            "id": "/attributes/@rloc1",
+            "fieldPath": "/attributes/@rloc1",
+            "rank": "zk"
+          },
+          "/attributes/@rhlth1": {
+            "id": "/attributes/@rhlth1",
+            "fieldPath": "/attributes/@rhlth1",
+            "rank": "zs"
+          },
+          "/attributes/@ract1": {
+            "id": "/attributes/@ract1",
+            "fieldPath": "/attributes/@ract1",
+            "rank": "zw"
+          },
+          "/attributes/@remail1": {
+            "id": "/attributes/@remail1",
+            "fieldPath": "/attributes/@remail1",
+            "rank": "zy"
+          },
+          "/attributes/@rstore1": {
+            "id": "/attributes/@rstore1",
+            "fieldPath": "/attributes/@rstore1",
+            "rank": "zz"
+          },
+          "3290ca6f-d6cc-4ab1-8969-1b18d50b36ab": {
+            "id": "3290ca6f-d6cc-4ab1-8969-1b18d50b36ab",
+            "fieldPath": "/attributes/@parentDist",
+            "rank": "zzV"
+          }
+        }
+      },
+      "orgchart": {
+        "id": "orgchart",
+        "type": "orgchart",
+        "rank": "E",
+        "displayedFields": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7"
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A"
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F"
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N"
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V"
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c"
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k"
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s"
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t"
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u"
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF"
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF"
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x"
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y"
+          },
+          "/attributes/@rid01": {
+            "id": "/attributes/@rid01",
+            "fieldPath": "/attributes/@rid01",
+            "rank": "z"
+          },
+          "/attributes/@rdist1": {
+            "id": "/attributes/@rdist1",
+            "fieldPath": "/attributes/@rdist1",
+            "rank": "zV"
+          },
+          "/attributes/@rloc1": {
+            "id": "/attributes/@rloc1",
+            "fieldPath": "/attributes/@rloc1",
+            "rank": "zk"
+          },
+          "/attributes/@rhlth1": {
+            "id": "/attributes/@rhlth1",
+            "fieldPath": "/attributes/@rhlth1",
+            "rank": "zs"
+          },
+          "/attributes/@ract1": {
+            "id": "/attributes/@ract1",
+            "fieldPath": "/attributes/@ract1",
+            "rank": "zw"
+          },
+          "/attributes/@remail1": {
+            "id": "/attributes/@remail1",
+            "fieldPath": "/attributes/@remail1",
+            "rank": "zy"
+          },
+          "/attributes/@rstore1": {
+            "id": "/attributes/@rstore1",
+            "fieldPath": "/attributes/@rstore1",
+            "rank": "zz"
+          },
+          "02e1c021-1d96-489c-b0d7-09bca1cd503f": {
+            "id": "02e1c021-1d96-489c-b0d7-09bca1cd503f",
+            "fieldPath": "/attributes/@parentDist",
+            "rank": "zzV"
+          }
+        }
+      },
+      "gantt": {
+        "id": "gantt",
+        "type": "gantt",
+        "rank": "F",
+        "columns": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7",
+            "width": 480
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A",
+            "hidden": true
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F",
+            "hidden": true
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N",
+            "hidden": true
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V",
+            "hidden": true
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c",
+            "hidden": true
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k",
+            "hidden": true
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s",
+            "hidden": true
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t",
+            "hidden": true
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u",
+            "hidden": true
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF",
+            "hidden": true
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF",
+            "hidden": true
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x",
+            "hidden": true
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y",
+            "hidden": true
+          },
+          "/attributes/@rid01": {
+            "id": "/attributes/@rid01",
+            "fieldPath": "/attributes/@rid01",
+            "rank": "z",
+            "hidden": false
+          },
+          "/attributes/@rdist1": {
+            "id": "/attributes/@rdist1",
+            "fieldPath": "/attributes/@rdist1",
+            "rank": "zV",
+            "hidden": false
+          },
+          "/attributes/@rloc1": {
+            "id": "/attributes/@rloc1",
+            "fieldPath": "/attributes/@rloc1",
+            "rank": "zk",
+            "hidden": false
+          },
+          "/attributes/@rhlth1": {
+            "id": "/attributes/@rhlth1",
+            "fieldPath": "/attributes/@rhlth1",
+            "rank": "zs",
+            "hidden": false
+          },
+          "/attributes/@ract1": {
+            "id": "/attributes/@ract1",
+            "fieldPath": "/attributes/@ract1",
+            "rank": "zw",
+            "hidden": false
+          },
+          "/attributes/@remail1": {
+            "id": "/attributes/@remail1",
+            "fieldPath": "/attributes/@remail1",
+            "rank": "zy",
+            "hidden": false
+          },
+          "/attributes/@rstore1": {
+            "id": "/attributes/@rstore1",
+            "fieldPath": "/attributes/@rstore1",
+            "rank": "zz",
+            "hidden": false
+          },
+          "fbd5e6fc-66ef-4819-9d63-5d5e84a44779": {
+            "id": "fbd5e6fc-66ef-4819-9d63-5d5e84a44779",
+            "fieldPath": "/attributes/@parentDist",
+            "rank": "zzV"
+          }
+        }
+      },
+      "table": {
+        "id": "table",
+        "type": "table",
+        "rank": "V",
+        "columns": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7",
+            "width": 480
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A",
+            "hidden": true
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F",
+            "hidden": true
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N",
+            "hidden": true
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V",
+            "hidden": true
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c",
+            "hidden": true
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k",
+            "hidden": true
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s",
+            "hidden": true
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t",
+            "hidden": true
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u",
+            "hidden": true
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF",
+            "hidden": true
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF",
+            "hidden": true
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x",
+            "hidden": true
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y",
+            "hidden": true
+          },
+          "/attributes/@rid01": {
+            "id": "/attributes/@rid01",
+            "fieldPath": "/attributes/@rid01",
+            "rank": "z",
+            "hidden": false
+          },
+          "/attributes/@rdist1": {
+            "id": "/attributes/@rdist1",
+            "fieldPath": "/attributes/@rdist1",
+            "rank": "zV",
+            "hidden": false
+          },
+          "/attributes/@rloc1": {
+            "id": "/attributes/@rloc1",
+            "fieldPath": "/attributes/@rloc1",
+            "rank": "zk",
+            "hidden": false
+          },
+          "/attributes/@rhlth1": {
+            "id": "/attributes/@rhlth1",
+            "fieldPath": "/attributes/@rhlth1",
+            "rank": "zs",
+            "hidden": false
+          },
+          "/attributes/@ract1": {
+            "id": "/attributes/@ract1",
+            "fieldPath": "/attributes/@ract1",
+            "rank": "zw",
+            "hidden": false
+          },
+          "/attributes/@remail1": {
+            "id": "/attributes/@remail1",
+            "fieldPath": "/attributes/@remail1",
+            "rank": "zy",
+            "hidden": false
+          },
+          "/attributes/@rstore1": {
+            "id": "/attributes/@rstore1",
+            "fieldPath": "/attributes/@rstore1",
+            "rank": "zz",
+            "hidden": false
+          },
+          "01c7c313-d961-4464-a409-3cc02afd18c1": {
+            "id": "01c7c313-d961-4464-a409-3cc02afd18c1",
+            "fieldPath": "/attributes/@parentDist",
+            "rank": "zzV"
+          }
+        }
+      },
+      "actionsheet": {
+        "id": "actionsheet",
+        "type": "actionsheet",
+        "rank": "F",
+        "columns": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7",
+            "width": 480
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A",
+            "hidden": true
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F"
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N"
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V",
+            "hidden": true
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c",
+            "hidden": true
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k",
+            "hidden": true
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s",
+            "hidden": true
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t",
+            "hidden": true
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u",
+            "hidden": true
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF",
+            "hidden": true
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF",
+            "hidden": true
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x",
+            "hidden": true
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y",
+            "hidden": true
+          },
+          "f4fdada7-8cf8-4def-b826-93c51c034479": {
+            "id": "f4fdada7-8cf8-4def-b826-93c51c034479",
+            "fieldPath": "/attributes/@parentDist",
+            "rank": "z"
+          }
+        }
+      }
+    },
+    "fields": {
+      "@rid01": {
+        "type": "string",
+        "displayName": "Retailer ID"
+      },
+      "@rdist1": {
+        "type": "string",
+        "displayName": "Assigned Distributor ID"
+      },
+      "@rloc1": {
+        "type": "string",
+        "displayName": "Location"
+      },
+      "@rhlth1": {
+        "type": "Select",
+        "displayName": "Inventory Health",
+        "options": {
+          "rhlth-healthy": {
+            "id": "rhlth-healthy",
+            "name": "Healthy",
+            "color": "#10b981",
+            "rank": "0"
+          },
+          "rhlth-low": {
+            "id": "rhlth-low",
+            "name": "Low",
+            "color": "#f59e0b",
+            "rank": "1"
+          },
+          "rhlth-critical": {
+            "id": "rhlth-critical",
+            "name": "Critical",
+            "color": "#ef4444",
+            "rank": "2"
+          }
+        }
+      },
+      "@ract1": {
+        "type": "DateTime",
+        "title": "Last Activity"
+      },
+      "@remail1": {
+        "type": "string",
+        "displayName": "Contact Email"
+      },
+      "@rstore1": {
+        "type": "string",
+        "displayName": "Store Name"
+      },
+      "@parentDist": {
+        "type": "string",
+        "displayName": "Parent Distributor ID"
+      }
+    }
+  },
+  "preferences": {
+    "defaultView": "table",
+    "avatar": {
+      "type": "emoji",
+      "value": "🖌️"
+    }
+  }
+}

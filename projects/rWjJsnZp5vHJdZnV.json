@@ -1,0 +1,1450 @@
+{
+  "root": {
+    "type": "root",
+    "children": [
+      {
+        "type": "text",
+        "id": "ed76290f-b4ab-4550-9663-6ddf45981dc4",
+        "text": {
+          "ops": [
+            {
+              "insert": "Unilever Demand Analytics"
+            },
+            {
+              "insert": "\n",
+              "attributes": {
+                "paragraph": true
+              }
+            }
+          ]
+        },
+        "format": null,
+        "collapsed": false,
+        "completed": false,
+        "children": [
+          {
+            "type": "text",
+            "id": "aa101010-0000-0000-0000-000000000001",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Knorr Bouillon Cubes — Lagos — May 2026",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@da_sku": "KBC-CUBES",
+              "@da_name": "Knorr Bouillon Cubes",
+              "@da_region": {
+                "type": "Select",
+                "optionId": "da-south"
+              },
+              "@da_vol": 1421,
+              "@da_rev": 497350,
+              "@da_month": "May 2026",
+              "@da_trend": {
+                "type": "Select",
+                "optionId": "trend-up"
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "aa101010-0000-0000-0000-000000000002",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Blue Band Margarine — Lagos — May 2026",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@da_sku": "BBM-MARG",
+              "@da_name": "Blue Band Margarine",
+              "@da_region": {
+                "type": "Select",
+                "optionId": "da-south"
+              },
+              "@da_vol": 1474,
+              "@da_rev": 1768800,
+              "@da_month": "May 2026",
+              "@da_trend": {
+                "type": "Select",
+                "optionId": "trend-up"
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "aa101010-0000-0000-0000-000000000003",
+            "text": {
+              "ops": [
+                {
+                  "insert": "OMO Multi-Active Detergent — Lagos — May 2026",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@da_sku": "OMO-DET",
+              "@da_name": "OMO Multi-Active Detergent",
+              "@da_region": {
+                "type": "Select",
+                "optionId": "da-south"
+              },
+              "@da_vol": 1043,
+              "@da_rev": 1668800,
+              "@da_month": "May 2026",
+              "@da_trend": {
+                "type": "Select",
+                "optionId": "trend-flat"
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "aa101010-0000-0000-0000-000000000004",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Vaseline Lotion & Jelly — Lagos — May 2026",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@da_sku": "VSL-LOT",
+              "@da_name": "Vaseline Lotion & Jelly",
+              "@da_region": {
+                "type": "Select",
+                "optionId": "da-south"
+              },
+              "@da_vol": 1440,
+              "@da_rev": 2520000,
+              "@da_month": "May 2026",
+              "@da_trend": {
+                "type": "Select",
+                "optionId": "trend-up"
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "aa101010-0000-0000-0000-000000000005",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Pears Baby Products — Lagos — May 2026",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@da_sku": "PRS-BABY",
+              "@da_name": "Pears Baby Products",
+              "@da_region": {
+                "type": "Select",
+                "optionId": "da-south"
+              },
+              "@da_vol": 1289,
+              "@da_rev": 2835800,
+              "@da_month": "May 2026",
+              "@da_trend": {
+                "type": "Select",
+                "optionId": "trend-up"
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "aa101010-0000-0000-0000-000000000006",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Lifebuoy Soap — South East — May 2026",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@da_sku": "LFS-SOAP",
+              "@da_name": "Lifebuoy Soap",
+              "@da_region": {
+                "type": "Select",
+                "optionId": "da-east"
+              },
+              "@da_vol": 896,
+              "@da_rev": 403200,
+              "@da_month": "May 2026",
+              "@da_trend": {
+                "type": "Select",
+                "optionId": "trend-up"
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "aa101010-0000-0000-0000-000000000007",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Royco Bouillon Cubes — South East — May 2026",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@da_sku": "RBC-CUBES",
+              "@da_name": "Royco Bouillon Cubes",
+              "@da_region": {
+                "type": "Select",
+                "optionId": "da-east"
+              },
+              "@da_vol": 1013,
+              "@da_rev": 303900,
+              "@da_month": "May 2026",
+              "@da_trend": {
+                "type": "Select",
+                "optionId": "trend-up"
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "aa101010-0000-0000-0000-000000000008",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Close-Up Toothpaste — South East — May 2026",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@da_sku": "CUT-TOOTH",
+              "@da_name": "Close-Up Toothpaste",
+              "@da_region": {
+                "type": "Select",
+                "optionId": "da-east"
+              },
+              "@da_vol": 1069,
+              "@da_rev": 801750,
+              "@da_month": "May 2026",
+              "@da_trend": {
+                "type": "Select",
+                "optionId": "trend-up"
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "aa101010-0000-0000-0000-000000000009",
+            "text": {
+              "ops": [
+                {
+                  "insert": "LUX Beauty Soap — West — May 2026",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@da_sku": "LUX-SOAP",
+              "@da_name": "LUX Beauty Soap",
+              "@da_region": {
+                "type": "Select",
+                "optionId": "da-west"
+              },
+              "@da_vol": 1027,
+              "@da_rev": 564850,
+              "@da_month": "May 2026",
+              "@da_trend": {
+                "type": "Select",
+                "optionId": "trend-flat"
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "aa101010-0000-0000-0000-000000000010",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Sunlight Washing Powder — West — May 2026",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@da_sku": "SWP-WASH",
+              "@da_name": "Sunlight Washing Powder",
+              "@da_region": {
+                "type": "Select",
+                "optionId": "da-west"
+              },
+              "@da_vol": 891,
+              "@da_rev": 1202850,
+              "@da_month": "May 2026",
+              "@da_trend": {
+                "type": "Select",
+                "optionId": "trend-up"
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "aa101010-0000-0000-0000-000000000011",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Axe Body Spray — North West — May 2026",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@da_sku": "AXE-BODY",
+              "@da_name": "Axe Body Spray",
+              "@da_region": {
+                "type": "Select",
+                "optionId": "da-north"
+              },
+              "@da_vol": 1041,
+              "@da_rev": 1925850,
+              "@da_month": "May 2026",
+              "@da_trend": {
+                "type": "Select",
+                "optionId": "trend-up"
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "aa101010-0000-0000-0000-000000000012",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Rexona Deodorant — North West — May 2026",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@da_sku": "RXN-DEO",
+              "@da_name": "Rexona Deodorant",
+              "@da_region": {
+                "type": "Select",
+                "optionId": "da-north"
+              },
+              "@da_vol": 1065,
+              "@da_rev": 1544250,
+              "@da_month": "May 2026",
+              "@da_trend": {
+                "type": "Select",
+                "optionId": "trend-up"
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "aa101010-0000-0000-0000-000000000013",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Pepsodent Toothpaste — Middle Belt — May 2026",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@da_sku": "PPT-TOOTH",
+              "@da_name": "Pepsodent Toothpaste",
+              "@da_region": {
+                "type": "Select",
+                "optionId": "da-central"
+              },
+              "@da_vol": 993,
+              "@da_rev": 675240,
+              "@da_month": "May 2026",
+              "@da_trend": {
+                "type": "Select",
+                "optionId": "trend-flat"
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "aa101010-0000-0000-0000-000000000014",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Sunlight Dishwashing Liquid — South Central — May 2026",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@da_sku": "SDL-DISH",
+              "@da_name": "Sunlight Dishwashing Liquid",
+              "@da_region": {
+                "type": "Select",
+                "optionId": "da-south"
+              },
+              "@da_vol": 1116,
+              "@da_rev": 1060200,
+              "@da_month": "May 2026",
+              "@da_trend": {
+                "type": "Select",
+                "optionId": "trend-up"
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "aa101010-0000-0000-0000-000000000015",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Lipton Yellow Label Tea — Lagos — May 2026",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@da_sku": "LYT-TEA",
+              "@da_name": "Lipton Yellow Label Tea",
+              "@da_region": {
+                "type": "Select",
+                "optionId": "da-south"
+              },
+              "@da_vol": 1201,
+              "@da_rev": 1176980,
+              "@da_month": "May 2026",
+              "@da_trend": {
+                "type": "Select",
+                "optionId": "trend-up"
+              }
+            },
+            "children": []
+          }
+        ]
+      }
+    ],
+    "views": {
+      "list": {
+        "id": "list",
+        "type": "list",
+        "rank": "A",
+        "displayedFields": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7"
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A"
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F"
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N"
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V"
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c"
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k"
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s"
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t"
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u"
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF"
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF"
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x"
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y"
+          },
+          "/attributes/@da_sku": {
+            "id": "/attributes/@da_sku",
+            "fieldPath": "/attributes/@da_sku",
+            "rank": "z"
+          },
+          "/attributes/@da_name": {
+            "id": "/attributes/@da_name",
+            "fieldPath": "/attributes/@da_name",
+            "rank": "zV"
+          },
+          "/attributes/@da_region": {
+            "id": "/attributes/@da_region",
+            "fieldPath": "/attributes/@da_region",
+            "rank": "zk"
+          },
+          "/attributes/@da_vol": {
+            "id": "/attributes/@da_vol",
+            "fieldPath": "/attributes/@da_vol",
+            "rank": "zs"
+          },
+          "/attributes/@da_rev": {
+            "id": "/attributes/@da_rev",
+            "fieldPath": "/attributes/@da_rev",
+            "rank": "zw"
+          },
+          "/attributes/@da_month": {
+            "id": "/attributes/@da_month",
+            "fieldPath": "/attributes/@da_month",
+            "rank": "zy"
+          },
+          "/attributes/@da_trend": {
+            "id": "/attributes/@da_trend",
+            "fieldPath": "/attributes/@da_trend",
+            "rank": "zz"
+          }
+        }
+      },
+      "board": {
+        "id": "board",
+        "type": "board",
+        "rank": "B",
+        "displayedFields": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7"
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A"
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F"
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N"
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V"
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c"
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k"
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s"
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t"
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u"
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF"
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF"
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x"
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y"
+          },
+          "/attributes/@da_sku": {
+            "id": "/attributes/@da_sku",
+            "fieldPath": "/attributes/@da_sku",
+            "rank": "z"
+          },
+          "/attributes/@da_name": {
+            "id": "/attributes/@da_name",
+            "fieldPath": "/attributes/@da_name",
+            "rank": "zV"
+          },
+          "/attributes/@da_region": {
+            "id": "/attributes/@da_region",
+            "fieldPath": "/attributes/@da_region",
+            "rank": "zk"
+          },
+          "/attributes/@da_vol": {
+            "id": "/attributes/@da_vol",
+            "fieldPath": "/attributes/@da_vol",
+            "rank": "zs"
+          },
+          "/attributes/@da_rev": {
+            "id": "/attributes/@da_rev",
+            "fieldPath": "/attributes/@da_rev",
+            "rank": "zw"
+          },
+          "/attributes/@da_month": {
+            "id": "/attributes/@da_month",
+            "fieldPath": "/attributes/@da_month",
+            "rank": "zy"
+          },
+          "/attributes/@da_trend": {
+            "id": "/attributes/@da_trend",
+            "fieldPath": "/attributes/@da_trend",
+            "rank": "zz"
+          }
+        }
+      },
+      "mindmap": {
+        "id": "mindmap",
+        "type": "mindmap",
+        "rank": "D",
+        "displayedFields": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7"
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A"
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F"
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N"
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V"
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c"
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k"
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s"
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t"
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u"
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF"
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF"
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x"
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y"
+          },
+          "/attributes/@da_sku": {
+            "id": "/attributes/@da_sku",
+            "fieldPath": "/attributes/@da_sku",
+            "rank": "z"
+          },
+          "/attributes/@da_name": {
+            "id": "/attributes/@da_name",
+            "fieldPath": "/attributes/@da_name",
+            "rank": "zV"
+          },
+          "/attributes/@da_region": {
+            "id": "/attributes/@da_region",
+            "fieldPath": "/attributes/@da_region",
+            "rank": "zk"
+          },
+          "/attributes/@da_vol": {
+            "id": "/attributes/@da_vol",
+            "fieldPath": "/attributes/@da_vol",
+            "rank": "zs"
+          },
+          "/attributes/@da_rev": {
+            "id": "/attributes/@da_rev",
+            "fieldPath": "/attributes/@da_rev",
+            "rank": "zw"
+          },
+          "/attributes/@da_month": {
+            "id": "/attributes/@da_month",
+            "fieldPath": "/attributes/@da_month",
+            "rank": "zy"
+          },
+          "/attributes/@da_trend": {
+            "id": "/attributes/@da_trend",
+            "fieldPath": "/attributes/@da_trend",
+            "rank": "zz"
+          }
+        }
+      },
+      "orgchart": {
+        "id": "orgchart",
+        "type": "orgchart",
+        "rank": "E",
+        "displayedFields": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7"
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A"
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F"
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N"
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V"
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c"
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k"
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s"
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t"
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u"
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF"
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF"
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x"
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y"
+          },
+          "/attributes/@da_sku": {
+            "id": "/attributes/@da_sku",
+            "fieldPath": "/attributes/@da_sku",
+            "rank": "z"
+          },
+          "/attributes/@da_name": {
+            "id": "/attributes/@da_name",
+            "fieldPath": "/attributes/@da_name",
+            "rank": "zV"
+          },
+          "/attributes/@da_region": {
+            "id": "/attributes/@da_region",
+            "fieldPath": "/attributes/@da_region",
+            "rank": "zk"
+          },
+          "/attributes/@da_vol": {
+            "id": "/attributes/@da_vol",
+            "fieldPath": "/attributes/@da_vol",
+            "rank": "zs"
+          },
+          "/attributes/@da_rev": {
+            "id": "/attributes/@da_rev",
+            "fieldPath": "/attributes/@da_rev",
+            "rank": "zw"
+          },
+          "/attributes/@da_month": {
+            "id": "/attributes/@da_month",
+            "fieldPath": "/attributes/@da_month",
+            "rank": "zy"
+          },
+          "/attributes/@da_trend": {
+            "id": "/attributes/@da_trend",
+            "fieldPath": "/attributes/@da_trend",
+            "rank": "zz"
+          }
+        }
+      },
+      "gantt": {
+        "id": "gantt",
+        "type": "gantt",
+        "rank": "F",
+        "columns": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7",
+            "width": 480
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A",
+            "hidden": true
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F",
+            "hidden": true
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N",
+            "hidden": true
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V",
+            "hidden": true
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c",
+            "hidden": true
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k",
+            "hidden": true
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s",
+            "hidden": true
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t",
+            "hidden": true
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u",
+            "hidden": true
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF",
+            "hidden": true
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF",
+            "hidden": true
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x",
+            "hidden": true
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y",
+            "hidden": true
+          },
+          "/attributes/@da_sku": {
+            "id": "/attributes/@da_sku",
+            "fieldPath": "/attributes/@da_sku",
+            "rank": "z",
+            "hidden": false
+          },
+          "/attributes/@da_name": {
+            "id": "/attributes/@da_name",
+            "fieldPath": "/attributes/@da_name",
+            "rank": "zV",
+            "hidden": false
+          },
+          "/attributes/@da_region": {
+            "id": "/attributes/@da_region",
+            "fieldPath": "/attributes/@da_region",
+            "rank": "zk",
+            "hidden": false
+          },
+          "/attributes/@da_vol": {
+            "id": "/attributes/@da_vol",
+            "fieldPath": "/attributes/@da_vol",
+            "rank": "zs",
+            "hidden": false
+          },
+          "/attributes/@da_rev": {
+            "id": "/attributes/@da_rev",
+            "fieldPath": "/attributes/@da_rev",
+            "rank": "zw",
+            "hidden": false
+          },
+          "/attributes/@da_month": {
+            "id": "/attributes/@da_month",
+            "fieldPath": "/attributes/@da_month",
+            "rank": "zy",
+            "hidden": false
+          },
+          "/attributes/@da_trend": {
+            "id": "/attributes/@da_trend",
+            "fieldPath": "/attributes/@da_trend",
+            "rank": "zz",
+            "hidden": false
+          }
+        }
+      },
+      "table": {
+        "id": "table",
+        "type": "table",
+        "rank": "V",
+        "columns": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7",
+            "width": 480
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A",
+            "hidden": true
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F",
+            "hidden": true
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N",
+            "hidden": true
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V",
+            "hidden": true
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c",
+            "hidden": true
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k",
+            "hidden": true
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s",
+            "hidden": true
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t",
+            "hidden": true
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u",
+            "hidden": true
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF",
+            "hidden": true
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF",
+            "hidden": true
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x",
+            "hidden": true
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y",
+            "hidden": true
+          },
+          "/attributes/@da_sku": {
+            "id": "/attributes/@da_sku",
+            "fieldPath": "/attributes/@da_sku",
+            "rank": "z",
+            "hidden": false
+          },
+          "/attributes/@da_name": {
+            "id": "/attributes/@da_name",
+            "fieldPath": "/attributes/@da_name",
+            "rank": "zV",
+            "hidden": false
+          },
+          "/attributes/@da_region": {
+            "id": "/attributes/@da_region",
+            "fieldPath": "/attributes/@da_region",
+            "rank": "zk",
+            "hidden": false
+          },
+          "/attributes/@da_vol": {
+            "id": "/attributes/@da_vol",
+            "fieldPath": "/attributes/@da_vol",
+            "rank": "zs",
+            "hidden": false
+          },
+          "/attributes/@da_rev": {
+            "id": "/attributes/@da_rev",
+            "fieldPath": "/attributes/@da_rev",
+            "rank": "zw",
+            "hidden": false
+          },
+          "/attributes/@da_month": {
+            "id": "/attributes/@da_month",
+            "fieldPath": "/attributes/@da_month",
+            "rank": "zy",
+            "hidden": false
+          },
+          "/attributes/@da_trend": {
+            "id": "/attributes/@da_trend",
+            "fieldPath": "/attributes/@da_trend",
+            "rank": "zz",
+            "hidden": false
+          }
+        }
+      }
+    },
+    "fields": {
+      "@da_sku": {
+        "type": "string",
+        "displayName": "Product SKU"
+      },
+      "@da_name": {
+        "type": "string",
+        "displayName": "Product Name"
+      },
+      "@da_region": {
+        "type": "Select",
+        "displayName": "Region",
+        "options": {
+          "da-north": {
+            "id": "da-north",
+            "name": "North",
+            "color": "#0ea5e9",
+            "rank": "0"
+          },
+          "da-south": {
+            "id": "da-south",
+            "name": "South",
+            "color": "#f97316",
+            "rank": "1"
+          },
+          "da-east": {
+            "id": "da-east",
+            "name": "East",
+            "color": "#84cc16",
+            "rank": "2"
+          },
+          "da-west": {
+            "id": "da-west",
+            "name": "West",
+            "color": "#a855f7",
+            "rank": "3"
+          },
+          "da-central": {
+            "id": "da-central",
+            "name": "Central",
+            "color": "#14b8a6",
+            "rank": "4"
+          }
+        }
+      },
+      "@da_vol": {
+        "type": "number",
+        "displayName": "Units Restocked",
+        "render": {
+          "type": "text"
+        },
+        "format": {
+          "type": "decimal"
+        }
+      },
+      "@da_rev": {
+        "type": "number",
+        "displayName": "Revenue Generated",
+        "render": {
+          "type": "text"
+        },
+        "format": {
+          "type": "currency",
+          "config": {
+            "type": "standard",
+            "code": "USD"
+          }
+        }
+      },
+      "@da_month": {
+        "type": "string",
+        "displayName": "Month"
+      },
+      "@da_trend": {
+        "type": "Select",
+        "displayName": "Trend",
+        "options": {
+          "trend-up": {
+            "id": "trend-up",
+            "name": "↑ Rising",
+            "color": "#10b981",
+            "rank": "0"
+          },
+          "trend-down": {
+            "id": "trend-down",
+            "name": "↓ Declining",
+            "color": "#ef4444",
+            "rank": "1"
+          },
+          "trend-flat": {
+            "id": "trend-flat",
+            "name": "→ Stable",
+            "color": "#6b7280",
+            "rank": "2"
+          }
+        }
+      }
+    }
+  },
+  "preferences": {
+    "defaultView": "table",
+    "avatar": {
+      "type": "emoji",
+      "value": "🏷️"
+    }
+  }
+}

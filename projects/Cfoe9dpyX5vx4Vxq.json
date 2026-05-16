@@ -1,0 +1,3589 @@
+{
+  "root": {
+    "type": "root",
+    "children": [
+      {
+        "type": "text",
+        "id": "4ad07313-247d-4721-811c-389502bbfcc9",
+        "text": {
+          "ops": [
+            {
+              "insert": "Unilever Distributors Registry"
+            },
+            {
+              "insert": "\n",
+              "attributes": {
+                "paragraph": true
+              }
+            }
+          ]
+        },
+        "format": null,
+        "collapsed": false,
+        "completed": false,
+        "children": [
+          {
+            "type": "text",
+            "id": "e6cc7df1-a291-4900-87a5-c84cc18aac7f",
+            "text": {
+              "ops": [
+                {
+                  "insert": "SUARA & CO.",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-LAG-001",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-west"
+              },
+              "@dcity1": "Ikeja",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Funtime Retail Shop",
+              "@dfrt1": 92,
+              "@dret1": 20,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "22 James Street, Ikeja, Lagos"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "4cd7042f-d256-4c97-8cf0-42fb3711c808",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RENUZI VENTURES",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-LAG-002",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-lagos"
+              },
+              "@dcity1": "Lekki",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Green Basket Mart",
+              "@dfrt1": 89,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "14 Admiralty Way, Lekki, Lagos"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "4405826f-3813-4c29-a607-ceb6dd38cf38",
+            "text": {
+              "ops": [
+                {
+                  "insert": "WHARTON BUSINESS SOLUTIONS",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-LAG-003",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-lagos"
+              },
+              "@dcity1": "Yaba",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Daily Needs Store",
+              "@dfrt1": 91,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "8 Herbert Macaulay Rd, Yaba, Lagos"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "dbb7f73a-500f-47e2-bd29-0f498014e23a",
+            "text": {
+              "ops": [
+                {
+                  "insert": "LOBIC GLOBAL MERCHANTILE COY",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-LAG-004",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-lagos"
+              },
+              "@dcity1": "Surulere",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "CityChoice Supermart",
+              "@dfrt1": 88,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "31 Bode Thomas St, Surulere, Lagos"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "81c530f6-fd19-4255-b0e5-1512b9be9721",
+            "text": {
+              "ops": [
+                {
+                  "insert": "SAM-&-MARTHA-INV INVESTMENT LTD",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-LAG-005",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-lagos"
+              },
+              "@dcity1": "Ikorodu",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "PrimeSave Store",
+              "@dfrt1": 94,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "5 Ijede Road, Ikorodu, Lagos"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "28848cb3-5d80-4293-aea0-c34ab3070a77",
+            "text": {
+              "ops": [
+                {
+                  "insert": "ONABOWALE - LAGOS",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-LAG-006",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-lagos"
+              },
+              "@dcity1": "Ajah",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Urban Fresh Mart",
+              "@dfrt1": 86,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "19 Ado Road, Ajah, Lagos"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "67db7c42-8430-4aeb-9e6e-c527a7c10a6f",
+            "text": {
+              "ops": [
+                {
+                  "insert": "VANCREST GLOBAL VENTURE",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-LAG-007",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-lagos"
+              },
+              "@dcity1": "Festac",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "ValuePlus Superstore",
+              "@dfrt1": 90,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "11 2nd Avenue, Festac, Lagos"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "0cce5990-5a36-40a7-895e-790733e9631c",
+            "text": {
+              "ops": [
+                {
+                  "insert": "MUTKEEM CONCEPT",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-LAG-008",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-lagos"
+              },
+              "@dcity1": "Agege",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "QuickBuy Shop",
+              "@dfrt1": 85,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "7 Old Abeokuta Rd, Agege, Lagos"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "229124a3-ea4e-4bfc-88e7-88e66db8b580",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RENUZI VENTURES LEKKI",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-LAG-009",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-lagos"
+              },
+              "@dcity1": "Maryland",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Metro Retail Hub",
+              "@dfrt1": 87,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "25 Ikorodu Road, Maryland, Lagos"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "fca70ece-511a-4254-9e9e-8cdba8d9354b",
+            "text": {
+              "ops": [
+                {
+                  "insert": "MAQUAHM NIGERIA LIMITED",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-LAG-010",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-lagos"
+              },
+              "@dcity1": "Apapa",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Harbor View Store",
+              "@dfrt1": 93,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "3 Creek Road, Apapa, Lagos"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "4f37cdbc-cc13-4ef4-8207-aef1e99a2469",
+            "text": {
+              "ops": [
+                {
+                  "insert": "ITURA VENTURES",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-LAG-011",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-lagos"
+              },
+              "@dcity1": "Ogba",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "SmartChoice Mart",
+              "@dfrt1": 88,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "18 Acme Road, Ogba, Lagos"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "328d94b6-c6cc-417f-83db-f98ba1f18685",
+            "text": {
+              "ops": [
+                {
+                  "insert": "SALSBURY WORLDWIDE ENTERPRISES",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-LAG-012",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-lagos"
+              },
+              "@dcity1": "Alimosho",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "FamilyCare Store",
+              "@dfrt1": 91,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "9 Egbeda Road, Alimosho, Lagos"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "06652bc2-d8d4-4a73-bb8f-b36bab78f6fd",
+            "text": {
+              "ops": [
+                {
+                  "insert": "VANCREST GLOBAL VENTURES",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-LAG-013",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-lagos"
+              },
+              "@dcity1": "Sangotedo",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Golden Basket Shop",
+              "@dfrt1": 89,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "6 Monastery Rd, Sangotedo, Lagos"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "e9d00535-8d4f-4876-b849-8dfacd159b0c",
+            "text": {
+              "ops": [
+                {
+                  "insert": "ADEBIYI PHARMA NIGERIA LIMITED",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-MB-001",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-middle-belt"
+              },
+              "@dcity1": "Lafia",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Unity Retail Store",
+              "@dfrt1": 88,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "12 Shendam Road, Lafia, Nasarawa"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "325de9d4-b952-4c32-b1b8-cfcd268a907d",
+            "text": {
+              "ops": [
+                {
+                  "insert": "IFJANE NIG LIMITED",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-MB-002",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-middle-belt"
+              },
+              "@dcity1": "Abuja",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Capital Mart",
+              "@dfrt1": 95,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "45 Garki Road, Abuja, FCT"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "e1cddca3-454b-4804-bf2a-a755e864ea4c",
+            "text": {
+              "ops": [
+                {
+                  "insert": "OLAYIWOLA STORES",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-MB-003",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-middle-belt"
+              },
+              "@dcity1": "Jos",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Highland Stores",
+              "@dfrt1": 87,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "10 Ahmadu Bello Way, Jos, Plateau"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "3642d23d-6ac8-4b7a-99e5-32dd4f9ed211",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RICKMEN HEALTHCARE LIMITED",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-MB-004",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-middle-belt"
+              },
+              "@dcity1": "Makurdi",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Benue Fresh Mart",
+              "@dfrt1": 91,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "28 Gboko Road, Makurdi, Benue"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "8728b511-7985-4143-8468-2ac02f95a1dd",
+            "text": {
+              "ops": [
+                {
+                  "insert": "ANCHAD INTEGRATED LTD",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-MB-005",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-middle-belt"
+              },
+              "@dcity1": "Lafia",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Nasarawa Hub",
+              "@dfrt1": 89,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "6 Doma Road, Lafia, Nasarawa"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "a4d70fcd-7b6a-4f7f-ac63-767706e3aac0",
+            "text": {
+              "ops": [
+                {
+                  "insert": "IDUH INTEGRATED SERVICES LTD ABUJA KD3",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-MB-006",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-middle-belt"
+              },
+              "@dcity1": "Minna",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Niger Value Store",
+              "@dfrt1": 90,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "17 Bosso Road, Minna, Niger"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "34c9752f-5cc6-40bb-b328-01eb91692bf9",
+            "text": {
+              "ops": [
+                {
+                  "insert": "MUABSA INTEGRATED SERVICES",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-MB-007",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-middle-belt"
+              },
+              "@dcity1": "Lokoja",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Confluence Mart",
+              "@dfrt1": 86,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "21 Lokoja Road, Lokoja, Kogi"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "2e6acde9-ed95-45c7-9b83-7abea62752b7",
+            "text": {
+              "ops": [
+                {
+                  "insert": "ABIZZARI SABO AND BROTHERS",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-NE-001",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-north-east"
+              },
+              "@dcity1": "Maiduguri",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Desert Line Store",
+              "@dfrt1": 84,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "14 Baga Road, Maiduguri, Borno"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "4eba3e5f-36b2-404d-80f4-1e5af2738035",
+            "text": {
+              "ops": [
+                {
+                  "insert": "B G USMAN LTD",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-NE-002",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-north-east"
+              },
+              "@dcity1": "Yola",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Yola City Mart",
+              "@dfrt1": 90,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "22 Jimeta Road, Yola, Adamawa"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "2824543b-c8e0-4aac-8323-f8de4d857560",
+            "text": {
+              "ops": [
+                {
+                  "insert": "NAHEEM HEIGHTS",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-NE-003",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-north-east"
+              },
+              "@dcity1": "Bauchi",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Bauchi Central Shop",
+              "@dfrt1": 88,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "6 Jos Road, Bauchi, Bauchi"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "05a9710b-0f69-4bab-9185-5dd01d312fb9",
+            "text": {
+              "ops": [
+                {
+                  "insert": "NAHUWA GENERAL ENTERPRISE",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-NE-004",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-north-east"
+              },
+              "@dcity1": "Gombe",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Gombe Value Mart",
+              "@dfrt1": 82,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "9 Dukku Road, Gombe, Gombe"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "a04bbd0a-ce37-4cca-a8da-3e38e6c2f59a",
+            "text": {
+              "ops": [
+                {
+                  "insert": "HAMIR INVESTMENT",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-NW-001",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-north-west"
+              },
+              "@dcity1": "Kano",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Kano Mega Store",
+              "@dfrt1": 93,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "12 Zoo Road, Kano, Kano"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "787842e0-5068-4190-ac5e-8dcb5e21a067",
+            "text": {
+              "ops": [
+                {
+                  "insert": "MAZAF MINI DEPOT",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-NW-002",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-north-west"
+              },
+              "@dcity1": "Kaduna",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Kaduna Central Mart",
+              "@dfrt1": 91,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "25 Ahmadu Bello Way, Kaduna, Kaduna"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "4a62c55b-dd4a-4f65-9150-b60ec19c2208",
+            "text": {
+              "ops": [
+                {
+                  "insert": "A.I. MAI TEBUR VENTURES",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-NW-003",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-north-west"
+              },
+              "@dcity1": "Sokoto",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Sokoto Unity Store",
+              "@dfrt1": 95,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "7 Sultan Rd, Sokoto, Sokoto"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "e6691a6e-0845-4fbe-9202-0fd85b4f8810",
+            "text": {
+              "ops": [
+                {
+                  "insert": "SALIHU USMAN MATAZU & SONS",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-NW-004",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-north-west"
+              },
+              "@dcity1": "Gusau",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Gusau Retail Point",
+              "@dfrt1": 88,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "11 Sokoto Rd, Gusau, Zamfara"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "9df52000-f2e8-4af6-8066-a0d9e5049722",
+            "text": {
+              "ops": [
+                {
+                  "insert": "IBRAHIM ISAH DANBABA GEN. ENT.",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-NW-005",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-north-west"
+              },
+              "@dcity1": "Katsina",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Katsina Family Store",
+              "@dfrt1": 87,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "6 IBB Way, Katsina, Katsina"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "f0ea341a-3294-4e16-85e7-afbd1a19864f",
+            "text": {
+              "ops": [
+                {
+                  "insert": "BELLO FARU & SONS NIG. ENT.",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-NW-006",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-north-west"
+              },
+              "@dcity1": "Birnin Kebbi",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Kebbi Trade Hub",
+              "@dfrt1": 92,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "9 Argungu Rd, Birnin Kebbi, Kebbi"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "7ccb4425-9aa5-4e90-a96d-a6c492c92334",
+            "text": {
+              "ops": [
+                {
+                  "insert": "AG GLOBAL RESOURCES KANO",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-NW-007",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-north-west"
+              },
+              "@dcity1": "Funtua",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Funtua Retail Store",
+              "@dfrt1": 90,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "8 Gusau Rd, Funtua, Katsina"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "642b2dfa-8a2f-46ac-8161-28c45e77120b",
+            "text": {
+              "ops": [
+                {
+                  "insert": "HASKE MAKARANTA",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-NW-008",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-north-west"
+              },
+              "@dcity1": "Argungu",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Argungu Superstore",
+              "@dfrt1": 94,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "15 Birnin Kebbi Rd, Argungu, Kebbi"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "6271f4a2-b332-40d4-b97b-f731d9b970eb",
+            "text": {
+              "ops": [
+                {
+                  "insert": "YUHAZ MERCHANTS COMPANY LIMITED",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-NW-009",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-north-west"
+              },
+              "@dcity1": "Malumfashi",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Malumfashi Mini Mart",
+              "@dfrt1": 85,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "6 Kafur Rd, Malumfashi, Katsina"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "826e42e0-4697-4964-b704-56850a4afd0e",
+            "text": {
+              "ops": [
+                {
+                  "insert": "H.O NWOJI",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-SC-001",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-south-central"
+              },
+              "@dcity1": "Warri",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Warri Prime Store",
+              "@dfrt1": 89,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "22 Effurun Rd, Warri, Delta"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "1c57f69d-edcb-4458-95b9-3367dde2b316",
+            "text": {
+              "ops": [
+                {
+                  "insert": "SYLIKA GLOBAL RESOURCES ENT.",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-SC-002",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-south-central"
+              },
+              "@dcity1": "Asaba",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Asaba Retail Hub",
+              "@dfrt1": 87,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "14 Nnebisi Rd, Asaba, Delta"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "ae768a11-a1ac-431d-ae36-4afa5efa7b75",
+            "text": {
+              "ops": [
+                {
+                  "insert": "MOUNA FRANCES",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-SC-003",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-south-central"
+              },
+              "@dcity1": "Benin City",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Benin Mega Mart",
+              "@dfrt1": 92,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "31 Sapele Rd, Benin City, Edo"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "07b34f23-e913-49fc-a1a1-8be2a29fd032",
+            "text": {
+              "ops": [
+                {
+                  "insert": "CHARLES-AMAN NIGERIA LIMITED",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-SC-004",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-south-central"
+              },
+              "@dcity1": "Sapele",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Sapele Trade Store",
+              "@dfrt1": 91,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "8 Okpe Rd, Sapele, Delta"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "fa95e1f9-4847-4e17-83f1-468ff51dc17c",
+            "text": {
+              "ops": [
+                {
+                  "insert": "TIVO-WARRI CORPORATE SERVICES",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-SC-005",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-south-central"
+              },
+              "@dcity1": "Ughelli",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Ughelli Supermart",
+              "@dfrt1": 88,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "12 Market Rd, Ughelli, Delta"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "6af0aff6-7112-4d98-84c7-5963f0c644c7",
+            "text": {
+              "ops": [
+                {
+                  "insert": "BLESSED IYKE STORES",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-SC-006",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-south-central"
+              },
+              "@dcity1": "Ozoro",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Ozoro Community Store",
+              "@dfrt1": 90,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "8 Oleh Rd, Ozoro, Delta"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "8dd010e3-b417-4268-b4c5-6b056568de06",
+            "text": {
+              "ops": [
+                {
+                  "insert": "THEO-&-POWELL LTD",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-SE-001",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-south-east"
+              },
+              "@dcity1": "Enugu",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Coal City Mart",
+              "@dfrt1": 91,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "21 Ogui Rd, Enugu, Enugu"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "10e329f5-3db9-4b6c-abac-b93f9d5d076b",
+            "text": {
+              "ops": [
+                {
+                  "insert": "B.N.IGWE & SONS",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-SE-002",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-south-east"
+              },
+              "@dcity1": "Owerri",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Owerri City Store",
+              "@dfrt1": 89,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "15 Wetheral Rd, Owerri, Imo"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "0dea02d2-783e-486c-9cf9-f564fe6e7f19",
+            "text": {
+              "ops": [
+                {
+                  "insert": "TOMIESHA PRO RESOURCES LTD",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-SE-003",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-south-east"
+              },
+              "@dcity1": "Aba",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Aba Mega Mart",
+              "@dfrt1": 93,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "33 Aba-Owerri Rd, Aba, Abia"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "cb2aba48-da10-4671-bd96-3063f8eecab5",
+            "text": {
+              "ops": [
+                {
+                  "insert": "P.O.KONYEHA & SONS",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-SE-004",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-south-east"
+              },
+              "@dcity1": "Onitsha",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Onitsha Main Market Shop",
+              "@dfrt1": 94,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "7 Niger St, Onitsha, Anambra"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "b63a67ba-f0f4-4535-ac75-e93eee0e9fb4",
+            "text": {
+              "ops": [
+                {
+                  "insert": "NECESSITY GLOBAL RESOURCES LTD",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-SE-005",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-south-east"
+              },
+              "@dcity1": "Abakaliki",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Abakaliki Retail Hub",
+              "@dfrt1": 90,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "9 Afikpo Rd, Abakaliki, Ebonyi"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "728ecab2-6a8e-4b56-b499-34de4a3565b0",
+            "text": {
+              "ops": [
+                {
+                  "insert": "BUFFALO WORKS",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-SE-006",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-south-east"
+              },
+              "@dcity1": "Nnewi",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Nnewi Auto Mart Store",
+              "@dfrt1": 87,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "6 Nnewi Rd, Nnewi, Anambra"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "f654960f-f099-434f-bc55-aa639dbe5ce1",
+            "text": {
+              "ops": [
+                {
+                  "insert": "ISANGETTE INT'L ENT",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-SE-007",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-south-east"
+              },
+              "@dcity1": "Awka",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Awka Capital Store",
+              "@dfrt1": 92,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "14 Zik Ave, Awka, Anambra"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "b31778fc-332e-45cf-9407-a355a30eaf57",
+            "text": {
+              "ops": [
+                {
+                  "insert": "JACKADEX PH",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-SE-008",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-south-east"
+              },
+              "@dcity1": "Umuahia",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Umuahia Mega Store",
+              "@dfrt1": 88,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "19 Aba Rd, Umuahia, Abia"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "a3c724dd-e6f4-42c5-8768-7664b726a05d",
+            "text": {
+              "ops": [
+                {
+                  "insert": "DEBBY-MEGA MERCHANTS LTD",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-W-001",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-west"
+              },
+              "@dcity1": "Ibadan",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Ibadan Central Mart",
+              "@dfrt1": 90,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "22 Dugbe Rd, Ibadan, Oyo"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "50468fd5-c1ee-4c8d-802e-61b82bf00b7f",
+            "text": {
+              "ops": [
+                {
+                  "insert": "MARZAB MULTI VENTURES",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-W-002",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-west"
+              },
+              "@dcity1": "Osogbo",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Osogbo Retail Store",
+              "@dfrt1": 88,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "11 Gbongan Rd, Osogbo, Osun"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "ee54db32-f3b9-4df5-8625-3e6001e14e8f",
+            "text": {
+              "ops": [
+                {
+                  "insert": "ESTFRANS VENTURES LIMITED",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-W-003",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-west"
+              },
+              "@dcity1": "Akure",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Akure City Mart",
+              "@dfrt1": 87,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "7 Oyemekun Rd, Akure, Ondo"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "1540c678-4716-47e8-ac1c-f292afd0831d",
+            "text": {
+              "ops": [
+                {
+                  "insert": "AJOKE DOMINION",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-W-004",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-west"
+              },
+              "@dcity1": "Ado-Ekiti",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Ado Ekiti Central Shop",
+              "@dfrt1": 89,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "15 Ajilosun Rd, Ado-Ekiti, Ekiti"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "ada6bf6b-28d5-4183-8123-9f5451363704",
+            "text": {
+              "ops": [
+                {
+                  "insert": "TSQ ALAYO & SONS NIGERIA LTD",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-W-005",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-west"
+              },
+              "@dcity1": "Ogbomosho",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Ogbomosho Trade Store",
+              "@dfrt1": 91,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "6 Ilorin Rd, Ogbomosho, Oyo"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "e3fce2e6-a4b0-417c-9c10-15d6b55c51ac",
+            "text": {
+              "ops": [
+                {
+                  "insert": "R.S. ABIMBOLA ENTERPRISES (OSOGBO)",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-W-006",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-west"
+              },
+              "@dcity1": "Ilesa",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Ilesa Retail Hub",
+              "@dfrt1": 85,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "4 Brewery Rd, Ilesa, Osun"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "983642db-37ff-4b54-b318-d8bb6a4a0e7c",
+            "text": {
+              "ops": [
+                {
+                  "insert": "NIJI GLOBAL CONCEPT LIMITED",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-W-007",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-west"
+              },
+              "@dcity1": "Ede",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Ede Family Mart",
+              "@dfrt1": 88,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "8 Osogbo Rd, Ede, Osun"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "617700b4-a59a-4376-b26b-21c66bdfeb04",
+            "text": {
+              "ops": [
+                {
+                  "insert": "SOFT CARESS CONSULT NIGERIA LIMITED",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-W-008",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-west"
+              },
+              "@dcity1": "Owo",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Owo Central Store",
+              "@dfrt1": 86,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "10 Hospital Rd, Owo, Ondo"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "7e1b03a9-20ed-4e9c-ac50-429369f5d9a3",
+            "text": {
+              "ops": [
+                {
+                  "insert": "MGY IMPERIAL CONCEPT LTD",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-W-009",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-west"
+              },
+              "@dcity1": "Ikare",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Ikare Market Shop",
+              "@dfrt1": 87,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "5 Akoko Rd, Ikare, Ondo"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "cc9a7912-b339-425e-9582-61e666c3cd4e",
+            "text": {
+              "ops": [
+                {
+                  "insert": "THE-LORDS-DOING G.C.S LTD",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-W-010",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-west"
+              },
+              "@dcity1": "Saki",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Saki Border Store",
+              "@dfrt1": 83,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "3 Sepeteri Rd, Saki, Oyo"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "93eb9f5f-6cdd-4ac3-bc02-7d865c5ce087",
+            "text": {
+              "ops": [
+                {
+                  "insert": "R.S. ABIMBOLA",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@did01": "DIST-W-011",
+              "@dreg1": {
+                "type": "Select",
+                "optionId": "dreg-west"
+              },
+              "@dcity1": "Ondo",
+              "@parentMfg": "MFG-UNILEVER",
+              "@dmfg1": "UNILEVER",
+              "@dretail1": "Ondo Community Store",
+              "@dfrt1": 84,
+              "@dret1": 1,
+              "@dstat1": {
+                "type": "Select",
+                "optionId": "dstat-active"
+              },
+              "@daddr1": "9 Yaba Rd, Ondo, Ondo"
+            },
+            "children": []
+          }
+        ]
+      }
+    ],
+    "views": {
+      "list": {
+        "id": "list",
+        "type": "list",
+        "rank": "A",
+        "displayedFields": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7"
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A"
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F"
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N"
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V"
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c"
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k"
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s"
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t"
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u"
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF"
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF"
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x"
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y"
+          },
+          "/attributes/@did01": {
+            "id": "/attributes/@did01",
+            "fieldPath": "/attributes/@did01",
+            "rank": "z"
+          },
+          "/attributes/@dreg1": {
+            "id": "/attributes/@dreg1",
+            "fieldPath": "/attributes/@dreg1",
+            "rank": "zV"
+          },
+          "/attributes/@dret1": {
+            "id": "/attributes/@dret1",
+            "fieldPath": "/attributes/@dret1",
+            "rank": "zk"
+          },
+          "/attributes/@dfrt1": {
+            "id": "/attributes/@dfrt1",
+            "fieldPath": "/attributes/@dfrt1",
+            "rank": "zs"
+          },
+          "/attributes/@dstat1": {
+            "id": "/attributes/@dstat1",
+            "fieldPath": "/attributes/@dstat1",
+            "rank": "zw"
+          },
+          "/attributes/@demail1": {
+            "id": "/attributes/@demail1",
+            "fieldPath": "/attributes/@demail1",
+            "rank": "zy"
+          },
+          "/attributes/@dmfg1": {
+            "id": "/attributes/@dmfg1",
+            "fieldPath": "/attributes/@dmfg1",
+            "rank": "zz"
+          },
+          "4f77f12b-657f-47b9-bfde-04c67208bd74": {
+            "id": "4f77f12b-657f-47b9-bfde-04c67208bd74",
+            "fieldPath": "/attributes/@dcity1",
+            "rank": "zzV"
+          },
+          "04a8512a-867e-4890-9cc4-1d624fb29120": {
+            "id": "04a8512a-867e-4890-9cc4-1d624fb29120",
+            "fieldPath": "/attributes/@dretail1",
+            "rank": "zzk"
+          },
+          "921f436c-5dad-4ba9-be7a-ea7fc534e277": {
+            "id": "921f436c-5dad-4ba9-be7a-ea7fc534e277",
+            "fieldPath": "/attributes/@daddr1",
+            "rank": "zzs"
+          },
+          "d2559722-6279-4b44-bc7d-f211cfa18139": {
+            "id": "d2559722-6279-4b44-bc7d-f211cfa18139",
+            "fieldPath": "/attributes/@parentMfg",
+            "rank": "zzw"
+          }
+        }
+      },
+      "board": {
+        "id": "board",
+        "type": "board",
+        "rank": "B",
+        "displayedFields": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7"
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A"
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F"
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N"
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V"
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c"
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k"
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s"
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t"
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u"
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF"
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF"
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x"
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y"
+          },
+          "/attributes/@did01": {
+            "id": "/attributes/@did01",
+            "fieldPath": "/attributes/@did01",
+            "rank": "z"
+          },
+          "/attributes/@dreg1": {
+            "id": "/attributes/@dreg1",
+            "fieldPath": "/attributes/@dreg1",
+            "rank": "zV"
+          },
+          "/attributes/@dret1": {
+            "id": "/attributes/@dret1",
+            "fieldPath": "/attributes/@dret1",
+            "rank": "zk"
+          },
+          "/attributes/@dfrt1": {
+            "id": "/attributes/@dfrt1",
+            "fieldPath": "/attributes/@dfrt1",
+            "rank": "zs"
+          },
+          "/attributes/@dstat1": {
+            "id": "/attributes/@dstat1",
+            "fieldPath": "/attributes/@dstat1",
+            "rank": "zw"
+          },
+          "/attributes/@demail1": {
+            "id": "/attributes/@demail1",
+            "fieldPath": "/attributes/@demail1",
+            "rank": "zy"
+          },
+          "/attributes/@dmfg1": {
+            "id": "/attributes/@dmfg1",
+            "fieldPath": "/attributes/@dmfg1",
+            "rank": "zz"
+          },
+          "dfc66a13-4374-4a71-b803-0a99651a2789": {
+            "id": "dfc66a13-4374-4a71-b803-0a99651a2789",
+            "fieldPath": "/attributes/@dcity1",
+            "rank": "zzV"
+          },
+          "373761b5-93f1-46b8-a878-0f21dc3bd799": {
+            "id": "373761b5-93f1-46b8-a878-0f21dc3bd799",
+            "fieldPath": "/attributes/@dretail1",
+            "rank": "zzk"
+          },
+          "63071dad-21ad-4837-aa36-8cd8b339c707": {
+            "id": "63071dad-21ad-4837-aa36-8cd8b339c707",
+            "fieldPath": "/attributes/@daddr1",
+            "rank": "zzs"
+          },
+          "26b43e54-0bd0-4d34-b9ad-15926a566ab3": {
+            "id": "26b43e54-0bd0-4d34-b9ad-15926a566ab3",
+            "fieldPath": "/attributes/@parentMfg",
+            "rank": "zzw"
+          }
+        }
+      },
+      "mindmap": {
+        "id": "mindmap",
+        "type": "mindmap",
+        "rank": "D",
+        "displayedFields": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7"
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A"
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F"
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N"
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V"
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c"
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k"
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s"
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t"
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u"
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF"
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF"
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x"
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y"
+          },
+          "/attributes/@did01": {
+            "id": "/attributes/@did01",
+            "fieldPath": "/attributes/@did01",
+            "rank": "z"
+          },
+          "/attributes/@dreg1": {
+            "id": "/attributes/@dreg1",
+            "fieldPath": "/attributes/@dreg1",
+            "rank": "zV"
+          },
+          "/attributes/@dret1": {
+            "id": "/attributes/@dret1",
+            "fieldPath": "/attributes/@dret1",
+            "rank": "zk"
+          },
+          "/attributes/@dfrt1": {
+            "id": "/attributes/@dfrt1",
+            "fieldPath": "/attributes/@dfrt1",
+            "rank": "zs"
+          },
+          "/attributes/@dstat1": {
+            "id": "/attributes/@dstat1",
+            "fieldPath": "/attributes/@dstat1",
+            "rank": "zw"
+          },
+          "/attributes/@demail1": {
+            "id": "/attributes/@demail1",
+            "fieldPath": "/attributes/@demail1",
+            "rank": "zy"
+          },
+          "/attributes/@dmfg1": {
+            "id": "/attributes/@dmfg1",
+            "fieldPath": "/attributes/@dmfg1",
+            "rank": "zz"
+          },
+          "c6c17a18-9f3a-476e-a88a-778365fb59d0": {
+            "id": "c6c17a18-9f3a-476e-a88a-778365fb59d0",
+            "fieldPath": "/attributes/@dcity1",
+            "rank": "zzV"
+          },
+          "9c12994a-ccd5-4d03-9b97-ef9c3abcfaf9": {
+            "id": "9c12994a-ccd5-4d03-9b97-ef9c3abcfaf9",
+            "fieldPath": "/attributes/@dretail1",
+            "rank": "zzk"
+          },
+          "0e9d60fa-b424-4c85-8630-8445adce0143": {
+            "id": "0e9d60fa-b424-4c85-8630-8445adce0143",
+            "fieldPath": "/attributes/@daddr1",
+            "rank": "zzs"
+          },
+          "e658774c-2bc0-4fc9-aefb-caa6d6b6c044": {
+            "id": "e658774c-2bc0-4fc9-aefb-caa6d6b6c044",
+            "fieldPath": "/attributes/@parentMfg",
+            "rank": "zzw"
+          }
+        }
+      },
+      "orgchart": {
+        "id": "orgchart",
+        "type": "orgchart",
+        "rank": "E",
+        "displayedFields": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7"
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A"
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F"
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N"
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V"
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c"
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k"
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s"
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t"
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u"
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF"
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF"
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x"
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y"
+          },
+          "/attributes/@did01": {
+            "id": "/attributes/@did01",
+            "fieldPath": "/attributes/@did01",
+            "rank": "z"
+          },
+          "/attributes/@dreg1": {
+            "id": "/attributes/@dreg1",
+            "fieldPath": "/attributes/@dreg1",
+            "rank": "zV"
+          },
+          "/attributes/@dret1": {
+            "id": "/attributes/@dret1",
+            "fieldPath": "/attributes/@dret1",
+            "rank": "zk"
+          },
+          "/attributes/@dfrt1": {
+            "id": "/attributes/@dfrt1",
+            "fieldPath": "/attributes/@dfrt1",
+            "rank": "zs"
+          },
+          "/attributes/@dstat1": {
+            "id": "/attributes/@dstat1",
+            "fieldPath": "/attributes/@dstat1",
+            "rank": "zw"
+          },
+          "/attributes/@demail1": {
+            "id": "/attributes/@demail1",
+            "fieldPath": "/attributes/@demail1",
+            "rank": "zy"
+          },
+          "/attributes/@dmfg1": {
+            "id": "/attributes/@dmfg1",
+            "fieldPath": "/attributes/@dmfg1",
+            "rank": "zz"
+          },
+          "f19af632-8a03-474f-8b5a-22ab600cfd54": {
+            "id": "f19af632-8a03-474f-8b5a-22ab600cfd54",
+            "fieldPath": "/attributes/@dcity1",
+            "rank": "zzV"
+          },
+          "86de046f-47e4-46e4-a278-ca2302fee866": {
+            "id": "86de046f-47e4-46e4-a278-ca2302fee866",
+            "fieldPath": "/attributes/@dretail1",
+            "rank": "zzk"
+          },
+          "2d83eca6-17b3-4a23-90bd-a0b6312a88bf": {
+            "id": "2d83eca6-17b3-4a23-90bd-a0b6312a88bf",
+            "fieldPath": "/attributes/@daddr1",
+            "rank": "zzs"
+          },
+          "d3f5f5d3-2bb9-4550-9840-107d64140412": {
+            "id": "d3f5f5d3-2bb9-4550-9840-107d64140412",
+            "fieldPath": "/attributes/@parentMfg",
+            "rank": "zzw"
+          }
+        }
+      },
+      "gantt": {
+        "id": "gantt",
+        "type": "gantt",
+        "rank": "F",
+        "columns": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7",
+            "width": 480
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A",
+            "hidden": true
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F",
+            "hidden": true
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N",
+            "hidden": true
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V",
+            "hidden": true
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c",
+            "hidden": true
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k",
+            "hidden": true
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s",
+            "hidden": true
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t",
+            "hidden": true
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u",
+            "hidden": true
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF",
+            "hidden": true
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF",
+            "hidden": true
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x",
+            "hidden": true
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y",
+            "hidden": true
+          },
+          "/attributes/@did01": {
+            "id": "/attributes/@did01",
+            "fieldPath": "/attributes/@did01",
+            "rank": "z",
+            "hidden": false
+          },
+          "/attributes/@dreg1": {
+            "id": "/attributes/@dreg1",
+            "fieldPath": "/attributes/@dreg1",
+            "rank": "zV",
+            "hidden": false
+          },
+          "/attributes/@dret1": {
+            "id": "/attributes/@dret1",
+            "fieldPath": "/attributes/@dret1",
+            "rank": "zk",
+            "hidden": false
+          },
+          "/attributes/@dfrt1": {
+            "id": "/attributes/@dfrt1",
+            "fieldPath": "/attributes/@dfrt1",
+            "rank": "zs",
+            "hidden": false
+          },
+          "/attributes/@dstat1": {
+            "id": "/attributes/@dstat1",
+            "fieldPath": "/attributes/@dstat1",
+            "rank": "zw",
+            "hidden": false
+          },
+          "/attributes/@demail1": {
+            "id": "/attributes/@demail1",
+            "fieldPath": "/attributes/@demail1",
+            "rank": "zy",
+            "hidden": false
+          },
+          "/attributes/@dmfg1": {
+            "id": "/attributes/@dmfg1",
+            "fieldPath": "/attributes/@dmfg1",
+            "rank": "zz",
+            "hidden": false
+          },
+          "21a57268-8ce2-4af9-9f15-ae7ee89edfd1": {
+            "id": "21a57268-8ce2-4af9-9f15-ae7ee89edfd1",
+            "fieldPath": "/attributes/@dcity1",
+            "rank": "zzV"
+          },
+          "a157d973-84f7-4a11-b4d7-bd91668ff0f8": {
+            "id": "a157d973-84f7-4a11-b4d7-bd91668ff0f8",
+            "fieldPath": "/attributes/@dretail1",
+            "rank": "zzk"
+          },
+          "b30d7d83-0164-4f1b-80d5-6309e7466181": {
+            "id": "b30d7d83-0164-4f1b-80d5-6309e7466181",
+            "fieldPath": "/attributes/@daddr1",
+            "rank": "zzs"
+          },
+          "b96506b6-abd1-4947-aab8-897c032c43ba": {
+            "id": "b96506b6-abd1-4947-aab8-897c032c43ba",
+            "fieldPath": "/attributes/@parentMfg",
+            "rank": "zzw"
+          }
+        }
+      },
+      "table": {
+        "id": "table",
+        "type": "table",
+        "rank": "V",
+        "columns": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7",
+            "width": 480
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A",
+            "hidden": true
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F",
+            "hidden": true
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N",
+            "hidden": true
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V",
+            "hidden": true
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c",
+            "hidden": true
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k",
+            "hidden": true
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s",
+            "hidden": true
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t",
+            "hidden": true
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u",
+            "hidden": true
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF",
+            "hidden": true
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF",
+            "hidden": true
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x",
+            "hidden": true
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y",
+            "hidden": true
+          },
+          "/attributes/@did01": {
+            "id": "/attributes/@did01",
+            "fieldPath": "/attributes/@did01",
+            "rank": "z",
+            "hidden": false
+          },
+          "/attributes/@dreg1": {
+            "id": "/attributes/@dreg1",
+            "fieldPath": "/attributes/@dreg1",
+            "rank": "zV",
+            "hidden": false
+          },
+          "/attributes/@dret1": {
+            "id": "/attributes/@dret1",
+            "fieldPath": "/attributes/@dret1",
+            "rank": "zk",
+            "hidden": false
+          },
+          "/attributes/@dfrt1": {
+            "id": "/attributes/@dfrt1",
+            "fieldPath": "/attributes/@dfrt1",
+            "rank": "zs",
+            "hidden": false
+          },
+          "/attributes/@dstat1": {
+            "id": "/attributes/@dstat1",
+            "fieldPath": "/attributes/@dstat1",
+            "rank": "zw",
+            "hidden": false
+          },
+          "/attributes/@demail1": {
+            "id": "/attributes/@demail1",
+            "fieldPath": "/attributes/@demail1",
+            "rank": "zy",
+            "hidden": false
+          },
+          "/attributes/@dmfg1": {
+            "id": "/attributes/@dmfg1",
+            "fieldPath": "/attributes/@dmfg1",
+            "rank": "zz",
+            "hidden": false
+          },
+          "4f3c1be2-1d7a-411d-aa9a-02f15e28ae0c": {
+            "id": "4f3c1be2-1d7a-411d-aa9a-02f15e28ae0c",
+            "fieldPath": "/attributes/@dcity1",
+            "rank": "zzV"
+          },
+          "c5a53e66-90ad-458c-9e66-b2a7d23783e3": {
+            "id": "c5a53e66-90ad-458c-9e66-b2a7d23783e3",
+            "fieldPath": "/attributes/@dretail1",
+            "rank": "zzk"
+          },
+          "b98002d5-f077-4880-a612-249ae1e5c86a": {
+            "id": "b98002d5-f077-4880-a612-249ae1e5c86a",
+            "fieldPath": "/attributes/@daddr1",
+            "rank": "zzs"
+          },
+          "a78ee610-62cd-4ecb-a26b-e2ad558d324f": {
+            "id": "a78ee610-62cd-4ecb-a26b-e2ad558d324f",
+            "fieldPath": "/attributes/@parentMfg",
+            "rank": "zzw"
+          }
+        }
+      },
+      "actionsheet": {
+        "id": "actionsheet",
+        "type": "actionsheet",
+        "rank": "F",
+        "columns": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7",
+            "width": 480
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A",
+            "hidden": true
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F"
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N"
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V",
+            "hidden": true
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c",
+            "hidden": true
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k",
+            "hidden": true
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s",
+            "hidden": true
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t",
+            "hidden": true
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u",
+            "hidden": true
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF",
+            "hidden": true
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF",
+            "hidden": true
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x",
+            "hidden": true
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y",
+            "hidden": true
+          },
+          "9d25c128-5dc8-4bc8-8510-3e90deb30e32": {
+            "id": "9d25c128-5dc8-4bc8-8510-3e90deb30e32",
+            "fieldPath": "/attributes/@dcity1",
+            "rank": "z"
+          },
+          "c5d1e083-7dfb-4195-8353-3ba58835b251": {
+            "id": "c5d1e083-7dfb-4195-8353-3ba58835b251",
+            "fieldPath": "/attributes/@dretail1",
+            "rank": "zV"
+          },
+          "cbb9948c-30e7-41b2-aa05-27fca52ce0cf": {
+            "id": "cbb9948c-30e7-41b2-aa05-27fca52ce0cf",
+            "fieldPath": "/attributes/@daddr1",
+            "rank": "zk"
+          },
+          "7f2c2199-dc04-4aa8-b163-a05e975e8e48": {
+            "id": "7f2c2199-dc04-4aa8-b163-a05e975e8e48",
+            "fieldPath": "/attributes/@parentMfg",
+            "rank": "zs"
+          }
+        }
+      }
+    },
+    "fields": {
+      "@did01": {
+        "type": "string",
+        "displayName": "Distributor ID"
+      },
+      "@dreg1": {
+        "type": "Select",
+        "displayName": "Region",
+        "options": {
+          "dreg-north": {
+            "id": "dreg-north",
+            "name": "North",
+            "color": "#0ea5e9",
+            "rank": "0"
+          },
+          "dreg-south": {
+            "id": "dreg-south",
+            "name": "South",
+            "color": "#f97316",
+            "rank": "1"
+          },
+          "dreg-east": {
+            "id": "dreg-east",
+            "name": "East",
+            "color": "#84cc16",
+            "rank": "2"
+          },
+          "dreg-west": {
+            "id": "dreg-west",
+            "name": "West",
+            "color": "#a855f7",
+            "rank": "3"
+          },
+          "dreg-central": {
+            "id": "dreg-central",
+            "name": "Central",
+            "color": "#14b8a6",
+            "rank": "4"
+          }
+        }
+      },
+      "@dcity1": {
+        "type": "string",
+        "displayName": "City"
+      },
+      "@parentMfg": {
+        "type": "string",
+        "displayName": "Parent Manufacturer ID"
+      },
+      "@dmfg1": {
+        "type": "string",
+        "displayName": "Assigned Manufacturer ID"
+      },
+      "@dretail1": {
+        "type": "string",
+        "displayName": "Retailer Name"
+      },
+      "@dfrt1": {
+        "type": "number",
+        "displayName": "Fulfillment Rate %",
+        "render": {
+          "type": "text"
+        },
+        "format": {
+          "type": "unit",
+          "config": {
+            "type": "standard",
+            "unit": "percent"
+          }
+        }
+      },
+      "@dret1": {
+        "type": "number",
+        "displayName": "# of Retailers",
+        "render": {
+          "type": "text"
+        },
+        "format": {
+          "type": "decimal"
+        }
+      },
+      "@demail1": {
+        "type": "string",
+        "displayName": "Contact Email"
+      },
+      "@dstat1": {
+        "type": "Select",
+        "displayName": "Status",
+        "options": {
+          "dstat-active": {
+            "id": "dstat-active",
+            "name": "Active",
+            "color": "#10b981",
+            "rank": "0"
+          },
+          "dstat-inactive": {
+            "id": "dstat-inactive",
+            "name": "Inactive",
+            "color": "#6b7280",
+            "rank": "1"
+          },
+          "dstat-review": {
+            "id": "dstat-review",
+            "name": "Under Review",
+            "color": "#f59e0b",
+            "rank": "2"
+          }
+        }
+      },
+      "@daddr1": {
+        "type": "string",
+        "displayName": "Retailer Address"
+      }
+    }
+  },
+  "preferences": {
+    "defaultView": "table",
+    "avatar": {
+      "type": "emoji",
+      "value": "🔗"
+    }
+  }
+}

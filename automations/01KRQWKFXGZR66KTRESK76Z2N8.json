@@ -1,0 +1,66 @@
+{
+  "version": "2",
+  "flowTitle": "Restock Request Pipeline",
+  "trigger": {
+    "valid": false,
+    "displayName": "New Restock Request Created",
+    "type": "PIECE_TRIGGER",
+    "settings": {
+      "pieceName": "@taskade/automade-internalpiece-taskade",
+      "pieceVersion": "1.0.0",
+      "triggerName": "task.added",
+      "input": {}
+    }
+  },
+  "actions": [
+    {
+      "name": "b2f3e4d5-0002-4002-8002-200000000002",
+      "valid": false,
+      "displayName": "Log Request — Update Status to Pending",
+      "type": "PIECE",
+      "settings": {
+        "pieceName": "@taskade/automade-internalpiece-taskade",
+        "pieceVersion": "1.0.0",
+        "actionName": "updateCustomFields",
+        "input": {
+          "fields": {
+            "@reqstat1": {
+              "data": {
+                "value": "req-pending"
+              },
+              "rank": "0",
+              "fieldId": "@reqstat1"
+            }
+          },
+          "nodeId": "{{ trigger[\"nodeId\"] }}",
+          "projectId": {
+            "type": "flow-template-variable-input-type",
+            "id": "sn1NQp1AmNivsa9e"
+          }
+        }
+      }
+    },
+    {
+      "name": "a1f2e3d4-0001-4001-8001-100000000001",
+      "valid": true,
+      "displayName": "AI — Analyze Restock Request",
+      "type": "PIECE",
+      "settings": {
+        "pieceName": "@taskade/automade-internalpiece-openai",
+        "pieceVersion": "1.0.0",
+        "actionName": "ai.ask",
+        "input": {
+          "prompt": "A new restock request has been submitted. Request: {{ trigger[\"nodeText\"] }}. Briefly summarize this request and classify urgency as Low, Medium, or High based on the product and quantity."
+        }
+      }
+    }
+  ],
+  "variables": {
+    "sn1NQp1AmNivsa9e": {
+      "id": "sn1NQp1AmNivsa9e",
+      "rank": "V",
+      "type": "string",
+      "format": "taskade-project-id"
+    }
+  }
+}

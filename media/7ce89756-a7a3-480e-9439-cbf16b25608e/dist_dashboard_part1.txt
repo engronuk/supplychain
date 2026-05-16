@@ -1,0 +1,116 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  CheckCircle, Clock, Users, Package, ShieldCheck,
+  Truck, Plus, X, ArrowRight, RefreshCw, Inbox,
+} from 'lucide-react';
+import { getNodes, createNode, updateNode, PROJECTS, field, text, type Node } from '@/lib/api';
+import { SkeletonCard } from '@/components/SkeletonRow';
+import { useHierarchy } from '@/lib/hierarchy';
+import { cn } from '@/lib/utils';
+
+type DistView = 'orders' | 'shipments' | 'retailers' | 'inventory';
+
+const healthDot   = (h: string) => h === 'rhlth-healthy' ? 'bg-green-500' : h === 'rhlth-low' ? 'bg-amber-500' : 'bg-red-500';
+const healthLabel = (h: string) => h === 'rhlth-healthy' ? 'Healthy' : h === 'rhlth-low' ? 'Low' : 'Critical';
+
+const DSO_STATUS: Record<string, { label: string; color: string; bg: string; border: string; dot: string }> = {
+  'dso-pending':   { label: 'Pending',    color: 'text-amber-700',  bg: 'bg-amber-50',  border: 'border-amber-200',  dot: 'bg-amber-500'  },
+  'dso-approved':  { label: 'Approved',   color: 'text-blue-700',   bg: 'bg-blue-50',   border: 'border-blue-200',   dot: 'bg-blue-500'   },
+  'dso-intransit': { label: 'In Transit', color: 'text-violet-700', bg: 'bg-violet-50', border: 'border-violet-200', dot: 'bg-violet-500' },
+  'dso-received':  { label: 'Received',   color: 'text-green-700',  bg: 'bg-green-50',  border: 'border-green-200',  dot: 'bg-green-500'  },
+  'dso-rejected':  { label: 'Rejected',   color: 'text-red-700',    bg: 'bg-red-50',    border: 'border-red-200',    dot: 'bg-red-500'    },
+};
+const dsoStyle = (s: string) => DSO_STATUS[s] ?? DSO_STATUS['dso-pending'];
+
+const PRI_COLOR: Record<string, string> = {
+  'dso-pri-high':   'border-l-red-500',
+  'dso-pri-medium': 'border-l-amber-400',
+  'dso-pri-low':    'border-l-green-400',
+};
+
+const PRODUCTS = [
+  { sku: 'BBM-MARG',  name: 'Blue Band Margarine' },
+  { sku: 'LYT-TEA',   name: 'Lipton Yellow Label Tea' },
+  { sku: 'RBC-CUBES', name: 'Royco Bouillon Cubes' },
+  { sku: 'KBC-CUBES', name: 'Knorr Bouillon Cubes' },
+  { sku: 'OMO-DET',   name: 'OMO Multi-Active Detergent' },
+  { sku: 'SWP-WASH',  name: 'Sunlight Washing Powder' },
+  { sku: 'SDL-DISH',  name: 'Sunlight Dishwashing Liquid' },
+  { sku: 'CUT-TOOTH', name: 'Close-Up Toothpaste' },
+  { sku: 'PPT-TOOTH', name: 'Pepsodent Toothpaste' },
+  { sku: 'LUX-SOAP',  name: 'LUX Beauty Soap' },
+  { sku: 'LFS-SOAP',  name: 'Lifebuoy Soap' },
+  { sku: 'RXN-DEO',   name: 'Rexona Deodorant' },
+  { sku: 'PRS-BABY',  name: 'Pears Baby Products' },
+  { sku: 'VSL-LOT',   name: 'Vaseline Lotion & Jelly' },
+  { sku: 'AXE-BODY',  name: 'Axe Body Spray' },
+];
+
+export const DistributorDashboard: React.FC = () => {
+  const { identity } = useHierarchy();
+  const distId   = identity?.role === 'distributor' ? identity.distId   : 'DIST-LAG-001';
+  const distName = identity?.role === 'distributor' ? identity.displayName : 'Distributor Portal';
+
+  const [view,      setView]      = useState<DistView>('orders');
+  const [orders,    setOrders]    = useState<Node[]>([]);
+  const [retailers, setRetailers] = useState<Node[]>([]);
+  const [inventory, setInventory] = useState<Node[]>([]);
+  const [loading,   setLoading]   = useState(true);
+  const [showNewOrder, setShowNewOrder] = useState(false);
+  const [confirming,   setConfirming]   = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    Promise.all([
+      getNodes(PROJECTS.distOrders),
+      getNodes(PROJECTS.retailers),
+      getNodes(PROJECTS.inventory),
+    ]).then(([ord, ret, inv]) => {
+      const myOrders    = ord.filter(n => n.parentId === null && field(n, '@dso_dist') === distId);
+      const myRetailers = ret.filter(n => n.parentId === null &&
+        (field(n, '@parentDist') === distId || field(n, '@rdist1') === distId));
+      const myRetailerIds = new Set(myRetailers.map(n => field(n, '@rid01') as string).filter(Boolean));
+      const myInv = inv.filter(n => n.parentId === null && myRetailerIds.has(field(n, '@ri_ret') as string));
+      setOrders(myOrders);
+      setRetailers(myRetailers);
+      setInventory(myInv);
+      setLoading(false);
+    });
+  }, [distId]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const confirmReceipt = async (order: Node) => {
+    setConfirming(order.id);
+    const sku = field(order, '@dso_sku') as string;
+    const qty = (field(order, '@dso_qty') as number) || 0;
+    await updateNode(PROJECTS.distOrders, order.id, {
+      fieldValues: { '/attributes/@dso_stat': 'dso-received', '/attributes/@dso_qconf': qty },
+    });
+    const matchingInv = inventory.filter(n => field(n, '@ri_sku') === sku);
+    await Promise.all(matchingInv.map(async invRow => {
+      const current = (field(invRow, '@ri_qty') as number) || 0;
+      const newQty  = current + Math.round(qty / Math.max(matchingInv.length, 1));
+      const thresh  = (field(invRow, '@ri_thresh') as number) || 1;
+      const newStat = newQty >= thresh ? 'ri-healthy' : newQty >= thresh * 0.5 ? 'ri-low' : 'ri-critical';
+      await updateNode(PROJECTS.inventory, invRow.id, {
+        fieldValues: {
+          '/attributes/@ri_qty':     newQty,
+          '/attributes/@ri_stat':    newStat,
+          '/attributes/@ri_updated': new Date().toISOString().split('T')[0],
+        },
+      });
+    }));
+    setConfirming(null);
+    load();
+  };
+
+  const inTransit = orders.filter(n => field(n, '@dso_stat') === 'dso-intransit');
+  const pending   = orders.filter(n => field(n, '@dso_stat') === 'dso-pending');
+
+  const navItems: { id: DistView; label: string; badge?: number }[] = [
+    { id: 'orders',    label: 'Stock Orders',    badge: pending.length    },
+    { id: 'shipments', label: 'Shipment Tracker', badge: inTransit.length  },
+    { id: 'retailers', label: 'My Retailers',     badge: retailers.length  },
+    { id: 'inventory', label: 'Inventory',        badge: inventory.length  },
+  ];

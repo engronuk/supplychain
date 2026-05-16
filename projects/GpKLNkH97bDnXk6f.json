@@ -1,0 +1,2794 @@
+{
+  "root": {
+    "type": "root",
+    "children": [
+      {
+        "type": "text",
+        "id": "c8a6106a-03c1-4477-bcb4-2ef83516fd63",
+        "text": {
+          "ops": [
+            {
+              "insert": "Retailer Inventory Snapshots"
+            },
+            {
+              "insert": "\n",
+              "attributes": {
+                "paragraph": true
+              }
+            }
+          ]
+        },
+        "format": null,
+        "collapsed": false,
+        "completed": false,
+        "children": [
+          {
+            "type": "text",
+            "id": "bff3374f-be2c-499c-8efe-c4831e661a1e",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-LAG-001 | Blue Band Margarine",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-LAG-001",
+              "@ri_sku": "BBM-MARG",
+              "@ri_pnm": "Blue Band Margarine",
+              "@ri_qty": 179,
+              "@ri_thresh": 60,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-healthy"
+              },
+              "@ri_sold": 42,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "35732d2d-54f7-4a1f-9110-7f5ffb5a6e23",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-LAG-001 | Lipton Yellow Label Tea",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-LAG-001",
+              "@ri_sku": "LYT-TEA",
+              "@ri_pnm": "Lipton Yellow Label Tea",
+              "@ri_qty": 859,
+              "@ri_thresh": 60,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-healthy"
+              },
+              "@ri_sold": 88,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-16",
+                  "time": "00:00:00"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "9da63bef-1ed7-46c6-baac-2e8b0fb5b777",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-LAG-001 | Royco Bouillon Cubes",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-LAG-001",
+              "@ri_sku": "RBC-CUBES",
+              "@ri_pnm": "Royco Bouillon Cubes",
+              "@ri_qty": 70,
+              "@ri_thresh": 80,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-low"
+              },
+              "@ri_sold": 120,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "1021eb99-660c-4eaf-b88e-b29bec0ec42a",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-LAG-001 | Knorr Bouillon Cubes",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-LAG-001",
+              "@ri_sku": "KBC-CUBES",
+              "@ri_pnm": "Knorr Bouillon Cubes",
+              "@ri_qty": 248,
+              "@ri_thresh": 80,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-healthy"
+              },
+              "@ri_sold": 95,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-16",
+                  "time": "00:00:00"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "803b626e-6fdd-47ec-bb73-65706fe7fe72",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-LAG-001 | OMO Multi-Active Detergent",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-LAG-001",
+              "@ri_sku": "OMO-DET",
+              "@ri_pnm": "OMO Multi-Active Detergent",
+              "@ri_qty": 105,
+              "@ri_thresh": 60,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-healthy"
+              },
+              "@ri_sold": 67,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "3f027870-3dfe-40e6-9ab1-082ec01eb79b",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-LAG-001 | Sunlight Washing Powder",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-LAG-001",
+              "@ri_sku": "SWP-WASH",
+              "@ri_pnm": "Sunlight Washing Powder",
+              "@ri_qty": 176,
+              "@ri_thresh": 80,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-healthy"
+              },
+              "@ri_sold": 55,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "5a151b06-230c-4cb8-a5c4-34366feae9b7",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-LAG-001 | Sunlight Dishwashing Liquid",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-LAG-001",
+              "@ri_sku": "SDL-DISH",
+              "@ri_pnm": "Sunlight Dishwashing Liquid",
+              "@ri_qty": 26,
+              "@ri_thresh": 40,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-low"
+              },
+              "@ri_sold": 78,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "5aaa1835-54ec-4be0-aee7-063b1db2b140",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-LAG-001 | Close-Up Toothpaste",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-LAG-001",
+              "@ri_sku": "CUT-TOOTH",
+              "@ri_pnm": "Close-Up Toothpaste",
+              "@ri_qty": 137,
+              "@ri_thresh": 60,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-healthy"
+              },
+              "@ri_sold": 44,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "e72832d7-a3ac-47f6-9e7f-3cdfcad179dd",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-LAG-001 | Pepsodent Toothpaste",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-LAG-001",
+              "@ri_sku": "PPT-TOOTH",
+              "@ri_pnm": "Pepsodent Toothpaste",
+              "@ri_qty": 76,
+              "@ri_thresh": 60,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-healthy"
+              },
+              "@ri_sold": 51,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "a25445be-74c4-4036-9261-24fd2a0d2a5c",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-LAG-001 | LUX Beauty Soap",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-LAG-001",
+              "@ri_sku": "LUX-SOAP",
+              "@ri_pnm": "LUX Beauty Soap",
+              "@ri_qty": 97,
+              "@ri_thresh": 60,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-healthy"
+              },
+              "@ri_sold": 63,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "e933746c-9c93-4586-87d8-97a6928d4e53",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-LAG-001 | Lifebuoy Soap",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-LAG-001",
+              "@ri_sku": "LFS-SOAP",
+              "@ri_pnm": "Lifebuoy Soap",
+              "@ri_qty": 31,
+              "@ri_thresh": 50,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-low"
+              },
+              "@ri_sold": 92,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "57549920-efe2-4329-9c72-7aedb8c33c46",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-LAG-001 | Rexona Deodorant",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-LAG-001",
+              "@ri_sku": "RXN-DEO",
+              "@ri_pnm": "Rexona Deodorant",
+              "@ri_qty": 98,
+              "@ri_thresh": 50,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-healthy"
+              },
+              "@ri_sold": 38,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "996a6f1e-7f86-49c3-8f46-2b13e353cc20",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-LAG-001 | Pears Baby Products",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-LAG-001",
+              "@ri_sku": "PRS-BABY",
+              "@ri_pnm": "Pears Baby Products",
+              "@ri_qty": 162,
+              "@ri_thresh": 50,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-healthy"
+              },
+              "@ri_sold": 29,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "7fe5c878-1f22-4e97-9c21-03f8cddef530",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-LAG-001 | Vaseline Lotion & Jelly",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-LAG-001",
+              "@ri_sku": "VSL-LOT",
+              "@ri_pnm": "Vaseline Lotion & Jelly",
+              "@ri_qty": 169,
+              "@ri_thresh": 50,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-healthy"
+              },
+              "@ri_sold": 33,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "c7251c19-0fb9-42eb-b08e-e440735d51a8",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-LAG-001 | Axe Body Spray",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-LAG-001",
+              "@ri_sku": "AXE-BODY",
+              "@ri_pnm": "Axe Body Spray",
+              "@ri_qty": 114,
+              "@ri_thresh": 50,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-healthy"
+              },
+              "@ri_sold": 47,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "4c3ff267-c5ae-44e3-9e47-79c359c7d4a5",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-LAG-002 | Blue Band Margarine",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-LAG-002",
+              "@ri_sku": "BBM-MARG",
+              "@ri_pnm": "Blue Band Margarine",
+              "@ri_qty": 176,
+              "@ri_thresh": 60,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-healthy"
+              },
+              "@ri_sold": 55,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-14"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "ccc24eb7-7a10-4013-b40c-3e102a4da8b5",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-LAG-002 | Knorr Bouillon Cubes",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-LAG-002",
+              "@ri_sku": "KBC-CUBES",
+              "@ri_pnm": "Knorr Bouillon Cubes",
+              "@ri_qty": 184,
+              "@ri_thresh": 80,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-healthy"
+              },
+              "@ri_sold": 72,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-14"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "548ccc0e-fd41-4714-ad46-d76ad2629abb",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-LAG-002 | OMO Detergent",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-LAG-002",
+              "@ri_sku": "OMO-DET",
+              "@ri_pnm": "OMO Multi-Active Detergent",
+              "@ri_qty": 69,
+              "@ri_thresh": 60,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-healthy"
+              },
+              "@ri_sold": 45,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-14"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "e8afe487-fb4d-4c10-b5a4-ef3fef4ad628",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-LAG-002 | Close-Up Toothpaste",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-LAG-002",
+              "@ri_sku": "CUT-TOOTH",
+              "@ri_pnm": "Close-Up Toothpaste",
+              "@ri_qty": 111,
+              "@ri_thresh": 60,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-healthy"
+              },
+              "@ri_sold": 38,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-14"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "0f6bf86b-7cdd-4759-a248-0154d29ac9fe",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-LAG-002 | Pears Baby Products",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-LAG-002",
+              "@ri_sku": "PRS-BABY",
+              "@ri_pnm": "Pears Baby Products",
+              "@ri_qty": 197,
+              "@ri_thresh": 50,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-healthy"
+              },
+              "@ri_sold": 28,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-14"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "8f070b73-def6-44a6-948e-0c103f78e543",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-LAG-002 | Lifebuoy Soap",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-LAG-002",
+              "@ri_sku": "LFS-SOAP",
+              "@ri_pnm": "Lifebuoy Soap",
+              "@ri_qty": 139,
+              "@ri_thresh": 50,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-healthy"
+              },
+              "@ri_sold": 61,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-14"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "a8af0e90-07ff-49dd-87c9-74cea1cd2521",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-LAG-002 | Axe Body Spray",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-LAG-002",
+              "@ri_sku": "AXE-BODY",
+              "@ri_pnm": "Axe Body Spray",
+              "@ri_qty": 40,
+              "@ri_thresh": 50,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-low"
+              },
+              "@ri_sold": 79,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-14"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "551ca0b5-502a-49bd-aced-1c980dca3640",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-LAG-003 | OMO Detergent",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-LAG-003",
+              "@ri_sku": "OMO-DET",
+              "@ri_pnm": "OMO Multi-Active Detergent",
+              "@ri_qty": 51,
+              "@ri_thresh": 60,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-low"
+              },
+              "@ri_sold": 93,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-13"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "0834faba-fbe6-4d85-9855-085f241f1904",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-LAG-003 | Knorr Bouillon Cubes",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-LAG-003",
+              "@ri_sku": "KBC-CUBES",
+              "@ri_pnm": "Knorr Bouillon Cubes",
+              "@ri_qty": 99,
+              "@ri_thresh": 80,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-healthy"
+              },
+              "@ri_sold": 56,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-13"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "f3dbfdf2-bccd-4646-a8bc-65160605d9df",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-LAG-003 | Sunlight Washing Powder",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-LAG-003",
+              "@ri_sku": "SWP-WASH",
+              "@ri_pnm": "Sunlight Washing Powder",
+              "@ri_qty": 171,
+              "@ri_thresh": 80,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-healthy"
+              },
+              "@ri_sold": 44,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-13"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "e2f6dec9-8389-4534-9513-00e4320d1071",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-LAG-003 | Pepsodent Toothpaste",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-LAG-003",
+              "@ri_sku": "PPT-TOOTH",
+              "@ri_pnm": "Pepsodent Toothpaste",
+              "@ri_qty": 106,
+              "@ri_thresh": 60,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-healthy"
+              },
+              "@ri_sold": 39,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-13"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "dc8d2f67-abc9-4570-81fb-c3ea0e636e02",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-LAG-004 | Blue Band Margarine",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-LAG-004",
+              "@ri_sku": "BBM-MARG",
+              "@ri_pnm": "Blue Band Margarine",
+              "@ri_qty": 154,
+              "@ri_thresh": 60,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-healthy"
+              },
+              "@ri_sold": 48,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-12"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "04733a23-2df8-4adc-8917-9bab8037264b",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-LAG-004 | Rexona Deodorant",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-LAG-004",
+              "@ri_sku": "RXN-DEO",
+              "@ri_pnm": "Rexona Deodorant",
+              "@ri_qty": 185,
+              "@ri_thresh": 50,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-healthy"
+              },
+              "@ri_sold": 31,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-12"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "6272419b-44e7-441a-9e7e-cf8be5916cde",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-LAG-004 | Sunlight Dishwashing Liquid",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-LAG-004",
+              "@ri_sku": "SDL-DISH",
+              "@ri_pnm": "Sunlight Dishwashing Liquid",
+              "@ri_qty": 22,
+              "@ri_thresh": 40,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-critical"
+              },
+              "@ri_sold": 105,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-12"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "f8dba969-d8ef-43e6-aa5b-45f1c9fcd663",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-LAG-005 | Knorr Bouillon Cubes",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-LAG-005",
+              "@ri_sku": "KBC-CUBES",
+              "@ri_pnm": "Knorr Bouillon Cubes",
+              "@ri_qty": 166,
+              "@ri_thresh": 80,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-healthy"
+              },
+              "@ri_sold": 145,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-16",
+                  "time": "00:00:00"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "206f8b92-3e83-4107-a76b-4e33e14e3aef",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-LAG-005 | Pears Baby Products",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-LAG-005",
+              "@ri_sku": "PRS-BABY",
+              "@ri_pnm": "Pears Baby Products",
+              "@ri_qty": 46,
+              "@ri_thresh": 50,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-low"
+              },
+              "@ri_sold": 88,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "1ba22dff-1ea3-4ee7-8da7-101c0366110d",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-LAG-005 | Rexona Deodorant",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-LAG-005",
+              "@ri_sku": "RXN-DEO",
+              "@ri_pnm": "Rexona Deodorant",
+              "@ri_qty": 175,
+              "@ri_thresh": 50,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-healthy"
+              },
+              "@ri_sold": 22,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "b92d96e1-897e-47f8-a29c-5001c5968b76",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-NW-001 | Knorr Bouillon Cubes",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-NW-001",
+              "@ri_sku": "KBC-CUBES",
+              "@ri_pnm": "Knorr Bouillon Cubes",
+              "@ri_qty": 24,
+              "@ri_thresh": 80,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-critical"
+              },
+              "@ri_sold": 188,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "aa8a0964-b987-499a-847c-17d85c55d6c1",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-NW-001 | OMO Detergent",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-NW-001",
+              "@ri_sku": "OMO-DET",
+              "@ri_pnm": "OMO Multi-Active Detergent",
+              "@ri_qty": 188,
+              "@ri_thresh": 60,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-healthy"
+              },
+              "@ri_sold": 41,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "0723263e-13e6-47c0-93b5-c36b0568f305",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-NW-001 | Axe Body Spray",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-NW-001",
+              "@ri_sku": "AXE-BODY",
+              "@ri_pnm": "Axe Body Spray",
+              "@ri_qty": 131,
+              "@ri_thresh": 50,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-healthy"
+              },
+              "@ri_sold": 63,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "3167615a-9481-400e-a97f-efb65817f6ab",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-SE-001 | Close-Up Toothpaste",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-SE-001",
+              "@ri_sku": "CUT-TOOTH",
+              "@ri_pnm": "Close-Up Toothpaste",
+              "@ri_qty": 122,
+              "@ri_thresh": 60,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-healthy"
+              },
+              "@ri_sold": 55,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "9e8bc43a-be2f-463d-bc6c-9eb3d31364da",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-SE-001 | Royco Bouillon Cubes",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-SE-001",
+              "@ri_sku": "RBC-CUBES",
+              "@ri_pnm": "Royco Bouillon Cubes",
+              "@ri_qty": 186,
+              "@ri_thresh": 80,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-healthy"
+              },
+              "@ri_sold": 42,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "b0246664-5bfd-48c1-8f4f-59b1ff413f1e",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-SE-001 | Vaseline Lotion",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-SE-001",
+              "@ri_sku": "VSL-LOT",
+              "@ri_pnm": "Vaseline Lotion & Jelly",
+              "@ri_qty": 181,
+              "@ri_thresh": 50,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-healthy"
+              },
+              "@ri_sold": 28,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "567f8962-daf9-40a0-a441-403d59202a90",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-MB-002 | Knorr Bouillon Cubes",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-MB-002",
+              "@ri_sku": "KBC-CUBES",
+              "@ri_pnm": "Knorr Bouillon Cubes",
+              "@ri_qty": 148,
+              "@ri_thresh": 80,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-healthy"
+              },
+              "@ri_sold": 68,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "96c45593-7d21-416d-8719-986100560391",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-MB-002 | OMO Detergent",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-MB-002",
+              "@ri_sku": "OMO-DET",
+              "@ri_pnm": "OMO Multi-Active Detergent",
+              "@ri_qty": 156,
+              "@ri_thresh": 60,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-healthy"
+              },
+              "@ri_sold": 44,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "fced597c-85c1-4274-b219-152d283e84fd",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-W-001 | Blue Band Margarine",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-W-001",
+              "@ri_sku": "BBM-MARG",
+              "@ri_pnm": "Blue Band Margarine",
+              "@ri_qty": 38,
+              "@ri_thresh": 60,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-critical"
+              },
+              "@ri_sold": 125,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-14"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "5697d027-0f8b-470c-936a-a7ff2cfe56bb",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-W-001 | LUX Beauty Soap",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-W-001",
+              "@ri_sku": "LUX-SOAP",
+              "@ri_pnm": "LUX Beauty Soap",
+              "@ri_qty": 154,
+              "@ri_thresh": 60,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-healthy"
+              },
+              "@ri_sold": 39,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-14"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "1c47a4d4-d2da-4462-956a-071cfd31c67a",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-SC-003 | Lifebuoy Soap",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-SC-003",
+              "@ri_sku": "LFS-SOAP",
+              "@ri_pnm": "Lifebuoy Soap",
+              "@ri_qty": 117,
+              "@ri_thresh": 50,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-healthy"
+              },
+              "@ri_sold": 58,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "179c2d5b-4a60-40cf-84f5-c1859a0072e9",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-SC-003 | Pepsodent Toothpaste",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-SC-003",
+              "@ri_sku": "PPT-TOOTH",
+              "@ri_pnm": "Pepsodent Toothpaste",
+              "@ri_qty": 163,
+              "@ri_thresh": 60,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-healthy"
+              },
+              "@ri_sold": 34,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-15"
+                }
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "524688cf-81f4-4af8-99e4-4b2c34252519",
+            "text": {
+              "ops": [
+                {
+                  "insert": "RET-SE-003 | Vaseline Lotion",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@ri_ret": "RET-SE-003",
+              "@ri_sku": "VSL-LOT",
+              "@ri_pnm": "Vaseline Lotion & Jelly",
+              "@ri_qty": 80,
+              "@ri_thresh": 50,
+              "@ri_stat": {
+                "type": "Select",
+                "optionId": "ri-healthy"
+              },
+              "@ri_sold": 44,
+              "@ri_updated": {
+                "type": "DateTime",
+                "dateTime": {
+                  "date": "2026-05-14"
+                }
+              }
+            },
+            "children": []
+          }
+        ]
+      }
+    ],
+    "views": {
+      "list": {
+        "id": "list",
+        "type": "list",
+        "rank": "A",
+        "displayedFields": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7"
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A"
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F"
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N"
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V"
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c"
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k"
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s"
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t"
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u"
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF"
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF"
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x"
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y"
+          },
+          "/attributes/@ri_ret": {
+            "id": "/attributes/@ri_ret",
+            "fieldPath": "/attributes/@ri_ret",
+            "rank": "z"
+          },
+          "/attributes/@ri_sku": {
+            "id": "/attributes/@ri_sku",
+            "fieldPath": "/attributes/@ri_sku",
+            "rank": "zV"
+          },
+          "/attributes/@ri_pnm": {
+            "id": "/attributes/@ri_pnm",
+            "fieldPath": "/attributes/@ri_pnm",
+            "rank": "zk"
+          },
+          "/attributes/@ri_qty": {
+            "id": "/attributes/@ri_qty",
+            "fieldPath": "/attributes/@ri_qty",
+            "rank": "zs"
+          },
+          "/attributes/@ri_thresh": {
+            "id": "/attributes/@ri_thresh",
+            "fieldPath": "/attributes/@ri_thresh",
+            "rank": "zw"
+          },
+          "/attributes/@ri_stat": {
+            "id": "/attributes/@ri_stat",
+            "fieldPath": "/attributes/@ri_stat",
+            "rank": "zy"
+          },
+          "/attributes/@ri_sold": {
+            "id": "/attributes/@ri_sold",
+            "fieldPath": "/attributes/@ri_sold",
+            "rank": "zz"
+          },
+          "/attributes/@ri_updated": {
+            "id": "/attributes/@ri_updated",
+            "fieldPath": "/attributes/@ri_updated",
+            "rank": "zzV"
+          }
+        }
+      },
+      "board": {
+        "id": "board",
+        "type": "board",
+        "rank": "B",
+        "displayedFields": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7"
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A"
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F"
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N"
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V"
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c"
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k"
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s"
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t"
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u"
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF"
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF"
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x"
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y"
+          },
+          "/attributes/@ri_ret": {
+            "id": "/attributes/@ri_ret",
+            "fieldPath": "/attributes/@ri_ret",
+            "rank": "z"
+          },
+          "/attributes/@ri_sku": {
+            "id": "/attributes/@ri_sku",
+            "fieldPath": "/attributes/@ri_sku",
+            "rank": "zV"
+          },
+          "/attributes/@ri_pnm": {
+            "id": "/attributes/@ri_pnm",
+            "fieldPath": "/attributes/@ri_pnm",
+            "rank": "zk"
+          },
+          "/attributes/@ri_qty": {
+            "id": "/attributes/@ri_qty",
+            "fieldPath": "/attributes/@ri_qty",
+            "rank": "zs"
+          },
+          "/attributes/@ri_thresh": {
+            "id": "/attributes/@ri_thresh",
+            "fieldPath": "/attributes/@ri_thresh",
+            "rank": "zw"
+          },
+          "/attributes/@ri_stat": {
+            "id": "/attributes/@ri_stat",
+            "fieldPath": "/attributes/@ri_stat",
+            "rank": "zy"
+          },
+          "/attributes/@ri_sold": {
+            "id": "/attributes/@ri_sold",
+            "fieldPath": "/attributes/@ri_sold",
+            "rank": "zz"
+          },
+          "/attributes/@ri_updated": {
+            "id": "/attributes/@ri_updated",
+            "fieldPath": "/attributes/@ri_updated",
+            "rank": "zzV"
+          }
+        }
+      },
+      "mindmap": {
+        "id": "mindmap",
+        "type": "mindmap",
+        "rank": "D",
+        "displayedFields": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7"
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A"
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F"
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N"
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V"
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c"
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k"
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s"
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t"
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u"
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF"
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF"
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x"
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y"
+          },
+          "/attributes/@ri_ret": {
+            "id": "/attributes/@ri_ret",
+            "fieldPath": "/attributes/@ri_ret",
+            "rank": "z"
+          },
+          "/attributes/@ri_sku": {
+            "id": "/attributes/@ri_sku",
+            "fieldPath": "/attributes/@ri_sku",
+            "rank": "zV"
+          },
+          "/attributes/@ri_pnm": {
+            "id": "/attributes/@ri_pnm",
+            "fieldPath": "/attributes/@ri_pnm",
+            "rank": "zk"
+          },
+          "/attributes/@ri_qty": {
+            "id": "/attributes/@ri_qty",
+            "fieldPath": "/attributes/@ri_qty",
+            "rank": "zs"
+          },
+          "/attributes/@ri_thresh": {
+            "id": "/attributes/@ri_thresh",
+            "fieldPath": "/attributes/@ri_thresh",
+            "rank": "zw"
+          },
+          "/attributes/@ri_stat": {
+            "id": "/attributes/@ri_stat",
+            "fieldPath": "/attributes/@ri_stat",
+            "rank": "zy"
+          },
+          "/attributes/@ri_sold": {
+            "id": "/attributes/@ri_sold",
+            "fieldPath": "/attributes/@ri_sold",
+            "rank": "zz"
+          },
+          "/attributes/@ri_updated": {
+            "id": "/attributes/@ri_updated",
+            "fieldPath": "/attributes/@ri_updated",
+            "rank": "zzV"
+          }
+        }
+      },
+      "orgchart": {
+        "id": "orgchart",
+        "type": "orgchart",
+        "rank": "E",
+        "displayedFields": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7"
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A"
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F"
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N"
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V"
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c"
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k"
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s"
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t"
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u"
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF"
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF"
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x"
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y"
+          },
+          "/attributes/@ri_ret": {
+            "id": "/attributes/@ri_ret",
+            "fieldPath": "/attributes/@ri_ret",
+            "rank": "z"
+          },
+          "/attributes/@ri_sku": {
+            "id": "/attributes/@ri_sku",
+            "fieldPath": "/attributes/@ri_sku",
+            "rank": "zV"
+          },
+          "/attributes/@ri_pnm": {
+            "id": "/attributes/@ri_pnm",
+            "fieldPath": "/attributes/@ri_pnm",
+            "rank": "zk"
+          },
+          "/attributes/@ri_qty": {
+            "id": "/attributes/@ri_qty",
+            "fieldPath": "/attributes/@ri_qty",
+            "rank": "zs"
+          },
+          "/attributes/@ri_thresh": {
+            "id": "/attributes/@ri_thresh",
+            "fieldPath": "/attributes/@ri_thresh",
+            "rank": "zw"
+          },
+          "/attributes/@ri_stat": {
+            "id": "/attributes/@ri_stat",
+            "fieldPath": "/attributes/@ri_stat",
+            "rank": "zy"
+          },
+          "/attributes/@ri_sold": {
+            "id": "/attributes/@ri_sold",
+            "fieldPath": "/attributes/@ri_sold",
+            "rank": "zz"
+          },
+          "/attributes/@ri_updated": {
+            "id": "/attributes/@ri_updated",
+            "fieldPath": "/attributes/@ri_updated",
+            "rank": "zzV"
+          }
+        }
+      },
+      "gantt": {
+        "id": "gantt",
+        "type": "gantt",
+        "rank": "F",
+        "columns": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7",
+            "width": 480
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A",
+            "hidden": true
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F",
+            "hidden": true
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N",
+            "hidden": true
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V",
+            "hidden": true
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c",
+            "hidden": true
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k",
+            "hidden": true
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s",
+            "hidden": true
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t",
+            "hidden": true
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u",
+            "hidden": true
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF",
+            "hidden": true
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF",
+            "hidden": true
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x",
+            "hidden": true
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y",
+            "hidden": true
+          },
+          "/attributes/@ri_ret": {
+            "id": "/attributes/@ri_ret",
+            "fieldPath": "/attributes/@ri_ret",
+            "rank": "z",
+            "hidden": false
+          },
+          "/attributes/@ri_sku": {
+            "id": "/attributes/@ri_sku",
+            "fieldPath": "/attributes/@ri_sku",
+            "rank": "zV",
+            "hidden": false
+          },
+          "/attributes/@ri_pnm": {
+            "id": "/attributes/@ri_pnm",
+            "fieldPath": "/attributes/@ri_pnm",
+            "rank": "zk",
+            "hidden": false
+          },
+          "/attributes/@ri_qty": {
+            "id": "/attributes/@ri_qty",
+            "fieldPath": "/attributes/@ri_qty",
+            "rank": "zs",
+            "hidden": false
+          },
+          "/attributes/@ri_thresh": {
+            "id": "/attributes/@ri_thresh",
+            "fieldPath": "/attributes/@ri_thresh",
+            "rank": "zw",
+            "hidden": false
+          },
+          "/attributes/@ri_stat": {
+            "id": "/attributes/@ri_stat",
+            "fieldPath": "/attributes/@ri_stat",
+            "rank": "zy",
+            "hidden": false
+          },
+          "/attributes/@ri_sold": {
+            "id": "/attributes/@ri_sold",
+            "fieldPath": "/attributes/@ri_sold",
+            "rank": "zz",
+            "hidden": false
+          },
+          "/attributes/@ri_updated": {
+            "id": "/attributes/@ri_updated",
+            "fieldPath": "/attributes/@ri_updated",
+            "rank": "zzV",
+            "hidden": false
+          }
+        }
+      },
+      "table": {
+        "id": "table",
+        "type": "table",
+        "rank": "V",
+        "columns": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7",
+            "width": 480
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A",
+            "hidden": true
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F",
+            "hidden": true
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N",
+            "hidden": true
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V",
+            "hidden": true
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c",
+            "hidden": true
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k",
+            "hidden": true
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s",
+            "hidden": true
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t",
+            "hidden": true
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u",
+            "hidden": true
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF",
+            "hidden": true
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF",
+            "hidden": true
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x",
+            "hidden": true
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y",
+            "hidden": true
+          },
+          "/attributes/@ri_ret": {
+            "id": "/attributes/@ri_ret",
+            "fieldPath": "/attributes/@ri_ret",
+            "rank": "z",
+            "hidden": false
+          },
+          "/attributes/@ri_sku": {
+            "id": "/attributes/@ri_sku",
+            "fieldPath": "/attributes/@ri_sku",
+            "rank": "zV",
+            "hidden": false
+          },
+          "/attributes/@ri_pnm": {
+            "id": "/attributes/@ri_pnm",
+            "fieldPath": "/attributes/@ri_pnm",
+            "rank": "zk",
+            "hidden": false
+          },
+          "/attributes/@ri_qty": {
+            "id": "/attributes/@ri_qty",
+            "fieldPath": "/attributes/@ri_qty",
+            "rank": "zs",
+            "hidden": false
+          },
+          "/attributes/@ri_thresh": {
+            "id": "/attributes/@ri_thresh",
+            "fieldPath": "/attributes/@ri_thresh",
+            "rank": "zw",
+            "hidden": false
+          },
+          "/attributes/@ri_stat": {
+            "id": "/attributes/@ri_stat",
+            "fieldPath": "/attributes/@ri_stat",
+            "rank": "zy",
+            "hidden": false
+          },
+          "/attributes/@ri_sold": {
+            "id": "/attributes/@ri_sold",
+            "fieldPath": "/attributes/@ri_sold",
+            "rank": "zz",
+            "hidden": false
+          },
+          "/attributes/@ri_updated": {
+            "id": "/attributes/@ri_updated",
+            "fieldPath": "/attributes/@ri_updated",
+            "rank": "zzV",
+            "hidden": false
+          }
+        }
+      }
+    },
+    "fields": {
+      "@ri_ret": {
+        "type": "string",
+        "displayName": "Retailer ID"
+      },
+      "@ri_sku": {
+        "type": "string",
+        "displayName": "Product SKU"
+      },
+      "@ri_pnm": {
+        "type": "string",
+        "displayName": "Product Name"
+      },
+      "@ri_qty": {
+        "type": "number",
+        "displayName": "Current Stock",
+        "render": {
+          "type": "text"
+        },
+        "format": {
+          "type": "decimal"
+        }
+      },
+      "@ri_thresh": {
+        "type": "number",
+        "displayName": "Reorder Threshold",
+        "render": {
+          "type": "text"
+        },
+        "format": {
+          "type": "decimal"
+        }
+      },
+      "@ri_stat": {
+        "type": "Select",
+        "displayName": "Status",
+        "options": {
+          "ri-healthy": {
+            "id": "ri-healthy",
+            "name": "Healthy",
+            "color": "#10b981",
+            "rank": "0"
+          },
+          "ri-low": {
+            "id": "ri-low",
+            "name": "Low",
+            "color": "#f59e0b",
+            "rank": "1"
+          },
+          "ri-critical": {
+            "id": "ri-critical",
+            "name": "Critical",
+            "color": "#ef4444",
+            "rank": "2"
+          }
+        }
+      },
+      "@ri_sold": {
+        "type": "number",
+        "displayName": "Units Sold (30d)",
+        "render": {
+          "type": "text"
+        },
+        "format": {
+          "type": "decimal"
+        }
+      },
+      "@ri_updated": {
+        "type": "DateTime",
+        "title": "Last Updated"
+      }
+    }
+  },
+  "preferences": {
+    "defaultView": "table",
+    "avatar": {
+      "type": "emoji",
+      "value": "📍"
+    }
+  }
+}

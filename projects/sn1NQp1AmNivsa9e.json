@@ -1,0 +1,1474 @@
+{
+  "root": {
+    "type": "root",
+    "children": [
+      {
+        "type": "text",
+        "id": "25960f2c-f8be-4881-bc31-efe2756af243",
+        "text": {
+          "ops": [
+            {
+              "insert": "Restock Requests"
+            },
+            {
+              "insert": "\n",
+              "attributes": {
+                "paragraph": true
+              }
+            }
+          ]
+        },
+        "format": null,
+        "collapsed": false,
+        "completed": false,
+        "children": [
+          {
+            "type": "text",
+            "id": "345a6551-ded4-4ea0-84d8-e1aafb768495",
+            "text": {
+              "ops": [
+                {
+                  "insert": "REQ-0001: Lipton Yellow Label Tea × 120 — Funtime Retail Shop",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@reqpnm1": "Lipton Yellow Label Tea",
+              "@reqnote1": "Stock critically low — 59 units remaining, below threshold of 60",
+              "@requrg1": {
+                "type": "Select",
+                "optionId": "urg-high"
+              },
+              "@reqdst1": "DIST-LAG-001",
+              "@reqprd1": "LYT-TEA",
+              "@reqret1": "RET-LAG-001",
+              "@reqid1": "REQ-0001",
+              "@reqqty1": 120,
+              "@reqstat1": {
+                "type": "Select",
+                "optionId": "req-pending"
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "8639ca4e-709d-4311-b339-0be86188eeae",
+            "text": {
+              "ops": [
+                {
+                  "insert": "REQ-0002: Royco Bouillon Cubes × 200 — Funtime Retail Shop",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@reqpnm1": "Royco Bouillon Cubes",
+              "@reqnote1": "Stock low — 70 units below reorder threshold of 80",
+              "@requrg1": {
+                "type": "Select",
+                "optionId": "urg-high"
+              },
+              "@reqdst1": "DIST-LAG-001",
+              "@reqprd1": "RBC-CUBES",
+              "@reqret1": "RET-LAG-001",
+              "@reqid1": "REQ-0002",
+              "@reqqty1": 200,
+              "@reqstat1": {
+                "type": "Select",
+                "optionId": "req-pending"
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "977378af-67fa-4df7-9687-8e0350cbfb2a",
+            "text": {
+              "ops": [
+                {
+                  "insert": "REQ-0003: Sunlight Dishwashing Liquid × 150 — Funtime Retail Shop",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@reqpnm1": "Sunlight Dishwashing Liquid",
+              "@reqnote1": "Low stock — only 26 units of SDL-DISH remaining",
+              "@requrg1": {
+                "type": "Select",
+                "optionId": "urg-medium"
+              },
+              "@reqdst1": "DIST-LAG-001",
+              "@reqprd1": "SDL-DISH",
+              "@reqret1": "RET-LAG-001",
+              "@reqid1": "REQ-0003",
+              "@reqqty1": 150,
+              "@reqstat1": {
+                "type": "Select",
+                "optionId": "req-pending"
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "64a9a7f7-b522-481f-b1ad-d81583805dd4",
+            "text": {
+              "ops": [
+                {
+                  "insert": "REQ-0004: Lifebuoy Soap × 100 — Funtime Retail Shop",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@reqpnm1": "Lifebuoy Soap",
+              "@reqnote1": "31 units in stock, reorder threshold 50",
+              "@requrg1": {
+                "type": "Select",
+                "optionId": "urg-medium"
+              },
+              "@reqdst1": "DIST-LAG-001",
+              "@reqprd1": "LFS-SOAP",
+              "@reqret1": "RET-LAG-001",
+              "@reqid1": "REQ-0004",
+              "@reqqty1": 100,
+              "@reqstat1": {
+                "type": "Select",
+                "optionId": "req-pending"
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "641930d5-c5b1-436c-9806-cd5d41492c87",
+            "text": {
+              "ops": [
+                {
+                  "insert": "REQ-0005: Sunlight Dishwashing Liquid × 100 — CityChoice Supermart",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@reqpnm1": "Sunlight Dishwashing Liquid",
+              "@reqnote1": "Critical — only 22 units remaining, below threshold of 40",
+              "@requrg1": {
+                "type": "Select",
+                "optionId": "urg-high"
+              },
+              "@reqdst1": "DIST-LAG-004",
+              "@reqprd1": "SDL-DISH",
+              "@reqret1": "RET-LAG-004",
+              "@reqid1": "REQ-0005",
+              "@reqqty1": 100,
+              "@reqstat1": {
+                "type": "Select",
+                "optionId": "req-pending"
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "961c2684-770a-4a0d-8eef-b84fcb42ab9b",
+            "text": {
+              "ops": [
+                {
+                  "insert": "REQ-0006: Knorr Bouillon Cubes × 200 — PrimeSave Store",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@reqpnm1": "Knorr Bouillon Cubes",
+              "@reqnote1": "Critical — only 41 units vs threshold 80",
+              "@requrg1": {
+                "type": "Select",
+                "optionId": "urg-high"
+              },
+              "@reqdst1": "DIST-LAG-005",
+              "@reqprd1": "KBC-CUBES",
+              "@reqret1": "RET-LAG-005",
+              "@reqid1": "REQ-0006",
+              "@reqqty1": 200,
+              "@reqstat1": {
+                "type": "Select",
+                "optionId": "req-pending"
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "c9a0c673-247f-43b2-a40c-333f263a6960",
+            "text": {
+              "ops": [
+                {
+                  "insert": "REQ-0007: Axe Body Spray × 100 — Green Basket Mart",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@reqpnm1": "Axe Body Spray",
+              "@reqnote1": "Low stock — 40 units below threshold of 50",
+              "@requrg1": {
+                "type": "Select",
+                "optionId": "urg-medium"
+              },
+              "@reqdst1": "DIST-LAG-002",
+              "@reqprd1": "AXE-BODY",
+              "@reqret1": "RET-LAG-002",
+              "@reqid1": "REQ-0007",
+              "@reqqty1": 100,
+              "@reqstat1": {
+                "type": "Select",
+                "optionId": "req-pending"
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "6fc12d1a-5818-478f-bc30-998616db2759",
+            "text": {
+              "ops": [
+                {
+                  "insert": "REQ-0008: Knorr Bouillon Cubes × 250 — Kano Mega Store",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@reqpnm1": "Knorr Bouillon Cubes",
+              "@reqnote1": "Critical — only 24 units remaining, very high demand market",
+              "@requrg1": {
+                "type": "Select",
+                "optionId": "urg-high"
+              },
+              "@reqdst1": "DIST-NW-001",
+              "@reqprd1": "KBC-CUBES",
+              "@reqret1": "RET-NW-001",
+              "@reqid1": "REQ-0008",
+              "@reqqty1": 250,
+              "@reqstat1": {
+                "type": "Select",
+                "optionId": "req-pending"
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "55307455-285f-4c43-b41e-5bfa2ee79587",
+            "text": {
+              "ops": [
+                {
+                  "insert": "REQ-0009: Blue Band Margarine × 150 — Ibadan Central Mart",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@reqpnm1": "Blue Band Margarine",
+              "@reqnote1": "Critical — only 38 units vs reorder threshold 60",
+              "@requrg1": {
+                "type": "Select",
+                "optionId": "urg-high"
+              },
+              "@reqdst1": "DIST-W-001",
+              "@reqprd1": "BBM-MARG",
+              "@reqret1": "RET-W-001",
+              "@reqid1": "REQ-0009",
+              "@reqqty1": 150,
+              "@reqstat1": {
+                "type": "Select",
+                "optionId": "req-pending"
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "35b283fe-c685-4722-ac36-9657509476c2",
+            "text": {
+              "ops": [
+                {
+                  "insert": "REQ-0010: Pears Baby Products × 80 — PrimeSave Store",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@reqpnm1": "Pears Baby Products",
+              "@reqnote1": "Stock at 46 units vs threshold 50 — marginal shortage",
+              "@requrg1": {
+                "type": "Select",
+                "optionId": "urg-low"
+              },
+              "@reqdst1": "DIST-LAG-005",
+              "@reqprd1": "PRS-BABY",
+              "@reqret1": "RET-LAG-005",
+              "@reqid1": "REQ-0010",
+              "@reqqty1": 80,
+              "@reqstat1": {
+                "type": "Select",
+                "optionId": "req-pending"
+              }
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "35aab856-8bca-4469-9577-d84147e7d9e9",
+            "text": {
+              "ops": [
+                {
+                  "insert": "REQ-5987: Lipton Yellow Label Tea × 50"
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": null,
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@reqid1": "REQ-5987",
+              "@reqret1": "RET-LAG-001",
+              "@reqdst1": "DIST-LAG-001",
+              "@reqpnm1": "Lipton Yellow Label Tea",
+              "@reqqty1": 50,
+              "@reqstat1": {
+                "type": "Select",
+                "optionId": "req-pending"
+              },
+              "@requrg1": {
+                "type": "Select",
+                "optionId": "urg-high"
+              },
+              "@reqnote1": ""
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "fe29db90-819c-4c6d-8683-56a23cb8f047",
+            "text": {
+              "ops": [
+                {
+                  "insert": "REQ-1259: Royco Bouillon Cubes × 900"
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": null,
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@reqid1": "REQ-1259",
+              "@reqret1": "RET-LAG-001",
+              "@reqdst1": "DIST-LAG-001",
+              "@reqpnm1": "Royco Bouillon Cubes",
+              "@reqqty1": 900,
+              "@reqstat1": {
+                "type": "Select",
+                "optionId": "req-pending"
+              },
+              "@requrg1": {
+                "type": "Select",
+                "optionId": "urg-high"
+              },
+              "@reqnote1": ""
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "787b1cc8-a903-447e-89e2-bc41e1297169",
+            "text": {
+              "ops": [
+                {
+                  "insert": "REQ-3266: Royco Bouillon Cubes × 800"
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": null,
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@reqid1": "REQ-3266",
+              "@reqret1": "RET-LAG-001",
+              "@reqdst1": "DIST-LAG-001",
+              "@reqpnm1": "Royco Bouillon Cubes",
+              "@reqqty1": 800,
+              "@reqstat1": {
+                "type": "Select",
+                "optionId": "req-pending"
+              },
+              "@requrg1": {
+                "type": "Select",
+                "optionId": "urg-medium"
+              },
+              "@reqnote1": ""
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "9720e270-2e09-4299-a01f-9bf2fa122008",
+            "text": {
+              "ops": [
+                {
+                  "insert": "REQ-0617: Royco Bouillon Cubes × 750"
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": null,
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@reqid1": "REQ-0617",
+              "@reqret1": "RET-LAG-001",
+              "@reqdst1": "DIST-LAG-001",
+              "@reqpnm1": "Royco Bouillon Cubes",
+              "@reqqty1": 750,
+              "@reqstat1": {
+                "type": "Select",
+                "optionId": "req-pending"
+              },
+              "@requrg1": {
+                "type": "Select",
+                "optionId": "urg-medium"
+              },
+              "@reqnote1": ""
+            },
+            "children": []
+          }
+        ]
+      }
+    ],
+    "views": {
+      "list": {
+        "id": "list",
+        "type": "list",
+        "rank": "A",
+        "displayedFields": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7"
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A"
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F"
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N"
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V"
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c"
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k"
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s"
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t"
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u"
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF"
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF"
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x"
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y"
+          },
+          "/attributes/@reqid1": {
+            "id": "/attributes/@reqid1",
+            "fieldPath": "/attributes/@reqid1",
+            "rank": "z"
+          },
+          "/attributes/@reqret1": {
+            "id": "/attributes/@reqret1",
+            "fieldPath": "/attributes/@reqret1",
+            "rank": "zV"
+          },
+          "/attributes/@reqdst1": {
+            "id": "/attributes/@reqdst1",
+            "fieldPath": "/attributes/@reqdst1",
+            "rank": "zk"
+          },
+          "/attributes/@reqprd1": {
+            "id": "/attributes/@reqprd1",
+            "fieldPath": "/attributes/@reqprd1",
+            "rank": "zs"
+          },
+          "/attributes/@reqpnm1": {
+            "id": "/attributes/@reqpnm1",
+            "fieldPath": "/attributes/@reqpnm1",
+            "rank": "zw"
+          },
+          "/attributes/@reqqty1": {
+            "id": "/attributes/@reqqty1",
+            "fieldPath": "/attributes/@reqqty1",
+            "rank": "zy"
+          },
+          "/attributes/@reqstat1": {
+            "id": "/attributes/@reqstat1",
+            "fieldPath": "/attributes/@reqstat1",
+            "rank": "zz"
+          },
+          "/attributes/@requrg1": {
+            "id": "/attributes/@requrg1",
+            "fieldPath": "/attributes/@requrg1",
+            "rank": "zzV"
+          },
+          "/attributes/@reqnote1": {
+            "id": "/attributes/@reqnote1",
+            "fieldPath": "/attributes/@reqnote1",
+            "rank": "zzk"
+          }
+        }
+      },
+      "board": {
+        "id": "board",
+        "type": "board",
+        "rank": "B",
+        "displayedFields": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7"
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A"
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F"
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N"
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V"
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c"
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k"
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s"
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t"
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u"
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF"
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF"
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x"
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y"
+          },
+          "/attributes/@reqid1": {
+            "id": "/attributes/@reqid1",
+            "fieldPath": "/attributes/@reqid1",
+            "rank": "z"
+          },
+          "/attributes/@reqret1": {
+            "id": "/attributes/@reqret1",
+            "fieldPath": "/attributes/@reqret1",
+            "rank": "zV"
+          },
+          "/attributes/@reqdst1": {
+            "id": "/attributes/@reqdst1",
+            "fieldPath": "/attributes/@reqdst1",
+            "rank": "zk"
+          },
+          "/attributes/@reqprd1": {
+            "id": "/attributes/@reqprd1",
+            "fieldPath": "/attributes/@reqprd1",
+            "rank": "zs"
+          },
+          "/attributes/@reqpnm1": {
+            "id": "/attributes/@reqpnm1",
+            "fieldPath": "/attributes/@reqpnm1",
+            "rank": "zw"
+          },
+          "/attributes/@reqqty1": {
+            "id": "/attributes/@reqqty1",
+            "fieldPath": "/attributes/@reqqty1",
+            "rank": "zy"
+          },
+          "/attributes/@reqstat1": {
+            "id": "/attributes/@reqstat1",
+            "fieldPath": "/attributes/@reqstat1",
+            "rank": "zz"
+          },
+          "/attributes/@requrg1": {
+            "id": "/attributes/@requrg1",
+            "fieldPath": "/attributes/@requrg1",
+            "rank": "zzV"
+          },
+          "/attributes/@reqnote1": {
+            "id": "/attributes/@reqnote1",
+            "fieldPath": "/attributes/@reqnote1",
+            "rank": "zzk"
+          }
+        }
+      },
+      "mindmap": {
+        "id": "mindmap",
+        "type": "mindmap",
+        "rank": "D",
+        "displayedFields": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7"
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A"
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F"
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N"
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V"
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c"
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k"
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s"
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t"
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u"
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF"
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF"
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x"
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y"
+          },
+          "/attributes/@reqid1": {
+            "id": "/attributes/@reqid1",
+            "fieldPath": "/attributes/@reqid1",
+            "rank": "z"
+          },
+          "/attributes/@reqret1": {
+            "id": "/attributes/@reqret1",
+            "fieldPath": "/attributes/@reqret1",
+            "rank": "zV"
+          },
+          "/attributes/@reqdst1": {
+            "id": "/attributes/@reqdst1",
+            "fieldPath": "/attributes/@reqdst1",
+            "rank": "zk"
+          },
+          "/attributes/@reqprd1": {
+            "id": "/attributes/@reqprd1",
+            "fieldPath": "/attributes/@reqprd1",
+            "rank": "zs"
+          },
+          "/attributes/@reqpnm1": {
+            "id": "/attributes/@reqpnm1",
+            "fieldPath": "/attributes/@reqpnm1",
+            "rank": "zw"
+          },
+          "/attributes/@reqqty1": {
+            "id": "/attributes/@reqqty1",
+            "fieldPath": "/attributes/@reqqty1",
+            "rank": "zy"
+          },
+          "/attributes/@reqstat1": {
+            "id": "/attributes/@reqstat1",
+            "fieldPath": "/attributes/@reqstat1",
+            "rank": "zz"
+          },
+          "/attributes/@requrg1": {
+            "id": "/attributes/@requrg1",
+            "fieldPath": "/attributes/@requrg1",
+            "rank": "zzV"
+          },
+          "/attributes/@reqnote1": {
+            "id": "/attributes/@reqnote1",
+            "fieldPath": "/attributes/@reqnote1",
+            "rank": "zzk"
+          }
+        }
+      },
+      "orgchart": {
+        "id": "orgchart",
+        "type": "orgchart",
+        "rank": "E",
+        "displayedFields": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7"
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A"
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F"
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N"
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V"
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c"
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k"
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s"
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t"
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u"
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF"
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF"
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x"
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y"
+          },
+          "/attributes/@reqid1": {
+            "id": "/attributes/@reqid1",
+            "fieldPath": "/attributes/@reqid1",
+            "rank": "z"
+          },
+          "/attributes/@reqret1": {
+            "id": "/attributes/@reqret1",
+            "fieldPath": "/attributes/@reqret1",
+            "rank": "zV"
+          },
+          "/attributes/@reqdst1": {
+            "id": "/attributes/@reqdst1",
+            "fieldPath": "/attributes/@reqdst1",
+            "rank": "zk"
+          },
+          "/attributes/@reqprd1": {
+            "id": "/attributes/@reqprd1",
+            "fieldPath": "/attributes/@reqprd1",
+            "rank": "zs"
+          },
+          "/attributes/@reqpnm1": {
+            "id": "/attributes/@reqpnm1",
+            "fieldPath": "/attributes/@reqpnm1",
+            "rank": "zw"
+          },
+          "/attributes/@reqqty1": {
+            "id": "/attributes/@reqqty1",
+            "fieldPath": "/attributes/@reqqty1",
+            "rank": "zy"
+          },
+          "/attributes/@reqstat1": {
+            "id": "/attributes/@reqstat1",
+            "fieldPath": "/attributes/@reqstat1",
+            "rank": "zz"
+          },
+          "/attributes/@requrg1": {
+            "id": "/attributes/@requrg1",
+            "fieldPath": "/attributes/@requrg1",
+            "rank": "zzV"
+          },
+          "/attributes/@reqnote1": {
+            "id": "/attributes/@reqnote1",
+            "fieldPath": "/attributes/@reqnote1",
+            "rank": "zzk"
+          }
+        }
+      },
+      "gantt": {
+        "id": "gantt",
+        "type": "gantt",
+        "rank": "F",
+        "columns": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7",
+            "width": 480
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A",
+            "hidden": true
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F",
+            "hidden": true
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N",
+            "hidden": true
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V",
+            "hidden": true
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c",
+            "hidden": true
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k",
+            "hidden": true
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s",
+            "hidden": true
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t",
+            "hidden": true
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u",
+            "hidden": true
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF",
+            "hidden": true
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF",
+            "hidden": true
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x",
+            "hidden": true
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y",
+            "hidden": true
+          },
+          "/attributes/@reqid1": {
+            "id": "/attributes/@reqid1",
+            "fieldPath": "/attributes/@reqid1",
+            "rank": "z",
+            "hidden": false
+          },
+          "/attributes/@reqret1": {
+            "id": "/attributes/@reqret1",
+            "fieldPath": "/attributes/@reqret1",
+            "rank": "zV",
+            "hidden": false
+          },
+          "/attributes/@reqdst1": {
+            "id": "/attributes/@reqdst1",
+            "fieldPath": "/attributes/@reqdst1",
+            "rank": "zk",
+            "hidden": false
+          },
+          "/attributes/@reqprd1": {
+            "id": "/attributes/@reqprd1",
+            "fieldPath": "/attributes/@reqprd1",
+            "rank": "zs",
+            "hidden": false
+          },
+          "/attributes/@reqpnm1": {
+            "id": "/attributes/@reqpnm1",
+            "fieldPath": "/attributes/@reqpnm1",
+            "rank": "zw",
+            "hidden": false
+          },
+          "/attributes/@reqqty1": {
+            "id": "/attributes/@reqqty1",
+            "fieldPath": "/attributes/@reqqty1",
+            "rank": "zy",
+            "hidden": false
+          },
+          "/attributes/@reqstat1": {
+            "id": "/attributes/@reqstat1",
+            "fieldPath": "/attributes/@reqstat1",
+            "rank": "zz",
+            "hidden": false
+          },
+          "/attributes/@requrg1": {
+            "id": "/attributes/@requrg1",
+            "fieldPath": "/attributes/@requrg1",
+            "rank": "zzV",
+            "hidden": false
+          },
+          "/attributes/@reqnote1": {
+            "id": "/attributes/@reqnote1",
+            "fieldPath": "/attributes/@reqnote1",
+            "rank": "zzk",
+            "hidden": false
+          }
+        }
+      },
+      "table": {
+        "id": "table",
+        "type": "table",
+        "rank": "V",
+        "columns": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7",
+            "width": 480
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A",
+            "hidden": true
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F",
+            "hidden": true
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N",
+            "hidden": true
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V",
+            "hidden": true
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c",
+            "hidden": true
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k",
+            "hidden": true
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s",
+            "hidden": true
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t",
+            "hidden": true
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u",
+            "hidden": true
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF",
+            "hidden": true
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF",
+            "hidden": true
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x",
+            "hidden": true
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y",
+            "hidden": true
+          },
+          "/attributes/@reqid1": {
+            "id": "/attributes/@reqid1",
+            "fieldPath": "/attributes/@reqid1",
+            "rank": "z",
+            "hidden": false
+          },
+          "/attributes/@reqret1": {
+            "id": "/attributes/@reqret1",
+            "fieldPath": "/attributes/@reqret1",
+            "rank": "zV",
+            "hidden": false
+          },
+          "/attributes/@reqdst1": {
+            "id": "/attributes/@reqdst1",
+            "fieldPath": "/attributes/@reqdst1",
+            "rank": "zk",
+            "hidden": false
+          },
+          "/attributes/@reqprd1": {
+            "id": "/attributes/@reqprd1",
+            "fieldPath": "/attributes/@reqprd1",
+            "rank": "zs",
+            "hidden": false
+          },
+          "/attributes/@reqpnm1": {
+            "id": "/attributes/@reqpnm1",
+            "fieldPath": "/attributes/@reqpnm1",
+            "rank": "zw",
+            "hidden": false
+          },
+          "/attributes/@reqqty1": {
+            "id": "/attributes/@reqqty1",
+            "fieldPath": "/attributes/@reqqty1",
+            "rank": "zy",
+            "hidden": false
+          },
+          "/attributes/@reqstat1": {
+            "id": "/attributes/@reqstat1",
+            "fieldPath": "/attributes/@reqstat1",
+            "rank": "zz",
+            "hidden": false
+          },
+          "/attributes/@requrg1": {
+            "id": "/attributes/@requrg1",
+            "fieldPath": "/attributes/@requrg1",
+            "rank": "zzV",
+            "hidden": false
+          },
+          "/attributes/@reqnote1": {
+            "id": "/attributes/@reqnote1",
+            "fieldPath": "/attributes/@reqnote1",
+            "rank": "zzk",
+            "hidden": false
+          }
+        }
+      }
+    },
+    "fields": {
+      "@reqpnm1": {
+        "type": "string",
+        "displayName": "Product Name"
+      },
+      "@reqnote1": {
+        "type": "string",
+        "displayName": "Notes"
+      },
+      "@requrg1": {
+        "type": "Select",
+        "displayName": "Urgency",
+        "options": {
+          "urg-low": {
+            "id": "urg-low",
+            "name": "Low",
+            "color": "#84cc16",
+            "rank": "0"
+          },
+          "urg-medium": {
+            "id": "urg-medium",
+            "name": "Medium",
+            "color": "#f59e0b",
+            "rank": "1"
+          },
+          "urg-high": {
+            "id": "urg-high",
+            "name": "High",
+            "color": "#ef4444",
+            "rank": "2"
+          }
+        }
+      },
+      "@reqdst1": {
+        "type": "string",
+        "displayName": "Distributor ID"
+      },
+      "@reqprd1": {
+        "type": "string",
+        "displayName": "Product SKU"
+      },
+      "@reqret1": {
+        "type": "string",
+        "displayName": "Retailer ID"
+      },
+      "@reqid1": {
+        "type": "string",
+        "displayName": "Request ID"
+      },
+      "@reqqty1": {
+        "type": "number",
+        "displayName": "Quantity Requested",
+        "render": {
+          "type": "text"
+        },
+        "format": {
+          "type": "decimal"
+        }
+      },
+      "@reqstat1": {
+        "type": "Select",
+        "displayName": "Status",
+        "options": {
+          "req-pending": {
+            "id": "req-pending",
+            "name": "Pending",
+            "color": "#f59e0b",
+            "rank": "0"
+          },
+          "req-fulfilled": {
+            "id": "req-fulfilled",
+            "name": "Fulfilled",
+            "color": "#10b981",
+            "rank": "1"
+          },
+          "req-rejected": {
+            "id": "req-rejected",
+            "name": "Rejected",
+            "color": "#ef4444",
+            "rank": "2"
+          },
+          "req-inprogress": {
+            "id": "req-inprogress",
+            "name": "In Progress",
+            "color": "#3b82f6",
+            "rank": "3"
+          }
+        }
+      }
+    }
+  },
+  "preferences": {
+    "defaultView": "board",
+    "avatar": {
+      "type": "emoji",
+      "value": "✒️"
+    }
+  }
+}

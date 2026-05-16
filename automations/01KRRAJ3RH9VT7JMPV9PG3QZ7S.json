@@ -1,0 +1,52 @@
+{
+  "version": "2",
+  "flowTitle": "Auto-Stamp Parent Manufacturer on New Distributor",
+  "trigger": {
+    "valid": false,
+    "displayName": "New Distributor Added",
+    "type": "PIECE_TRIGGER",
+    "settings": {
+      "pieceName": "@taskade/automade-internalpiece-taskade",
+      "pieceVersion": "1.0.0",
+      "triggerName": "task.added",
+      "input": {}
+    }
+  },
+  "actions": [
+    {
+      "name": "8710612d-475f-498b-bde6-95bd4cd18427",
+      "valid": false,
+      "displayName": "Stamp Parent Manufacturer ID",
+      "type": "PIECE",
+      "settings": {
+        "pieceName": "@taskade/automade-internalpiece-taskade",
+        "pieceVersion": "1.0.0",
+        "actionName": "updateCustomFields",
+        "input": {
+          "fields": {
+            "@parentMfg": {
+              "data": {
+                "value": "MFG-UNILEVER"
+              },
+              "rank": "0",
+              "fieldId": "@parentMfg"
+            }
+          },
+          "nodeId": "{{ trigger[\"nodeId\"] }}",
+          "projectId": {
+            "type": "flow-template-variable-input-type",
+            "id": "Cfoe9dpyX5vx4Vxq"
+          }
+        }
+      }
+    }
+  ],
+  "variables": {
+    "Cfoe9dpyX5vx4Vxq": {
+      "id": "Cfoe9dpyX5vx4Vxq",
+      "rank": "V",
+      "type": "string",
+      "format": "taskade-project-id"
+    }
+  }
+}

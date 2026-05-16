@@ -1,0 +1,52 @@
+{
+  "version": "2",
+  "flowTitle": "Auto-Stamp Parent Distributor on New Retailer",
+  "trigger": {
+    "valid": false,
+    "displayName": "New Retailer Added",
+    "type": "PIECE_TRIGGER",
+    "settings": {
+      "pieceName": "@taskade/automade-internalpiece-taskade",
+      "pieceVersion": "1.0.0",
+      "triggerName": "task.added",
+      "input": {}
+    }
+  },
+  "actions": [
+    {
+      "name": "c7ca3c46-3376-42d1-a840-068ec256bf4b",
+      "valid": false,
+      "displayName": "Stamp Parent Distributor ID",
+      "type": "PIECE",
+      "settings": {
+        "pieceName": "@taskade/automade-internalpiece-taskade",
+        "pieceVersion": "1.0.0",
+        "actionName": "updateCustomFields",
+        "input": {
+          "fields": {
+            "@parentDist": {
+              "data": {
+                "value": "{{ trigger[\"nodeId\"] }}"
+              },
+              "rank": "0",
+              "fieldId": "@parentDist"
+            }
+          },
+          "nodeId": "{{ trigger[\"nodeId\"] }}",
+          "projectId": {
+            "type": "flow-template-variable-input-type",
+            "id": "ZJSXAhrdGkSm626R"
+          }
+        }
+      }
+    }
+  ],
+  "variables": {
+    "ZJSXAhrdGkSm626R": {
+      "id": "ZJSXAhrdGkSm626R",
+      "rank": "V",
+      "type": "string",
+      "format": "taskade-project-id"
+    }
+  }
+}

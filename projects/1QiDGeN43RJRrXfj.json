@@ -1,0 +1,1545 @@
+{
+  "root": {
+    "type": "root",
+    "children": [
+      {
+        "type": "text",
+        "id": "16fabe28-4aee-40b9-837b-1297a41adf0d",
+        "text": {
+          "ops": [
+            {
+              "insert": "Unilever Products Catalog"
+            },
+            {
+              "insert": "\n",
+              "attributes": {
+                "paragraph": true
+              }
+            }
+          ]
+        },
+        "format": null,
+        "collapsed": false,
+        "completed": false,
+        "children": [
+          {
+            "type": "text",
+            "id": "1d062448-779f-4693-a90c-4ff3db70e599",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Axe Body Spray",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@sku01": "AXE-BODY",
+              "@barcode1": "6151023456925",
+              "@cat01": {
+                "type": "Select",
+                "optionId": "cat-personal-care"
+              },
+              "@price1": 1850,
+              "@stock1": 2400,
+              "@reord1": 400,
+              "@mfgid1": "UNILEVER"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "a59fe7a5-4c06-4a18-a819-6d92bc526066",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Blue Band Margarine",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@sku01": "BBM-MARG",
+              "@barcode1": "6151023456789",
+              "@cat01": {
+                "type": "Select",
+                "optionId": "cat-food-bev"
+              },
+              "@price1": 1200,
+              "@stock1": 3100,
+              "@reord1": 500,
+              "@mfgid1": "UNILEVER"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "db0c4585-26b0-4ca3-911d-f921b1730214",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Close-Up Toothpaste",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@sku01": "CUT-TOOTH",
+              "@barcode1": "6151023456857",
+              "@cat01": {
+                "type": "Select",
+                "optionId": "cat-personal-care"
+              },
+              "@price1": 750,
+              "@stock1": 5200,
+              "@reord1": 800,
+              "@mfgid1": "UNILEVER"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "111750be-365c-45c5-be15-f96669ccf913",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Knorr Bouillon Cubes",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@sku01": "KBC-CUBES",
+              "@barcode1": "6151023456819",
+              "@cat01": {
+                "type": "Select",
+                "optionId": "cat-food-bev"
+              },
+              "@price1": 350,
+              "@stock1": 8900,
+              "@reord1": 1200,
+              "@mfgid1": "UNILEVER"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "fce612cf-1e87-4e5b-9f13-d0ec550ed986",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Lifebuoy Soap",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@sku01": "LFS-SOAP",
+              "@barcode1": "6151023456888",
+              "@cat01": {
+                "type": "Select",
+                "optionId": "cat-personal-care"
+              },
+              "@price1": 450,
+              "@stock1": 6700,
+              "@reord1": 900,
+              "@mfgid1": "UNILEVER"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "9920580d-33ca-4ee1-a70f-1c9321b5fca0",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Lipton Yellow Label Tea",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@sku01": "LYT-TEA",
+              "@barcode1": "6151023456796",
+              "@cat01": {
+                "type": "Select",
+                "optionId": "cat-food-bev"
+              },
+              "@price1": 980,
+              "@stock1": 4200,
+              "@reord1": 600,
+              "@mfgid1": "UNILEVER"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "33d27422-6810-4b37-8527-2f855ac588d5",
+            "text": {
+              "ops": [
+                {
+                  "insert": "LUX Beauty Soap",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@sku01": "LUX-SOAP",
+              "@barcode1": "6151023456871",
+              "@cat01": {
+                "type": "Select",
+                "optionId": "cat-personal-care"
+              },
+              "@price1": 550,
+              "@stock1": 5800,
+              "@reord1": 900,
+              "@mfgid1": "UNILEVER"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "80310c30-35c6-41b6-8a47-372315cf904d",
+            "text": {
+              "ops": [
+                {
+                  "insert": "OMO Multi-Active Detergent",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@sku01": "OMO-DET",
+              "@barcode1": "6151023456826",
+              "@cat01": {
+                "type": "Select",
+                "optionId": "cat-home-care"
+              },
+              "@price1": 1600,
+              "@stock1": 3900,
+              "@reord1": 600,
+              "@mfgid1": "UNILEVER"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "634104f1-77c6-4fc6-a51f-27a8e32bda19",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Pears Baby Products",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@sku01": "PRS-BABY",
+              "@barcode1": "6151023456901",
+              "@cat01": {
+                "type": "Select",
+                "optionId": "cat-baby"
+              },
+              "@price1": 2200,
+              "@stock1": 1800,
+              "@reord1": 300,
+              "@mfgid1": "UNILEVER"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "71f0daf5-6e43-4125-a9d5-6051bf73fa3a",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Pepsodent Toothpaste",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@sku01": "PPT-TOOTH",
+              "@barcode1": "6151023456864",
+              "@cat01": {
+                "type": "Select",
+                "optionId": "cat-personal-care"
+              },
+              "@price1": 680,
+              "@stock1": 5400,
+              "@reord1": 800,
+              "@mfgid1": "UNILEVER"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "7e9d7252-d505-4238-843c-7dd1b02dc211",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Rexona Deodorant",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@sku01": "RXN-DEO",
+              "@barcode1": "6151023456895",
+              "@cat01": {
+                "type": "Select",
+                "optionId": "cat-personal-care"
+              },
+              "@price1": 1450,
+              "@stock1": 2900,
+              "@reord1": 450,
+              "@mfgid1": "UNILEVER"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "db5716f5-2f53-442a-a5f4-1f7cefe595c6",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Royco Bouillon Cubes",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@sku01": "RBC-CUBES",
+              "@barcode1": "6151023456802",
+              "@cat01": {
+                "type": "Select",
+                "optionId": "cat-food-bev"
+              },
+              "@price1": 300,
+              "@stock1": 9800,
+              "@reord1": 1500,
+              "@mfgid1": "UNILEVER"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "39106666-d88c-48c2-94f6-f5ccd55ac86f",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Sunlight Dishwashing Liquid",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@sku01": "SDL-DISH",
+              "@barcode1": "6151023456840",
+              "@cat01": {
+                "type": "Select",
+                "optionId": "cat-home-care"
+              },
+              "@price1": 950,
+              "@stock1": 4600,
+              "@reord1": 700,
+              "@mfgid1": "UNILEVER"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "01403da6-c633-42f9-a4df-dd2bf2ae909b",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Sunlight Washing Powder",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@sku01": "SWP-WASH",
+              "@barcode1": "6151023456833",
+              "@cat01": {
+                "type": "Select",
+                "optionId": "cat-home-care"
+              },
+              "@price1": 1350,
+              "@stock1": 3700,
+              "@reord1": 600,
+              "@mfgid1": "UNILEVER"
+            },
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "8372a46d-e819-476d-a250-a3992691e54b",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Vaseline Lotion & Jelly",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "attributes": {
+              "@sku01": "VSL-LOT",
+              "@barcode1": "6151023456918",
+              "@cat01": {
+                "type": "Select",
+                "optionId": "cat-personal-care"
+              },
+              "@price1": 1750,
+              "@stock1": 2200,
+              "@reord1": 350,
+              "@mfgid1": "UNILEVER"
+            },
+            "children": []
+          }
+        ]
+      }
+    ],
+    "views": {
+      "list": {
+        "id": "list",
+        "type": "list",
+        "rank": "A",
+        "displayedFields": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7"
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A"
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F"
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N"
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V"
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c"
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k"
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s"
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t"
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u"
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF"
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF"
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x"
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y"
+          },
+          "/attributes/@sku01": {
+            "id": "/attributes/@sku01",
+            "fieldPath": "/attributes/@sku01",
+            "rank": "z"
+          },
+          "/attributes/@cat01": {
+            "id": "/attributes/@cat01",
+            "fieldPath": "/attributes/@cat01",
+            "rank": "zV"
+          },
+          "/attributes/@price1": {
+            "id": "/attributes/@price1",
+            "fieldPath": "/attributes/@price1",
+            "rank": "zk"
+          },
+          "/attributes/@stock1": {
+            "id": "/attributes/@stock1",
+            "fieldPath": "/attributes/@stock1",
+            "rank": "zs"
+          },
+          "/attributes/@reord1": {
+            "id": "/attributes/@reord1",
+            "fieldPath": "/attributes/@reord1",
+            "rank": "zw"
+          },
+          "/attributes/@mfgid1": {
+            "id": "/attributes/@mfgid1",
+            "fieldPath": "/attributes/@mfgid1",
+            "rank": "zy"
+          },
+          "/attributes/@region1": {
+            "id": "/attributes/@region1",
+            "fieldPath": "/attributes/@region1",
+            "rank": "zz"
+          },
+          "e7a3d3f7-3459-4d68-90ba-15d95fb07ce7": {
+            "id": "e7a3d3f7-3459-4d68-90ba-15d95fb07ce7",
+            "fieldPath": "/attributes/@barcode1",
+            "rank": "zzV"
+          }
+        }
+      },
+      "board": {
+        "id": "board",
+        "type": "board",
+        "rank": "B",
+        "displayedFields": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7"
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A"
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F"
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N"
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V"
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c"
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k"
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s"
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t"
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u"
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF"
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF"
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x"
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y"
+          },
+          "/attributes/@sku01": {
+            "id": "/attributes/@sku01",
+            "fieldPath": "/attributes/@sku01",
+            "rank": "z"
+          },
+          "/attributes/@cat01": {
+            "id": "/attributes/@cat01",
+            "fieldPath": "/attributes/@cat01",
+            "rank": "zV"
+          },
+          "/attributes/@price1": {
+            "id": "/attributes/@price1",
+            "fieldPath": "/attributes/@price1",
+            "rank": "zk"
+          },
+          "/attributes/@stock1": {
+            "id": "/attributes/@stock1",
+            "fieldPath": "/attributes/@stock1",
+            "rank": "zs"
+          },
+          "/attributes/@reord1": {
+            "id": "/attributes/@reord1",
+            "fieldPath": "/attributes/@reord1",
+            "rank": "zw"
+          },
+          "/attributes/@mfgid1": {
+            "id": "/attributes/@mfgid1",
+            "fieldPath": "/attributes/@mfgid1",
+            "rank": "zy"
+          },
+          "/attributes/@region1": {
+            "id": "/attributes/@region1",
+            "fieldPath": "/attributes/@region1",
+            "rank": "zz"
+          },
+          "747162fd-e282-4d78-8185-e50836097ae8": {
+            "id": "747162fd-e282-4d78-8185-e50836097ae8",
+            "fieldPath": "/attributes/@barcode1",
+            "rank": "zzV"
+          }
+        }
+      },
+      "mindmap": {
+        "id": "mindmap",
+        "type": "mindmap",
+        "rank": "D",
+        "displayedFields": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7"
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A"
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F"
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N"
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V"
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c"
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k"
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s"
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t"
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u"
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF"
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF"
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x"
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y"
+          },
+          "/attributes/@sku01": {
+            "id": "/attributes/@sku01",
+            "fieldPath": "/attributes/@sku01",
+            "rank": "z"
+          },
+          "/attributes/@cat01": {
+            "id": "/attributes/@cat01",
+            "fieldPath": "/attributes/@cat01",
+            "rank": "zV"
+          },
+          "/attributes/@price1": {
+            "id": "/attributes/@price1",
+            "fieldPath": "/attributes/@price1",
+            "rank": "zk"
+          },
+          "/attributes/@stock1": {
+            "id": "/attributes/@stock1",
+            "fieldPath": "/attributes/@stock1",
+            "rank": "zs"
+          },
+          "/attributes/@reord1": {
+            "id": "/attributes/@reord1",
+            "fieldPath": "/attributes/@reord1",
+            "rank": "zw"
+          },
+          "/attributes/@mfgid1": {
+            "id": "/attributes/@mfgid1",
+            "fieldPath": "/attributes/@mfgid1",
+            "rank": "zy"
+          },
+          "/attributes/@region1": {
+            "id": "/attributes/@region1",
+            "fieldPath": "/attributes/@region1",
+            "rank": "zz"
+          },
+          "4618af00-70f9-4d6b-91d0-195e18a3bc2c": {
+            "id": "4618af00-70f9-4d6b-91d0-195e18a3bc2c",
+            "fieldPath": "/attributes/@barcode1",
+            "rank": "zzV"
+          }
+        }
+      },
+      "orgchart": {
+        "id": "orgchart",
+        "type": "orgchart",
+        "rank": "E",
+        "displayedFields": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7"
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A"
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F"
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N"
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V"
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c"
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k"
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s"
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t"
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u"
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF"
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF"
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x"
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y"
+          },
+          "/attributes/@sku01": {
+            "id": "/attributes/@sku01",
+            "fieldPath": "/attributes/@sku01",
+            "rank": "z"
+          },
+          "/attributes/@cat01": {
+            "id": "/attributes/@cat01",
+            "fieldPath": "/attributes/@cat01",
+            "rank": "zV"
+          },
+          "/attributes/@price1": {
+            "id": "/attributes/@price1",
+            "fieldPath": "/attributes/@price1",
+            "rank": "zk"
+          },
+          "/attributes/@stock1": {
+            "id": "/attributes/@stock1",
+            "fieldPath": "/attributes/@stock1",
+            "rank": "zs"
+          },
+          "/attributes/@reord1": {
+            "id": "/attributes/@reord1",
+            "fieldPath": "/attributes/@reord1",
+            "rank": "zw"
+          },
+          "/attributes/@mfgid1": {
+            "id": "/attributes/@mfgid1",
+            "fieldPath": "/attributes/@mfgid1",
+            "rank": "zy"
+          },
+          "/attributes/@region1": {
+            "id": "/attributes/@region1",
+            "fieldPath": "/attributes/@region1",
+            "rank": "zz"
+          },
+          "637599d3-d66c-48b2-bb8c-96cde0def052": {
+            "id": "637599d3-d66c-48b2-bb8c-96cde0def052",
+            "fieldPath": "/attributes/@barcode1",
+            "rank": "zzV"
+          }
+        }
+      },
+      "gantt": {
+        "id": "gantt",
+        "type": "gantt",
+        "rank": "F",
+        "columns": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7",
+            "width": 480
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A",
+            "hidden": true
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F",
+            "hidden": true
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N",
+            "hidden": true
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V",
+            "hidden": true
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c",
+            "hidden": true
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k",
+            "hidden": true
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s",
+            "hidden": true
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t",
+            "hidden": true
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u",
+            "hidden": true
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF",
+            "hidden": true
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF",
+            "hidden": true
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x",
+            "hidden": true
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y",
+            "hidden": true
+          },
+          "/attributes/@sku01": {
+            "id": "/attributes/@sku01",
+            "fieldPath": "/attributes/@sku01",
+            "rank": "z",
+            "hidden": false
+          },
+          "/attributes/@cat01": {
+            "id": "/attributes/@cat01",
+            "fieldPath": "/attributes/@cat01",
+            "rank": "zV",
+            "hidden": false
+          },
+          "/attributes/@price1": {
+            "id": "/attributes/@price1",
+            "fieldPath": "/attributes/@price1",
+            "rank": "zk",
+            "hidden": false
+          },
+          "/attributes/@stock1": {
+            "id": "/attributes/@stock1",
+            "fieldPath": "/attributes/@stock1",
+            "rank": "zs",
+            "hidden": false
+          },
+          "/attributes/@reord1": {
+            "id": "/attributes/@reord1",
+            "fieldPath": "/attributes/@reord1",
+            "rank": "zw",
+            "hidden": false
+          },
+          "/attributes/@mfgid1": {
+            "id": "/attributes/@mfgid1",
+            "fieldPath": "/attributes/@mfgid1",
+            "rank": "zy",
+            "hidden": false
+          },
+          "/attributes/@region1": {
+            "id": "/attributes/@region1",
+            "fieldPath": "/attributes/@region1",
+            "rank": "zz",
+            "hidden": false
+          },
+          "adda5751-ff6d-488e-a3ad-67d016c567da": {
+            "id": "adda5751-ff6d-488e-a3ad-67d016c567da",
+            "fieldPath": "/attributes/@barcode1",
+            "rank": "zzV"
+          }
+        }
+      },
+      "table": {
+        "id": "table",
+        "type": "table",
+        "rank": "V",
+        "columns": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7",
+            "width": 480
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A",
+            "hidden": true
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F",
+            "hidden": true
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N",
+            "hidden": true
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V",
+            "hidden": true
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c",
+            "hidden": true
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k",
+            "hidden": true
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s",
+            "hidden": true
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t",
+            "hidden": true
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u",
+            "hidden": true
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF",
+            "hidden": true
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF",
+            "hidden": true
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x",
+            "hidden": true
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y",
+            "hidden": true
+          },
+          "/attributes/@sku01": {
+            "id": "/attributes/@sku01",
+            "fieldPath": "/attributes/@sku01",
+            "rank": "z",
+            "hidden": false
+          },
+          "/attributes/@cat01": {
+            "id": "/attributes/@cat01",
+            "fieldPath": "/attributes/@cat01",
+            "rank": "zV",
+            "hidden": false
+          },
+          "/attributes/@price1": {
+            "id": "/attributes/@price1",
+            "fieldPath": "/attributes/@price1",
+            "rank": "zk",
+            "hidden": false
+          },
+          "/attributes/@stock1": {
+            "id": "/attributes/@stock1",
+            "fieldPath": "/attributes/@stock1",
+            "rank": "zs",
+            "hidden": false
+          },
+          "/attributes/@reord1": {
+            "id": "/attributes/@reord1",
+            "fieldPath": "/attributes/@reord1",
+            "rank": "zw",
+            "hidden": false
+          },
+          "/attributes/@mfgid1": {
+            "id": "/attributes/@mfgid1",
+            "fieldPath": "/attributes/@mfgid1",
+            "rank": "zy",
+            "hidden": false
+          },
+          "/attributes/@region1": {
+            "id": "/attributes/@region1",
+            "fieldPath": "/attributes/@region1",
+            "rank": "zz",
+            "hidden": false
+          },
+          "3c703d68-5e78-4b6c-a522-6660e50cee53": {
+            "id": "3c703d68-5e78-4b6c-a522-6660e50cee53",
+            "fieldPath": "/attributes/@barcode1",
+            "rank": "zzV"
+          }
+        }
+      },
+      "actionsheet": {
+        "id": "actionsheet",
+        "type": "actionsheet",
+        "rank": "F",
+        "columns": {
+          "/text": {
+            "id": "/text",
+            "fieldPath": "/text",
+            "rank": "7",
+            "width": 480
+          },
+          "/attributes/agent": {
+            "id": "/attributes/agent",
+            "fieldPath": "/attributes/agent",
+            "rank": "A",
+            "hidden": true
+          },
+          "/attributes/date": {
+            "id": "/attributes/date",
+            "fieldPath": "/attributes/date",
+            "rank": "F"
+          },
+          "/attributes/assignee": {
+            "id": "/attributes/assignee",
+            "fieldPath": "/attributes/assignee",
+            "rank": "N"
+          },
+          "/attributes/comment": {
+            "id": "/attributes/comment",
+            "fieldPath": "/attributes/comment",
+            "rank": "V",
+            "hidden": true
+          },
+          "/attributes/reaction": {
+            "id": "/attributes/reaction",
+            "fieldPath": "/attributes/reaction",
+            "rank": "c",
+            "hidden": true
+          },
+          "/attributes/timer": {
+            "id": "/attributes/timer",
+            "fieldPath": "/attributes/timer",
+            "rank": "k",
+            "hidden": true
+          },
+          "/attributes/media": {
+            "id": "/attributes/media",
+            "fieldPath": "/attributes/media",
+            "rank": "s",
+            "hidden": true
+          },
+          "/attributes/created/at": {
+            "id": "/attributes/created/at",
+            "fieldPath": "/attributes/created/at",
+            "rank": "t",
+            "hidden": true
+          },
+          "/attributes/created/by": {
+            "id": "/attributes/created/by",
+            "fieldPath": "/attributes/created/by",
+            "rank": "u",
+            "hidden": true
+          },
+          "/attributes/updated/at": {
+            "id": "/attributes/updated/at",
+            "fieldPath": "/attributes/updated/at",
+            "rank": "vF",
+            "hidden": true
+          },
+          "/attributes/updated/by": {
+            "id": "/attributes/updated/by",
+            "fieldPath": "/attributes/updated/by",
+            "rank": "wF",
+            "hidden": true
+          },
+          "/attributes/completed/at": {
+            "id": "/attributes/completed/at",
+            "fieldPath": "/attributes/completed/at",
+            "rank": "x",
+            "hidden": true
+          },
+          "/attributes/completed/by": {
+            "id": "/attributes/completed/by",
+            "fieldPath": "/attributes/completed/by",
+            "rank": "y",
+            "hidden": true
+          },
+          "8213cc6f-164b-4e5a-b6a4-f4c7319fa580": {
+            "id": "8213cc6f-164b-4e5a-b6a4-f4c7319fa580",
+            "fieldPath": "/attributes/@barcode1",
+            "rank": "z"
+          }
+        }
+      }
+    },
+    "fields": {
+      "@sku01": {
+        "type": "string",
+        "displayName": "SKU"
+      },
+      "@cat01": {
+        "type": "Select",
+        "displayName": "Category",
+        "options": {
+          "cat-personal-care": {
+            "id": "cat-personal-care",
+            "name": "Personal Care",
+            "color": "#3b82f6",
+            "rank": "0"
+          },
+          "cat-home-care": {
+            "id": "cat-home-care",
+            "name": "Home Care",
+            "color": "#10b981",
+            "rank": "1"
+          },
+          "cat-food-bev": {
+            "id": "cat-food-bev",
+            "name": "Food & Beverage",
+            "color": "#f59e0b",
+            "rank": "2"
+          },
+          "cat-baby": {
+            "id": "cat-baby",
+            "name": "Baby Products",
+            "color": "#ec4899",
+            "rank": "3"
+          }
+        }
+      },
+      "@price1": {
+        "type": "number",
+        "displayName": "Unit Price",
+        "render": {
+          "type": "text"
+        },
+        "format": {
+          "type": "currency",
+          "config": {
+            "type": "standard",
+            "code": "USD"
+          }
+        }
+      },
+      "@stock1": {
+        "type": "number",
+        "displayName": "Stock Level",
+        "render": {
+          "type": "text"
+        },
+        "format": {
+          "type": "decimal"
+        }
+      },
+      "@reord1": {
+        "type": "number",
+        "displayName": "Reorder Threshold",
+        "render": {
+          "type": "text"
+        },
+        "format": {
+          "type": "decimal"
+        }
+      },
+      "@mfgid1": {
+        "type": "string",
+        "displayName": "Manufacturer ID"
+      },
+      "@region1": {
+        "type": "Select",
+        "displayName": "Region",
+        "options": {
+          "reg-north": {
+            "id": "reg-north",
+            "name": "North",
+            "color": "#0ea5e9",
+            "rank": "0"
+          },
+          "reg-south": {
+            "id": "reg-south",
+            "name": "South",
+            "color": "#f97316",
+            "rank": "1"
+          },
+          "reg-east": {
+            "id": "reg-east",
+            "name": "East",
+            "color": "#84cc16",
+            "rank": "2"
+          },
+          "reg-west": {
+            "id": "reg-west",
+            "name": "West",
+            "color": "#a855f7",
+            "rank": "3"
+          },
+          "reg-central": {
+            "id": "reg-central",
+            "name": "Central",
+            "color": "#14b8a6",
+            "rank": "4"
+          }
+        }
+      },
+      "@barcode1": {
+        "type": "string",
+        "displayName": "Barcode"
+      }
+    }
+  },
+  "preferences": {
+    "defaultView": "table",
+    "avatar": {
+      "type": "emoji",
+      "value": "📋"
+    }
+  }
+}

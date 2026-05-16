@@ -1,0 +1,285 @@
+{
+  "root": {
+    "type": "root",
+    "children": [
+      {
+        "type": "text",
+        "id": "a1b2c3d4-0001-0001-0001-000000000001",
+        "text": {
+          "ops": [
+            {
+              "insert": "Supply Chain Portal — Build Progress & Data Map"
+            },
+            {
+              "insert": "\n",
+              "attributes": {
+                "paragraph": true
+              }
+            }
+          ]
+        },
+        "format": null,
+        "collapsed": false,
+        "completed": false,
+        "children": [
+          {
+            "type": "text",
+            "id": "a1b2c3d4-0001-0001-0001-000000000002",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Build Status: "
+                },
+                {
+                  "insert": "C",
+                  "attributes": {}
+                },
+                {
+                  "insert": "O"
+                },
+                {
+                  "insert": "MPL",
+                  "attributes": {}
+                },
+                {
+                  "insert": "E"
+                },
+                {
+                  "insert": "TE — Distributor ",
+                  "attributes": {}
+                },
+                {
+                  "insert": "S"
+                },
+                {
+                  "insert": "tock Workflow Built",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "h1",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "a1b2c3d4-0001-0001-0001-000000000003",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Space ID: p80r0mss5oa8hgrq",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "h2",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "a1b2c3d4-0001-0001-0001-000000000004",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Create core data projects",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "a1b2c3d4-0001-0001-0001-000000000005",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Create AI Agent for Retailers",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "a1b2c3d4-0001-0001-0001-000000000006",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Build automation workflow (restock pipeline)",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "a1b2c3d4-0001-0001-0001-000000000007",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Build Genesis App UI",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": false,
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "a1b2c3d4-0001-0001-0002-000000000001",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Distributor Stock Orders Project: isCBt1eVVyUh1iHv",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": true,
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "a1b2c3d4-0001-0001-0002-000000000002",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Distributor Dashboard: 4 tabs — Stock Orders, Shipment Tracker, Retailers, Inventory",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": true,
+            "children": []
+          },
+          {
+            "type": "text",
+            "id": "a1b2c3d4-0001-0001-0002-000000000003",
+            "text": {
+              "ops": [
+                {
+                  "insert": "Manufacturer Inbox: Dist. Orders tab with approve/reject/in-transit actions",
+                  "attributes": {}
+                },
+                {
+                  "insert": "\n",
+                  "attributes": {
+                    "paragraph": true
+                  }
+                }
+              ]
+            },
+            "format": {
+              "node": "checkbox",
+              "children": null
+            },
+            "collapsed": false,
+            "completed": true,
+            "children": []
+          }
+        ]
+      }
+    ]
+  },
+  "preferences": {
+    "defaultView": "list",
+    "avatar": {
+      "type": "emoji",
+      "value": "📖"
+    }
+  }
+}
