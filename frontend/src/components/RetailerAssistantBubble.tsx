@@ -230,7 +230,7 @@ export default function RetailerAssistantBubble({ onUiAction, onRefresh }: Props
       {!open && (
         <button
           onClick={() => setOpen(true)}
-          className="fixed bottom-20 right-5 z-[60] h-14 w-14 rounded-full bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white shadow-lg shadow-indigo-500/30 hover:scale-105 transition-transform flex items-center justify-center group"
+          className="fixed bottom-5 right-5 z-[60] h-14 w-14 rounded-full bg-gradient-to-br from-indigo-500 via-violet-600 to-fuchsia-600 text-white shadow-lg shadow-indigo-500/30 hover:scale-105 transition-transform flex items-center justify-center group"
           data-testid="assistant-bubble-btn"
           aria-label="Open AI assistant"
         >
@@ -245,7 +245,7 @@ export default function RetailerAssistantBubble({ onUiAction, onRefresh }: Props
       {/* Panel */}
       {open && (
         <div
-          className="fixed bottom-20 right-5 z-[60] w-[min(380px,calc(100vw-24px))] h-[min(560px,calc(100vh-110px))] rounded-2xl bg-white shadow-2xl shadow-slate-900/15 border border-slate-200 flex flex-col overflow-hidden"
+          className="fixed bottom-5 right-5 z-[60] w-[min(380px,calc(100vw-24px))] h-[min(560px,calc(100vh-40px))] rounded-2xl bg-white shadow-2xl shadow-slate-900/15 border border-slate-200 flex flex-col overflow-hidden"
           data-testid="assistant-panel"
         >
           {/* Header */}
