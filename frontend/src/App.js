@@ -5,7 +5,7 @@ import LandingPage from "@/components/LandingPage";
 import Layout from "@/components/Layout";
 import ManufacturerDashboard from "@/views/ManufacturerDashboard";
 import DistributorDashboard from "@/views/DistributorDashboard";
-import RetailerDashboard from "@/views/RetailerDashboard";
+import RetailerDashboardV2 from "@/views/RetailerDashboardV2";
 import InventoryView from "@/views/InventoryView";
 import ShipmentTracker from "@/views/ShipmentTracker";
 import RequestsView from "@/views/RequestsView";
@@ -19,7 +19,7 @@ function RoleDashboard() {
   const { session } = useSession();
   if (session.role === "manufacturer") return <ManufacturerDashboard />;
   if (session.role === "distributor") return <DistributorDashboard />;
-  return <RetailerDashboard />;
+  return <RetailerDashboardV2 />;
 }
 
 function Protected({ children }) {

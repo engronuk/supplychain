@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Truck, PackageCheck, Plus, Trash2, ArrowRight } from "lucide-react";
+import { Truck, PackageCheck, Plus, Trash2, ArrowRight, RotateCw } from "lucide-react";
 import { toast } from "sonner";
 
 const STATUSES = ["all", "pending", "in_transit", "received"];
@@ -46,6 +46,18 @@ export default function ShipmentTracker() {
       setRefreshing((x) => x + 1);
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Failed to update");
+    }
+  };
+
+  const reorderShipment = async (s) => {
+    const res = await retailerAnalyticsService.submitReorder(session.entity.id, {
+      shipment_id: s.id,
+      note: `Reorder of ${s.tracking_code}`,
+    });
+    if (res.queued) {
+      toast.success("Saved offline — will sync when back online.");
+    } else {
+      toast.success(`Reorder sent for ${s.tracking_code}`);
     }
   };
 
@@ -138,6 +150,16 @@ export default function ShipmentTracker() {
                         data-testid={`btn-receive-${s.tracking_code}`}
                       >
                         <PackageCheck className="h-4 w-4 mr-2" /> Confirm received
+                      </Button>
+                    )}
+                    {role === "retailer" && s.status === "received" && (
+                      <Button
+                        onClick={() => reorderShipment(s)}
+                        variant="outline"
+                        className="border-slate-200"
+                        data-testid={`btn-reorder-${s.tracking_code}`}
+                      >
+                        <RotateCw className="h-4 w-4 mr-2" /> Reorder this
                       </Button>
                     )}
                     <div className="text-xs text-slate-400">
