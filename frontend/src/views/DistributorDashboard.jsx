@@ -52,15 +52,20 @@ export default function DistributorDashboard() {
           </CardHeader>
           <CardContent className="space-y-3">
             {shipments.length === 0 && <div className="text-sm text-slate-500">No shipments yet.</div>}
-            {shipments.map((s) => (
-              <div key={s.id} className="flex items-center justify-between border-b last:border-0 pb-3 last:pb-0">
-                <div>
-                  <div className="font-medium text-slate-900 text-sm">{s.tracking_code}</div>
-                  <div className="text-xs text-slate-500">to {s.retailer?.name}</div>
+            {shipments.map((s) => {
+              const outbound = s.from_role === "distributor" && s.from_id === session.entity.id;
+              return (
+                <div key={s.id} className="flex items-center justify-between border-b last:border-0 pb-3 last:pb-0">
+                  <div className="min-w-0">
+                    <div className="font-medium text-slate-900 text-sm">{s.tracking_code}</div>
+                    <div className="text-xs text-slate-500 truncate">
+                      {outbound ? "to" : "from"} {(outbound ? s.to_party?.name : s.from_party?.name) || "—"}
+                    </div>
+                  </div>
+                  <StatusBadge status={s.status} />
                 </div>
-                <StatusBadge status={s.status} />
-              </div>
-            ))}
+              );
+            })}
           </CardContent>
         </Card>
 

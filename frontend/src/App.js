@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { SessionProvider, useSession } from "@/context/SessionContext";
 import LandingPage from "@/components/LandingPage";
 import Layout from "@/components/Layout";
+import ManufacturerDashboard from "@/views/ManufacturerDashboard";
 import DistributorDashboard from "@/views/DistributorDashboard";
 import RetailerDashboard from "@/views/RetailerDashboard";
 import InventoryView from "@/views/InventoryView";
@@ -10,11 +11,14 @@ import ShipmentTracker from "@/views/ShipmentTracker";
 import RequestsView from "@/views/RequestsView";
 import AnalyticsView from "@/views/AnalyticsView";
 import ReportsView from "@/views/ReportsView";
+import NetworkView from "@/views/NetworkView";
 import { Toaster } from "@/components/ui/sonner";
 
 function RoleDashboard() {
   const { session } = useSession();
-  return session.role === "distributor" ? <DistributorDashboard /> : <RetailerDashboard />;
+  if (session.role === "manufacturer") return <ManufacturerDashboard />;
+  if (session.role === "distributor") return <DistributorDashboard />;
+  return <RetailerDashboard />;
 }
 
 function Protected({ children }) {
@@ -40,6 +44,7 @@ function App() {
             <Route path="/inventory" element={<InventoryView />} />
             <Route path="/shipments" element={<ShipmentTracker />} />
             <Route path="/requests" element={<RequestsView />} />
+            <Route path="/network" element={<NetworkView />} />
             <Route path="/analytics" element={<AnalyticsView />} />
             <Route path="/reports" element={<ReportsView />} />
           </Route>

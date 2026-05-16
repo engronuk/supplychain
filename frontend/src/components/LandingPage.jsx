@@ -4,19 +4,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Api } from "@/lib/api";
 import { useSession } from "@/context/SessionContext";
-import { Boxes, Store, Warehouse, ArrowRight, Loader2 } from "lucide-react";
+import { Boxes, Store, Warehouse, Factory, ArrowRight, Loader2 } from "lucide-react";
 
 export default function LandingPage() {
   const { signIn } = useSession();
-  const [role, setRole] = useState("distributor");
+  const [role, setRole] = useState("manufacturer");
+  const [manufacturers, setManufacturers] = useState([]);
   const [distributors, setDistributors] = useState([]);
   const [retailers, setRetailers] = useState([]);
   const [selectedId, setSelectedId] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    Promise.all([Api.distributors(), Api.retailers()])
-      .then(([d, r]) => {
+    Promise.all([Api.manufacturers(), Api.distributors(), Api.retailers()])
+      .then(([m, d, r]) => {
+        setManufacturers(m);
         setDistributors(d);
         setRetailers(r);
         setLoading(false);
@@ -25,10 +27,12 @@ export default function LandingPage() {
   }, []);
 
   useEffect(() => {
-    setSelectedId("");
-  }, [role]);
+    // Auto-select first entry for convenience
+    const list = role === "manufacturer" ? manufacturers : role === "distributor" ? distributors : retailers;
+    setSelectedId(list[0]?.id || "");
+  }, [role, manufacturers, distributors, retailers]);
 
-  const list = role === "distributor" ? distributors : retailers;
+  const list = role === "manufacturer" ? manufacturers : role === "distributor" ? distributors : retailers;
   const selected = list.find((x) => x.id === selectedId);
 
   const handleEnter = () => {
@@ -44,15 +48,15 @@ export default function LandingPage() {
           <div>
             <div className="flex items-center gap-2 text-slate-500 text-sm mb-6">
               <Boxes className="h-4 w-4" />
-              <span className="tracking-wider uppercase">Supply Chain Hub</span>
+              <span className="tracking-wider uppercase">Supply Chain Hub · Unilever</span>
             </div>
             <h1 className="text-5xl lg:text-6xl font-semibold text-slate-900 leading-[1.05] tracking-tight">
-              The shared workspace<br />
-              <span className="text-slate-500">for distributors & retailers.</span>
+              From factory floor<br />
+              <span className="text-slate-500">to retail shelf.</span>
             </h1>
             <p className="mt-6 text-lg text-slate-600 max-w-md">
-              Inventory, shipments, requests, analytics and reports — in one
-              place. Track every box from Pending to Received.
+              One workspace for the manufacturer, its distributors and their
+              retailers. Every box tracked from Pending to Received.
             </p>
             <div className="mt-8 flex flex-wrap gap-3 text-sm text-slate-500">
               <span className="inline-flex items-center gap-2 bg-white border border-slate-200 rounded-full px-3 py-1.5">
@@ -78,13 +82,21 @@ export default function LandingPage() {
             <CardContent className="space-y-6">
               <div>
                 <label className="text-sm font-medium text-slate-700 mb-3 block">I am a…</label>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-3">
+                  <RoleTile
+                    active={role === "manufacturer"}
+                    onClick={() => setRole("manufacturer")}
+                    Icon={Factory}
+                    label="Manufacturer"
+                    sub="Produce & distribute"
+                    testId="role-manufacturer"
+                  />
                   <RoleTile
                     active={role === "distributor"}
                     onClick={() => setRole("distributor")}
                     Icon={Warehouse}
                     label="Distributor"
-                    sub="Manage stock & fulfill requests"
+                    sub="Stock & fulfill"
                     testId="role-distributor"
                   />
                   <RoleTile
@@ -92,7 +104,7 @@ export default function LandingPage() {
                     onClick={() => setRole("retailer")}
                     Icon={Store}
                     label="Retailer"
-                    sub="Order stock & track shipments"
+                    sub="Order & sell"
                     testId="role-retailer"
                   />
                 </div>
@@ -100,20 +112,23 @@ export default function LandingPage() {
 
               <div>
                 <label className="text-sm font-medium text-slate-700 mb-2 block">
-                  Choose {role === "distributor" ? "distributor" : "retail store"}
+                  Choose {role}
                 </label>
                 <Select value={selectedId} onValueChange={setSelectedId} disabled={loading}>
                   <SelectTrigger data-testid="entity-select-trigger">
                     <SelectValue placeholder={loading ? "Loading…" : "Select an account"} />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-72">
                     {list.map((x) => (
                       <SelectItem key={x.id} value={x.id} data-testid={`entity-option-${x.id}`}>
-                        {x.name} · <span className="text-slate-500">{x.region}</span>
+                        {x.name}{x.region ? ` · ${x.region}` : ""}{x.city ? `, ${x.city}` : ""}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <div className="text-xs text-slate-500 mt-2">
+                  {list.length} {role}{list.length === 1 ? "" : "s"} available
+                </div>
               </div>
 
               <Button
@@ -138,14 +153,14 @@ function RoleTile({ active, onClick, Icon, label, sub, testId }) {
       type="button"
       onClick={onClick}
       data-testid={testId}
-      className={`text-left p-4 rounded-xl border transition-all ${
+      className={`text-left p-3 rounded-xl border transition-all ${
         active
           ? "border-slate-900 bg-slate-900 text-white shadow-sm"
           : "border-slate-200 bg-white text-slate-900 hover:border-slate-300"
       }`}
     >
       <Icon className={`h-5 w-5 mb-2 ${active ? "text-white" : "text-slate-500"}`} />
-      <div className="font-semibold">{label}</div>
+      <div className="font-semibold text-sm">{label}</div>
       <div className={`text-xs mt-0.5 ${active ? "text-slate-300" : "text-slate-500"}`}>{sub}</div>
     </button>
   );
