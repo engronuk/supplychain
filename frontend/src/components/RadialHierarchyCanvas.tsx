@@ -45,20 +45,20 @@ interface Props {
   onFocusPathChange?: (path: CanvasNode[]) => void;
 }
 
-const LEVEL_RADII = [0, 200, 360, 520, 680]; // mfg, region, state, dist, retailer
+const LEVEL_RADII = [0, 220, 430, 620, 800]; // mfg, region, state, dist, retailer
 const NODE_SIZES: Record<HierarchyNode["type"], number> = {
-  manufacturer: 32,
-  region: 20,
-  state: 14,
-  distributor: 10,
-  retailer: 6,
+  manufacturer: 30,
+  region: 18,
+  state: 13,
+  distributor: 9,
+  retailer: 5.5,
 };
 
-const SPRING = 0.18;          // position lerp factor (0..1)
+const SPRING = 0.16;          // position lerp factor (0..1)
 const ALPHA_SPRING = 0.12;
-const DIM_ALPHA = 0.22;
+const DIM_ALPHA = 0.18;
 const PATH_ALPHA = 1.0;
-const REST_ALPHA = 0.78;
+const REST_ALPHA = 0.85;
 
 export default function RadialHierarchyCanvas({
   manufacturerId,
@@ -245,6 +245,8 @@ export default function RadialHierarchyCanvas({
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
+  const zoomBehaviorRef = useRef<any>(null);
+
   // ----------- d3-zoom (pan + zoom) -----------
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -264,6 +266,7 @@ export default function RadialHierarchyCanvas({
         setDirty();
       });
     sel.call(z as any);
+    zoomBehaviorRef.current = z;
 
     // Set initial transform centered
     const initial = zoomIdentity.translate(sizeRef.current.w / 2, sizeRef.current.h / 2).scale(1);
@@ -384,44 +387,52 @@ export default function RadialHierarchyCanvas({
   }, []);
 
   function drawBackground(ctx: CanvasRenderingContext2D, w: number, h: number) {
-    // base
-    ctx.fillStyle = "#070b14";
+    // Soft enterprise light gradient — Linear/Stripe-style
+    ctx.fillStyle = "#fafbfc";
     ctx.fillRect(0, 0, w, h);
-    // radial vignette
-    const g = ctx.createRadialGradient(w / 2, h / 2, 50, w / 2, h / 2, Math.max(w, h) * 0.75);
-    g.addColorStop(0, "rgba(36, 64, 110, 0.35)");
-    g.addColorStop(0.55, "rgba(15, 23, 42, 0.6)");
-    g.addColorStop(1, "rgba(7, 11, 20, 1)");
+    // gentle radial highlight at center for spatial depth
+    const g = ctx.createRadialGradient(w / 2, h / 2, 30, w / 2, h / 2, Math.max(w, h) * 0.7);
+    g.addColorStop(0, "rgba(255, 255, 255, 0.95)");
+    g.addColorStop(0.55, "rgba(248, 250, 252, 0.6)");
+    g.addColorStop(1, "rgba(226, 232, 240, 0.4)");
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, w, h);
   }
 
   function drawConcentricGuides(ctx: CanvasRenderingContext2D) {
     ctx.save();
-    ctx.strokeStyle = "rgba(148, 163, 184, 0.05)";
+    ctx.strokeStyle = "rgba(148, 163, 184, 0.16)";
     ctx.lineWidth = 1;
+    ctx.setLineDash([2, 6]);
     LEVEL_RADII.slice(1).forEach((r) => {
       ctx.beginPath();
       ctx.arc(0, 0, r, 0, Math.PI * 2);
       ctx.stroke();
     });
+    ctx.setLineDash([]);
     ctx.restore();
   }
 
-  function drawConnector(ctx: CanvasRenderingContext2D, a: CanvasNode, b: CanvasNode, alpha: number) {
+  function drawConnector(ctx: CanvasRenderingContext2D, a: CanvasNode, b: CanvasNode, alpha: number, active: boolean) {
     const dx = b.x - a.x;
     const dy = b.y - a.y;
     // Bezier control points perpendicular to the segment for an arc-like curve
-    const perp = 0.18;
-    const cx1 = a.x + dx * 0.35 - dy * perp * 0.4;
-    const cy1 = a.y + dy * 0.35 + dx * perp * 0.4;
-    const cx2 = b.x - dx * 0.35 - dy * perp * 0.4;
-    const cy2 = b.y - dy * 0.35 + dx * perp * 0.4;
+    const perp = 0.16;
+    const cx1 = a.x + dx * 0.4 - dy * perp * 0.4;
+    const cy1 = a.y + dy * 0.4 + dx * perp * 0.4;
+    const cx2 = b.x - dx * 0.4 - dy * perp * 0.4;
+    const cy2 = b.y - dy * 0.4 + dx * perp * 0.4;
     const grad = ctx.createLinearGradient(a.x, a.y, b.x, b.y);
-    grad.addColorStop(0, `rgba(148, 163, 184, ${0.15 * alpha})`);
-    grad.addColorStop(1, `rgba(96, 165, 250, ${0.45 * alpha})`);
+    if (active) {
+      grad.addColorStop(0, `rgba(99, 102, 241, ${0.45 * alpha})`);
+      grad.addColorStop(1, `rgba(99, 102, 241, ${0.25 * alpha})`);
+      ctx.lineWidth = 1.4;
+    } else {
+      grad.addColorStop(0, `rgba(148, 163, 184, ${0.28 * alpha})`);
+      grad.addColorStop(1, `rgba(148, 163, 184, ${0.14 * alpha})`);
+      ctx.lineWidth = 1;
+    }
     ctx.strokeStyle = grad;
-    ctx.lineWidth = 1.1;
     ctx.beginPath();
     ctx.moveTo(a.x, a.y);
     ctx.bezierCurveTo(cx1, cy1, cx2, cy2, b.x, b.y);
@@ -429,49 +440,81 @@ export default function RadialHierarchyCanvas({
   }
 
   function drawNode(ctx: CanvasRenderingContext2D, n: CanvasNode, isFocus: boolean, isHover: boolean) {
-    const color = hierarchyService.statusColor(n.data.status as HealthStatus, n.alpha < 0.4);
-    const glow = hierarchyService.statusGlow(n.data.status as HealthStatus);
+    const inActivePath = n.alpha > 0.5;
+    const color = hierarchyService.statusColor(n.data.status as HealthStatus, !inActivePath);
+    const halo = hierarchyService.statusHalo(n.data.status as HealthStatus);
     const alpha = Math.max(0, Math.min(1, n.alpha));
-    // outer glow
+
     ctx.save();
     ctx.globalAlpha = alpha;
-    const glowSize = n.r + (isFocus ? 18 : isHover ? 10 : 6);
-    const radGlow = ctx.createRadialGradient(n.x, n.y, n.r * 0.5, n.x, n.y, glowSize);
-    radGlow.addColorStop(0, glow);
-    radGlow.addColorStop(1, "rgba(0,0,0,0)");
-    ctx.fillStyle = radGlow;
-    ctx.beginPath();
-    ctx.arc(n.x, n.y, glowSize, 0, Math.PI * 2);
-    ctx.fill();
 
-    // shadow ring
-    ctx.shadowColor = glow;
-    ctx.shadowBlur = isFocus ? 20 : isHover ? 12 : 0;
+    // Layered soft shadow halo (instead of dark glow)
+    if (inActivePath) {
+      const haloR = n.r + (isFocus ? 16 : isHover ? 11 : 7);
+      const haloGrad = ctx.createRadialGradient(n.x, n.y, Math.max(0.1, n.r * 0.6), n.x, n.y, Math.max(haloR, 0.5));
+      haloGrad.addColorStop(0, halo);
+      haloGrad.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = haloGrad;
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, Math.max(haloR, 0.5), 0, Math.PI * 2);
+      ctx.fill();
+    }
 
-    // core
-    ctx.fillStyle = color;
+    // White backing disk for crisp contrast against any halo
+    ctx.fillStyle = "#ffffff";
+    ctx.shadowColor = isFocus
+      ? "rgba(15, 23, 42, 0.18)"
+      : isHover
+      ? "rgba(15, 23, 42, 0.14)"
+      : "rgba(15, 23, 42, 0.08)";
+    ctx.shadowBlur = isFocus ? 14 : isHover ? 10 : 6;
+    ctx.shadowOffsetY = isFocus ? 4 : 2;
     ctx.beginPath();
-    ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+    ctx.arc(n.x, n.y, Math.max(0.5, n.r + 1.2), 0, Math.PI * 2);
     ctx.fill();
     ctx.shadowBlur = 0;
+    ctx.shadowOffsetY = 0;
 
-    // ring stroke
-    ctx.lineWidth = isFocus ? 2.2 : 1.2;
-    ctx.strokeStyle = isFocus ? "#ffffff" : "rgba(255, 255, 255, 0.55)";
+    // Status-colored inner core
+    ctx.fillStyle = color;
     ctx.beginPath();
-    ctx.arc(n.x, n.y, n.r + 1.4, 0, Math.PI * 2);
+    ctx.arc(n.x, n.y, Math.max(0.1, n.r), 0, Math.PI * 2);
+    ctx.fill();
+
+    // Subtle inner ring for definition
+    ctx.strokeStyle = inActivePath ? "rgba(255,255,255,0.85)" : "rgba(255,255,255,0.6)";
+    ctx.lineWidth = isFocus ? 2 : 1.2;
+    ctx.beginPath();
+    ctx.arc(n.x, n.y, Math.max(0.1, n.r - 0.6), 0, Math.PI * 2);
     ctx.stroke();
 
-    // alerts dot
-    if (n.data.alerts > 0 && n.r >= 8) {
+    // Active focus outer ring
+    if (isFocus) {
+      ctx.strokeStyle = "rgba(15, 23, 42, 0.85)";
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, n.r + 4, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // Alerts badge (only visible for larger active nodes)
+    if (n.data.alerts > 0 && n.r >= 8 && inActivePath) {
       const ax = n.x + n.r * 0.78;
       const ay = n.y - n.r * 0.78;
-      ctx.fillStyle = "#fb7185";
+      const badgeR = Math.max(4, n.r * 0.34);
+      ctx.fillStyle = "#ffffff";
+      ctx.shadowColor = "rgba(15, 23, 42, 0.18)";
+      ctx.shadowBlur = 4;
       ctx.beginPath();
-      ctx.arc(ax, ay, Math.max(3, n.r * 0.32), 0, Math.PI * 2);
+      ctx.arc(ax, ay, badgeR + 1.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = "#ef4444";
+      ctx.beginPath();
+      ctx.arc(ax, ay, badgeR, 0, Math.PI * 2);
       ctx.fill();
       if (n.r >= 12) {
-        ctx.fillStyle = "#0b1220";
+        ctx.fillStyle = "#ffffff";
         ctx.font = "600 9px ui-sans-serif, system-ui";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
@@ -479,20 +522,29 @@ export default function RadialHierarchyCanvas({
       }
     }
 
-    // label (only for larger nodes or focused/hover)
-    const showLabel = n.r >= 12 || isFocus || isHover;
-    if (showLabel) {
+    // Labels — improved readability with white halo on light bg
+    const showLabel = n.r >= 11 || isFocus || isHover;
+    if (showLabel && inActivePath) {
       const label = n.data.name;
-      ctx.font = `${isFocus ? 600 : 500} ${Math.max(11, Math.min(14, n.r * 0.7))}px ui-sans-serif, system-ui`;
+      const fontSize = Math.max(11, Math.min(14, n.r * 0.7));
+      ctx.font = `${isFocus ? 600 : 500} ${fontSize}px ui-sans-serif, system-ui, -apple-system`;
       ctx.textAlign = "center";
       ctx.textBaseline = "top";
-      const ty = n.y + n.r + 8;
-      // text outline for contrast
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = "rgba(7, 11, 20, 0.9)";
-      ctx.strokeText(truncate(label, 22), n.x, ty);
-      ctx.fillStyle = isFocus ? "#ffffff" : "rgba(226, 232, 240, 0.85)";
-      ctx.fillText(truncate(label, 22), n.x, ty);
+      const ty = n.y + n.r + 9;
+      const text = truncate(label, 24);
+      // soft white outline for AA contrast
+      ctx.lineWidth = 3.5;
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
+      ctx.lineJoin = "round";
+      ctx.strokeText(text, n.x, ty);
+      ctx.fillStyle = isFocus ? "#0f172a" : "#334155";
+      ctx.fillText(text, n.x, ty);
+      // sub-label for focused node showing type
+      if (isFocus && n.r >= 14) {
+        ctx.font = `500 10px ui-sans-serif, system-ui`;
+        ctx.fillStyle = "#94a3b8";
+        ctx.fillText(n.data.type.toUpperCase(), n.x, ty + fontSize + 3);
+      }
     }
 
     ctx.restore();
@@ -521,12 +573,32 @@ export default function RadialHierarchyCanvas({
 
     // connectors first
     const focusId = focusIdRef.current;
+    const activePathIds = new Set<string>();
+    if (focusId) {
+      // ancestors
+      let id: string | null = focusId;
+      while (id) {
+        const n = nodesRef.current.get(id);
+        if (!n) break;
+        activePathIds.add(id);
+        id = n.parentId;
+      }
+      // descendants of focus
+      const stack = [focusId];
+      while (stack.length) {
+        const cur = stack.pop()!;
+        activePathIds.add(cur);
+        const node = nodesRef.current.get(cur);
+        if (node) stack.push(...node.childrenIds);
+      }
+    }
     nodesRef.current.forEach((n) => {
       if (!n.parentId) return;
       const p = nodesRef.current.get(n.parentId);
       if (!p) return;
       const a = Math.min(n.alpha, p.alpha);
-      drawConnector(ctx, p, n, a);
+      const active = activePathIds.has(n.id) && activePathIds.has(p.id);
+      drawConnector(ctx, p, n, a, active);
     });
 
     // nodes (draw smaller ones first so larger sit on top)
@@ -543,15 +615,16 @@ export default function RadialHierarchyCanvas({
   const reset = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const sel = select(canvas);
-    const z = (sel.property("__zoom") ? sel : null);
+    const z = zoomBehaviorRef.current;
     const initial = zoomIdentity.translate(sizeRef.current.w / 2, sizeRef.current.h / 2).scale(1);
-    transformRef.current = initial;
-    if (z) sel.call((d3zoom().transform as any), initial);
+    if (z) {
+      select(canvas).transition().duration(450).call(z.transform, initial);
+    } else {
+      transformRef.current = initial;
+    }
     // collapse all but root
     const root = Array.from(nodesRef.current.values()).find((n) => n.depth === 0);
     if (root) {
-      // delete all non-root
       Array.from(nodesRef.current.keys()).forEach((id) => {
         if (id !== root.id) nodesRef.current.delete(id);
       });
@@ -562,42 +635,39 @@ export default function RadialHierarchyCanvas({
     setDirty();
   }, [focusNode]);
 
-  // controls bar (zoom in/out + reset)
+  // controls bar (zoom in/out + reset) — smooth d3 transitions
   const zoomBy = (factor: number) => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    const t = transformRef.current;
-    const k = Math.max(0.25, Math.min(4, t.k * factor));
-    const next = zoomIdentity.translate(t.x, t.y).scale(k);
-    transformRef.current = next;
-    const sel = select(canvas);
-    sel.call((d3zoom().transform as any), next);
-    setDirty();
+    const z = zoomBehaviorRef.current;
+    if (!canvas || !z) return;
+    select(canvas).transition().duration(300).call(z.scaleBy, factor);
   };
 
   const controls = useMemo(() => (
-    <div className="absolute top-4 right-4 flex flex-col gap-2 z-10">
+    <div className="absolute top-4 right-4 flex flex-col gap-1.5 z-10" data-testid="hierarchy-controls">
       <button
-        onClick={() => zoomBy(1.25)}
-        className="h-9 w-9 rounded-lg bg-slate-900/80 backdrop-blur text-slate-200 hover:bg-slate-800 border border-slate-700/60 text-lg font-semibold"
+        onClick={() => zoomBy(1.3)}
+        className="h-9 w-9 rounded-lg bg-white/85 backdrop-blur-md text-slate-700 hover:bg-white hover:text-slate-900 border border-slate-200/80 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 text-lg font-medium"
         data-testid="hierarchy-zoom-in"
+        title="Zoom in"
       >+</button>
       <button
-        onClick={() => zoomBy(0.8)}
-        className="h-9 w-9 rounded-lg bg-slate-900/80 backdrop-blur text-slate-200 hover:bg-slate-800 border border-slate-700/60 text-lg font-semibold"
+        onClick={() => zoomBy(1 / 1.3)}
+        className="h-9 w-9 rounded-lg bg-white/85 backdrop-blur-md text-slate-700 hover:bg-white hover:text-slate-900 border border-slate-200/80 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 text-lg font-medium"
         data-testid="hierarchy-zoom-out"
+        title="Zoom out"
       >−</button>
       <button
         onClick={reset}
-        className="h-9 w-9 rounded-lg bg-slate-900/80 backdrop-blur text-slate-200 hover:bg-slate-800 border border-slate-700/60 text-xs font-semibold"
-        title="Reset"
+        className="h-9 w-9 rounded-lg bg-white/85 backdrop-blur-md text-slate-700 hover:bg-white hover:text-slate-900 border border-slate-200/80 shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5 text-xs font-semibold"
+        title="Reset view"
         data-testid="hierarchy-reset"
       >⟲</button>
     </div>
   ), [reset]);
 
   return (
-    <div ref={containerRef} className="relative w-full h-full overflow-hidden bg-[#070b14]" data-testid="radial-canvas-container">
+    <div ref={containerRef} className="relative w-full h-full overflow-hidden" data-testid="radial-canvas-container">
       <canvas
         ref={canvasRef}
         onClick={handleClick}

@@ -85,19 +85,30 @@ export const hierarchyService = {
 
   /** Color helpers shared with the canvas component. */
   statusColor(status: HealthStatus, dimmed = false): string {
+    if (dimmed) return "#cbd5e1"; // soft neutral slate-300 for inactive
     const map: Record<HealthStatus, string> = {
-      healthy: dimmed ? "#1f3a2e" : "#10b981",
-      warning: dimmed ? "#3d2e10" : "#f59e0b",
-      critical: dimmed ? "#3d1316" : "#ef4444",
+      healthy: "#10b981",
+      warning: "#f59e0b",
+      critical: "#ef4444",
+    };
+    return map[status];
+  },
+
+  /** Softer ring color for the layered shadow halo on light bg. */
+  statusHalo(status: HealthStatus): string {
+    const map: Record<HealthStatus, string> = {
+      healthy: "rgba(16, 185, 129, 0.16)",
+      warning: "rgba(245, 158, 11, 0.18)",
+      critical: "rgba(239, 68, 68, 0.16)",
     };
     return map[status];
   },
 
   statusGlow(status: HealthStatus): string {
     const map: Record<HealthStatus, string> = {
-      healthy: "rgba(16, 185, 129, 0.55)",
-      warning: "rgba(245, 158, 11, 0.55)",
-      critical: "rgba(239, 68, 68, 0.55)",
+      healthy: "rgba(16, 185, 129, 0.30)",
+      warning: "rgba(245, 158, 11, 0.30)",
+      critical: "rgba(239, 68, 68, 0.30)",
     };
     return map[status];
   },
