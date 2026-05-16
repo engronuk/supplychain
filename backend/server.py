@@ -22,7 +22,7 @@ mongo_url = os.environ["MONGO_URL"]
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ["DB_NAME"]]
 
-app = FastAPI(title="Supply Chain Hub API")
+app = FastAPI(title="TradeKonekt API")
 api_router = APIRouter(prefix="/api")
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -228,7 +228,7 @@ async def _entity_name(role: str, eid: str) -> str:
 # ----------------------------- Routes ----------------------------------------
 @api_router.get("/")
 async def root():
-    return {"message": "Supply Chain Hub API", "status": "ok"}
+    return {"message": "TradeKonekt API", "status": "ok"}
 
 
 # ---- Entities -----
@@ -1137,7 +1137,7 @@ async def _seed_from_csv():
     notifs = []
     notifs.append(Notification(
         target_type="manufacturer", target_id=mfg.id,
-        title="Welcome to Supply Hub", type="system",
+        title="Welcome to TradeKonekt", type="system",
         message=f"Unilever workspace is ready. You have {len(distributor_list)} distributors connected.",
     ).model_dump())
     if primary_d:

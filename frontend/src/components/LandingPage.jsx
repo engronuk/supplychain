@@ -48,7 +48,7 @@ export default function LandingPage() {
           <div>
             <div className="flex items-center gap-2 text-slate-500 text-sm mb-6">
               <Boxes className="h-4 w-4" />
-              <span className="tracking-wider uppercase">Supply Chain Hub · Unilever</span>
+              <span className="tracking-wider uppercase">TradeKonekt · Unilever</span>
             </div>
             <h1 className="text-5xl lg:text-6xl font-semibold text-slate-900 leading-[1.05] tracking-tight">
               From factory floor<br />
