@@ -80,6 +80,10 @@ class Retailer(BaseModel):
     address: str = ""
     contact_email: str = ""
     distributor_id: str
+    store_code: str = ""
+    phone: str = ""
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     created_at: str = Field(default_factory=now_iso)
 
 
@@ -246,7 +250,7 @@ async def list_distributors(manufacturer_id: Optional[str] = None):
 @api_router.get("/retailers", response_model=List[Retailer])
 async def list_retailers(distributor_id: Optional[str] = None):
     q = {"distributor_id": distributor_id} if distributor_id else {}
-    return await db.retailers.find(q, {"_id": 0}).sort("name", 1).to_list(2000)
+    return await db.retailers.find(q, {"_id": 0}).sort("name", 1).to_list(20000)
 
 
 @api_router.get("/products", response_model=List[Product])
@@ -292,7 +296,7 @@ async def list_shipments(
     docs = await db.shipments.find(q, {"_id": 0}).sort("created_at", -1).to_list(5000)
     manufacturers = {m["id"]: m for m in await db.manufacturers.find({}, {"_id": 0}).to_list(100)}
     distributors = {d["id"]: d for d in await db.distributors.find({}, {"_id": 0}).to_list(5000)}
-    retailers = {r["id"]: r for r in await db.retailers.find({}, {"_id": 0}).to_list(5000)}
+    retailers = {r["id"]: r for r in await db.retailers.find({}, {"_id": 0}).to_list(20000)}
     products = {p["id"]: p for p in await db.products.find({}, {"_id": 0}).to_list(5000)}
     party_map = {"manufacturer": manufacturers, "distributor": distributors, "retailer": retailers}
     for s in docs:
@@ -383,7 +387,7 @@ async def list_requests(distributor_id: Optional[str] = None, retailer_id: Optio
         q["retailer_id"] = retailer_id
     docs = await db.requests.find(q, {"_id": 0}).sort("created_at", -1).to_list(2000)
     distributors = {d["id"]: d for d in await db.distributors.find({}, {"_id": 0}).to_list(5000)}
-    retailers = {r["id"]: r for r in await db.retailers.find({}, {"_id": 0}).to_list(5000)}
+    retailers = {r["id"]: r for r in await db.retailers.find({}, {"_id": 0}).to_list(20000)}
     products = {p["id"]: p for p in await db.products.find({}, {"_id": 0}).to_list(5000)}
     for r in docs:
         r["distributor"] = distributors.get(r["distributor_id"], {})
@@ -562,7 +566,7 @@ async def export_shipments_csv(role: str, entity_id: str):
     shipments = await db.shipments.find(q, {"_id": 0}).sort("created_at", -1).to_list(5000)
     manufacturers = {m["id"]: m for m in await db.manufacturers.find({}, {"_id": 0}).to_list(100)}
     distributors = {d["id"]: d for d in await db.distributors.find({}, {"_id": 0}).to_list(5000)}
-    retailers = {r["id"]: r for r in await db.retailers.find({}, {"_id": 0}).to_list(5000)}
+    retailers = {r["id"]: r for r in await db.retailers.find({}, {"_id": 0}).to_list(20000)}
     products = {p["id"]: p for p in await db.products.find({}, {"_id": 0}).to_list(5000)}
     party_map = {"manufacturer": manufacturers, "distributor": distributors, "retailer": retailers}
 
@@ -915,6 +919,18 @@ def _slug_sku(name: str) -> str:
     return "UL-" + "-".join(base[:3])[:18]
 
 
+def _safe_float(v) -> Optional[float]:
+    if v is None:
+        return None
+    s = str(v).strip()
+    if not s:
+        return None
+    try:
+        return float(s)
+    except (TypeError, ValueError):
+        return None
+
+
 async def _seed_from_csv():
     for c in ["manufacturers", "distributors", "retailers", "products", "inventory", "shipments", "requests", "notifications", "daily_sales"]:
         await db[c].delete_many({})
@@ -989,6 +1005,10 @@ async def _seed_from_csv():
             address=(r.get("Address") or "").strip(),
             contact_email="",
             distributor_id=d.id,
+            store_code=(r.get("Store Code") or "").strip(),
+            phone=(r.get("Phone") or "").strip(),
+            latitude=_safe_float(r.get("Latitude")),
+            longitude=_safe_float(r.get("Longitude")),
         )
         retailer_docs.append(ret)
         retailer_rows_by_id[ret.id] = r
