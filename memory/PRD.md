@@ -49,6 +49,32 @@ Manufacturer can see all 91 distributors; Distributor sees all its retailers.
 - Pytest suite at /app/backend/tests/test_supply_chain.py (24/24 green)
 - Frontend e2e flows verified by testing agent
 
+## Updates (2026-05-17)
+### Retailer dataset expansion
+- Replaced `/app/backend/data/distributors.csv` with `generated_retailers.csv` (3,100 rows)
+- DB now seeds **3,080 retailers** (up from 99) across the same 91 distributors
+- `Retailer` model now has optional `store_code`, `phone`, `latitude`, `longitude`
+- Inventory rows: 47,580 (manufacturer 15 + distributor 1365 + retailer 46,200)
+- `to_list` limits bumped to 20000 on retailer queries
+
+### Context Intelligence Modes (Manufacturer Network View)
+- Added segmented context switcher with 5 modes:
+  - **Health** — green/amber/red status + pulse on critical
+  - **Retailer Density** — indigo intensity + size boost + count pill badge
+  - **Fulfillment Risk** — red intensity proportional to low_stock_retailers ratio + pulse on high risk
+  - **Shipment Activity** — cyan intensity + animated dashed route trails
+  - **Sales Velocity** — yellow→red demand heat
+- Modes update node fill/halo/radius/badge without recomputing layout
+- Sliding-indicator animated tab with per-mode accent color
+- Mode-aware legend & per-mode contextual metric inside tooltip
+- Pulse animation for at-risk nodes; lineDashOffset animation for shipment edges
+
+### Overlap fix (RadialHierarchyCanvas)
+- Children orbital radius now hard-capped at `min_sibling_distance / 2 - childR - 8`
+  so a parent's micro-network never bleeds into an adjacent sibling's territory
+- Child fan width clamped to parent's angular slot (`a1 - a0 * 0.92`)
+  with orbit auto-expanded to preserve tangential spacing
+
 ## Prioritized backlog
 - P1 — Multi-manufacturer scoping: `retailers_count` in /api/analytics for manufacturer
   currently counts all retailers; should be scoped to that manufacturer's distributors

@@ -1,9 +1,10 @@
 // ManufacturerNetworkView.tsx
 // Premium light-mode enterprise hierarchy view (Linear/Stripe/Palantir feel).
-import React, { useState } from "react";
+import React, { useLayoutEffect, useRef, useState } from "react";
 import { useSession } from "@/context/SessionContext";
 import RadialHierarchyCanvas, {
   CanvasNode,
+  NetworkMode,
 } from "@/components/RadialHierarchyCanvas";
 import {
   Factory,
@@ -15,6 +16,10 @@ import {
   TrendingUp,
   Boxes,
   ChevronRight,
+  HeartPulse,
+  Layers,
+  Truck,
+  Zap,
 } from "lucide-react";
 
 type HoverInfo = { node: CanvasNode; clientX: number; clientY: number };
@@ -41,10 +46,28 @@ const STATUS_TONE: Record<string, { fg: string; bg: string; dot: string }> = {
   critical: { fg: "#b91c1c", bg: "rgba(239, 68, 68, 0.10)",  dot: "#ef4444" },
 };
 
+type ModeDef = {
+  id: NetworkMode;
+  label: string;
+  short: string;
+  icon: React.ComponentType<any>;
+  accent: string;       // hex accent color
+  description: string;
+};
+
+const MODES: ModeDef[] = [
+  { id: "health",      label: "Health",            short: "Health",     icon: HeartPulse,    accent: "#10b981", description: "Inventory health · low-stock risk · critical pulse" },
+  { id: "density",     label: "Retailer Density",  short: "Density",    icon: Layers,        accent: "#4338ca", description: "Retailer concentration heat — size & color scale with footprint" },
+  { id: "fulfillment", label: "Fulfillment Risk",  short: "Risk",       icon: AlertTriangle, accent: "#dc2626", description: "Unfulfilled stock requests · % of retailers low on stock" },
+  { id: "shipment",    label: "Shipment Activity", short: "Activity",   icon: Truck,         accent: "#06b6d4", description: "Active distribution traffic with animated route trails" },
+  { id: "velocity",    label: "Sales Velocity",    short: "Velocity",   icon: Zap,           accent: "#ea580c", description: "Demand hotspots · fast-moving regions" },
+];
+
 export default function ManufacturerNetworkView() {
   const { session } = useSession();
   const [hover, setHover] = useState<HoverInfo | null>(null);
   const [path, setPath] = useState<CanvasNode[]>([]);
+  const [mode, setMode] = useState<NetworkMode>("health");
 
   if (session.role !== "manufacturer") {
     return (
@@ -56,6 +79,8 @@ export default function ManufacturerNetworkView() {
     );
   }
 
+  const activeMode = MODES.find((m) => m.id === mode) || MODES[0];
+
   return (
     <div
       className="h-[calc(100vh-64px)] flex flex-col relative"
@@ -66,35 +91,125 @@ export default function ManufacturerNetworkView() {
       data-testid="manufacturer-network-view"
     >
       {/* Header — floating glass panel */}
-      <div className="px-6 pt-5 pb-3 flex items-center justify-between gap-6 z-20">
-        <div className="flex items-center gap-3">
+      <div className="px-6 pt-5 pb-2 flex items-center justify-between gap-6 z-20">
+        <div className="flex items-center gap-3 min-w-0">
           <div className="h-9 w-9 rounded-xl bg-white/70 backdrop-blur-md border border-slate-200/80 shadow-sm flex items-center justify-center">
             <Factory className="h-4 w-4 text-slate-700" />
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500 font-medium">
               Network Intelligence
             </div>
-            <div className="text-[15px] font-semibold tracking-tight text-slate-900">
+            <div className="text-[15px] font-semibold tracking-tight text-slate-900 truncate">
               {session.entity.name} · Radial Hierarchy
             </div>
           </div>
         </div>
 
         <Breadcrumb path={path} />
-        <Legend />
+        <Legend mode={mode} />
+      </div>
+
+      {/* Context Intelligence — segmented switcher */}
+      <div className="px-6 pb-3 z-20 flex items-center justify-between gap-4">
+        <ContextSwitcher mode={mode} onChange={setMode} />
+        <div className="hidden md:flex items-center gap-2 text-[11px] text-slate-500 max-w-[40%] truncate">
+          <activeMode.icon className="h-3.5 w-3.5" style={{ color: activeMode.accent }} />
+          <span className="truncate">{activeMode.description}</span>
+        </div>
       </div>
 
       {/* Canvas surface */}
       <div className="relative flex-1 min-h-0">
         <RadialHierarchyCanvas
           manufacturerId={session.entity.id}
+          mode={mode}
           onHover={setHover}
           onFocusPathChange={setPath}
         />
-        {hover && <NodeTooltip info={hover} />}
+        {hover && <NodeTooltip info={hover} mode={mode} />}
         <HintFooter />
       </div>
+    </div>
+  );
+}
+
+// -------------- Segmented Context Switcher --------------
+function ContextSwitcher({
+  mode,
+  onChange,
+}: {
+  mode: NetworkMode;
+  onChange: (m: NetworkMode) => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const btnRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const [indicator, setIndicator] = useState<{ left: number; width: number; accent: string }>({
+    left: 0,
+    width: 0,
+    accent: MODES[0].accent,
+  });
+
+  useLayoutEffect(() => {
+    const btn = btnRefs.current[mode];
+    const parent = containerRef.current;
+    if (!btn || !parent) return;
+    const pRect = parent.getBoundingClientRect();
+    const bRect = btn.getBoundingClientRect();
+    const def = MODES.find((m) => m.id === mode);
+    setIndicator({
+      left: bRect.left - pRect.left,
+      width: bRect.width,
+      accent: def?.accent || "#0f172a",
+    });
+  }, [mode]);
+
+  return (
+    <div
+      ref={containerRef}
+      role="tablist"
+      aria-label="Network visualization context"
+      className="relative inline-flex items-center gap-0.5 rounded-2xl bg-white/70 backdrop-blur-md border border-slate-200/80 shadow-sm p-1"
+      data-testid="network-mode-switcher"
+    >
+      {/* Animated sliding indicator */}
+      <span
+        className="absolute top-1 bottom-1 rounded-xl pointer-events-none transition-all duration-[420ms]"
+        style={{
+          left: indicator.left,
+          width: indicator.width,
+          transitionTimingFunction: "cubic-bezier(0.22, 1, 0.36, 1)",
+          background:
+            `linear-gradient(180deg, ${indicator.accent}1c, ${indicator.accent}0a)`,
+          boxShadow: `inset 0 0 0 1px ${indicator.accent}44, 0 2px 8px -2px ${indicator.accent}33`,
+        }}
+        aria-hidden
+      />
+      {MODES.map((m) => {
+        const Icon = m.icon;
+        const active = m.id === mode;
+        return (
+          <button
+            key={m.id}
+            ref={(el) => { btnRefs.current[m.id] = el; }}
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(m.id)}
+            data-testid={`network-mode-${m.id}`}
+            className={`relative z-10 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-medium tracking-tight transition-colors duration-200 ${
+              active ? "text-slate-900" : "text-slate-500 hover:text-slate-700"
+            }`}
+            style={active ? { color: m.accent } : undefined}
+          >
+            <Icon
+              className="h-3.5 w-3.5"
+              style={{ color: active ? m.accent : "currentColor" }}
+            />
+            <span className="hidden sm:inline">{m.label}</span>
+            <span className="sm:hidden">{m.short}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -127,17 +242,50 @@ function Breadcrumb({ path }: { path: CanvasNode[] }) {
   );
 }
 
-function Legend() {
+function Legend({ mode }: { mode: NetworkMode }) {
+  // Mode-specific legend entries
+  type LegEntry = { color: string; label: string };
+  const entries: LegEntry[] =
+    mode === "health"
+      ? [
+          { color: STATUS_TONE.healthy.dot, label: "Healthy" },
+          { color: STATUS_TONE.warning.dot, label: "Warning" },
+          { color: STATUS_TONE.critical.dot, label: "Critical" },
+        ]
+      : mode === "density"
+      ? [
+          { color: "#dbeafe", label: "Sparse" },
+          { color: "#818cf8", label: "Mid" },
+          { color: "#4338ca", label: "Dense" },
+        ]
+      : mode === "fulfillment"
+      ? [
+          { color: "#e2e8f0", label: "Stable" },
+          { color: "#f59e0b", label: "At risk" },
+          { color: "#dc2626", label: "Critical" },
+        ]
+      : mode === "shipment"
+      ? [
+          { color: "#cbd5e1", label: "Quiet" },
+          { color: "#06b6d4", label: "Active" },
+        ]
+      : [
+          { color: "#fde68a", label: "Slow" },
+          { color: "#f97316", label: "Hot" },
+          { color: "#dc2626", label: "Hotspot" },
+        ];
+
   return (
     <div
       className="hidden lg:flex items-center gap-4 text-[11px] text-slate-600 bg-white/65 backdrop-blur-md border border-slate-200/70 rounded-full px-3.5 py-1.5 shadow-sm"
       data-testid="hierarchy-legend"
     >
-      <LegendDot color={STATUS_TONE.healthy.dot} label="Healthy" />
-      <span className="h-3 w-px bg-slate-200" />
-      <LegendDot color={STATUS_TONE.warning.dot} label="Warning" />
-      <span className="h-3 w-px bg-slate-200" />
-      <LegendDot color={STATUS_TONE.critical.dot} label="Critical" />
+      {entries.map((e, i) => (
+        <React.Fragment key={e.label}>
+          {i > 0 && <span className="h-3 w-px bg-slate-200" />}
+          <LegendDot color={e.color} label={e.label} />
+        </React.Fragment>
+      ))}
     </div>
   );
 }
@@ -166,11 +314,30 @@ function HintFooter() {
   );
 }
 
-function NodeTooltip({ info }: { info: HoverInfo }) {
+function NodeTooltip({ info, mode }: { info: HoverInfo; mode: NetworkMode }) {
   const { node, clientX, clientY } = info;
   const d = node.data;
   const Icon = TYPE_ICON[d.type] || Globe2;
   const tone = STATUS_TONE[d.status] || STATUS_TONE.healthy;
+  const modeDef = MODES.find((m) => m.id === mode) || MODES[0];
+
+  // Mode-specific contextual metric
+  const s: any = d.summary || {};
+  const totalRet = Number(s.total_retailers ?? s.retailers ?? 0);
+  const lowRet = Number(s.low_stock_retailers ?? 0);
+  const ship = Number(s.shipment_activity ?? 0);
+  const contextValue =
+    mode === "density"
+      ? `${totalRet} retailers`
+      : mode === "fulfillment"
+      ? totalRet > 0
+        ? `${lowRet} / ${totalRet} at risk`
+        : `${d.alerts} alerts`
+      : mode === "shipment"
+      ? `${ship} active shipments`
+      : mode === "velocity"
+      ? `Demand index · ${Math.round(totalRet * (1 - (totalRet > 0 ? lowRet / totalRet : 0)))}`
+      : null;
 
   // Smart placement: flip side if near right edge
   const flipRight = clientX > window.innerWidth - 320;
@@ -213,6 +380,22 @@ function NodeTooltip({ info }: { info: HoverInfo }) {
           {d.status}
         </span>
       </div>
+
+      {/* Mode context strip */}
+      {contextValue && (
+        <div
+          className="mb-3 flex items-center gap-1.5 text-[11px] font-medium px-2.5 py-1.5 rounded-lg"
+          style={{
+            background: `linear-gradient(180deg, ${modeDef.accent}12, ${modeDef.accent}04)`,
+            color: modeDef.accent,
+            boxShadow: `inset 0 0 0 1px ${modeDef.accent}26`,
+          }}
+        >
+          <modeDef.icon className="h-3 w-3" />
+          <span className="uppercase tracking-wider text-[10px] opacity-70">{modeDef.short}</span>
+          <span className="ml-auto text-slate-900 font-semibold">{contextValue}</span>
+        </div>
+      )}
 
       {/* Body */}
       {d.type === "distributor" ? (
