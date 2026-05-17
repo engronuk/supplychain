@@ -91,45 +91,46 @@ export default function ManufacturerNetworkView() {
       className="h-[calc(100vh-64px)] flex flex-col relative"
       style={{
         background:
-          "radial-gradient(120% 80% at 50% 0%, #ffffff 0%, #f8fafc 45%, #eef2f7 100%)",
+          viewMode === "map"
+            ? "#f8fafc"
+            : "radial-gradient(120% 80% at 50% 0%, #ffffff 0%, #f8fafc 45%, #eef2f7 100%)",
       }}
       data-testid="manufacturer-network-view"
     >
-      {/* Header — floating glass panel */}
-      <div className="px-6 pt-5 pb-2 flex items-center justify-between gap-6 z-20">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="h-9 w-9 rounded-xl bg-white/70 backdrop-blur-md border border-slate-200/80 shadow-sm flex items-center justify-center">
-            <Factory className="h-4 w-4 text-slate-700" />
-          </div>
-          <div className="min-w-0">
-            <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500 font-medium">
-              Network Intelligence
+      {viewMode === "radial" && (
+        <>
+          {/* Header — floating glass panel */}
+          <div className="px-6 pt-5 pb-2 flex items-center justify-between gap-6 z-20">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="h-9 w-9 rounded-xl bg-white/70 backdrop-blur-md border border-slate-200/80 shadow-sm flex items-center justify-center">
+                <Factory className="h-4 w-4 text-slate-700" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500 font-medium">
+                  Network Intelligence
+                </div>
+                <div className="text-[15px] font-semibold tracking-tight text-slate-900 truncate">
+                  {session.entity.name} · Radial Hierarchy
+                </div>
+              </div>
             </div>
-            <div className="text-[15px] font-semibold tracking-tight text-slate-900 truncate">
-              {session.entity.name} · {viewMode === "radial" ? "Radial Hierarchy" : "Nigeria Map"}
+            <Breadcrumb path={path} />
+            <Legend mode={mode} />
+          </div>
+
+          {/* View Mode Toggle + Context Modes */}
+          <div className="px-6 pb-3 z-20 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <ViewModeSwitcher value={viewMode} onChange={setViewMode} />
+              <ContextSwitcher mode={mode} onChange={setMode} />
+            </div>
+            <div className="hidden md:flex items-center gap-2 text-[11px] text-slate-500 max-w-[40%] truncate">
+              <activeMode.icon className="h-3.5 w-3.5" style={{ color: activeMode.accent }} />
+              <span className="truncate">{activeMode.description}</span>
             </div>
           </div>
-        </div>
-
-        {viewMode === "radial" && <Breadcrumb path={path} />}
-        {viewMode === "radial" && <Legend mode={mode} />}
-      </div>
-
-      {/* View Mode Toggle + (radial only) Context Modes */}
-      <div className="px-6 pb-3 z-20 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <ViewModeSwitcher value={viewMode} onChange={setViewMode} />
-          {viewMode === "radial" && (
-            <ContextSwitcher mode={mode} onChange={setMode} />
-          )}
-        </div>
-        {viewMode === "radial" && (
-          <div className="hidden md:flex items-center gap-2 text-[11px] text-slate-500 max-w-[40%] truncate">
-            <activeMode.icon className="h-3.5 w-3.5" style={{ color: activeMode.accent }} />
-            <span className="truncate">{activeMode.description}</span>
-          </div>
-        )}
-      </div>
+        </>
+      )}
 
       {/* Visualization surface */}
       <div className="relative flex-1 min-h-0">
@@ -145,7 +146,10 @@ export default function ManufacturerNetworkView() {
             <HintFooter />
           </>
         ) : (
-          <NigeriaMapView manufacturerId={session.entity.id} />
+          <NigeriaMapView
+            manufacturerId={session.entity.id}
+            onSwitchToRadial={() => setViewMode("radial")}
+          />
         )}
       </div>
     </div>

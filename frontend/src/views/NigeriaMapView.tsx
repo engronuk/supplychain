@@ -1,6 +1,10 @@
 // NigeriaMapView.tsx
-// Leaflet-based geographic visualization of the supply chain network.
-// Manufacturer → Region clusters → Distributors → Retailers (clustered).
+// Enterprise Nigeria supply-chain command center: Leaflet-based geographic
+// visualization with an inner filter rail, top toolbar with view toggle &
+// context controls, color-coded hierarchy (Manufacturer→Region→Distributor
+// →Retailer), thin dashed relationship lines, and a floating retailer
+// detail card with tabs.
+
 import React, {
   useCallback,
   useEffect,
@@ -28,13 +32,20 @@ import {
   Maximize2,
   Minimize2,
   X,
-  Factory,
-  ChevronRight,
+  ChevronDown,
+  Activity,
+  Home,
+  Crosshair,
   TrendingUp,
   TrendingDown,
   Sparkles,
   Truck,
   FileText,
+  Network as NetworkIcon,
+  Map as MapIcon,
+  Package,
+  BarChart3,
+  Send,
 } from "lucide-react";
 import {
   GeoDistributor,
@@ -46,7 +57,31 @@ import {
   geoService,
 } from "@/services/geoService";
 
-// ---------------- Marker factories ----------------
+// ============================================================================
+// Constants
+// ============================================================================
+const COLOR = {
+  manufacturer: "#6366f1", // indigo / purple
+  region:       "#2563eb", // blue
+  distributor:  "#f97316", // orange
+  healthy:      "#10b981",
+  warning:      "#f59e0b",
+  critical:     "#ef4444",
+  edgeRegion:   "#2563eb", // region→distributor connection
+  edgeDistRet:  "#10b981", // distributor→retailer connection
+} as const;
+
+const NIGERIA_BOUNDS: [[number, number], [number, number]] = [
+  [3.8, 2.6],   // SW
+  [14.0, 14.7], // NE
+];
+const NIGERIA_CENTER: [number, number] = [9.082, 8.6753];
+
+type ContextLayer = "health" | "density" | "fulfillment" | "shipment" | "velocity";
+
+// ============================================================================
+// Marker factories
+// ============================================================================
 function divIcon(html: string, size: number, anchor?: [number, number]): L.DivIcon {
   return L.divIcon({
     html,
@@ -56,42 +91,32 @@ function divIcon(html: string, size: number, anchor?: [number, number]): L.DivIc
   });
 }
 
-// Clean enterprise color palette
-const COLOR = {
-  manufacturer: "#2563eb", // blue
-  region: "#4f46e5",       // indigo
-  distributor: "#0d9488",  // teal
-  healthy: "#10b981",
-  warning: "#f59e0b",
-  critical: "#ef4444",
-} as const;
-
 function manufacturerIcon(): L.DivIcon {
   return divIcon(
-    `<div style="display:flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:14px;background:${COLOR.manufacturer};color:#fff;box-shadow:0 4px 14px -4px rgba(37,99,235,0.45),0 0 0 4px rgba(255,255,255,0.92);">
-       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8l-7 5V8l-7 5V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/></svg>
+    `<div style="display:flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:16px;background:${COLOR.manufacturer};color:#fff;box-shadow:0 4px 16px -4px rgba(99,102,241,0.55),0 0 0 4px rgba(255,255,255,0.92);">
+       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8l-7 5V8l-7 5V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/></svg>
      </div>`,
-    48
+    52
   );
 }
 
 function regionIcon(count: number): L.DivIcon {
+  // Blue circle with retailer/distributor count inside
   return divIcon(
-    `<div style="display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;background:${COLOR.region};color:#fff;font-weight:700;font-size:14px;font-family:ui-sans-serif,system-ui;box-shadow:0 3px 10px -3px rgba(79,70,229,0.45),0 0 0 4px rgba(255,255,255,0.95);">
+    `<div style="display:flex;align-items:center;justify-content:center;width:46px;height:46px;border-radius:50%;background:${COLOR.region};color:#fff;font-weight:700;font-size:16px;font-family:ui-sans-serif,system-ui;box-shadow:0 3px 12px -3px rgba(37,99,235,0.5),0 0 0 4px rgba(255,255,255,0.95);">
        ${count}
      </div>`,
-    40
+    46
   );
 }
 
 function distributorIcon(status: GeoStatus, selected: boolean): L.DivIcon {
-  // Outer ring = teal (entity type), inner = health status, slight emphasis when selected
-  const inner = geoService.statusColor(status);
+  const inner = status === "healthy" ? COLOR.healthy : status === "warning" ? COLOR.warning : COLOR.critical;
   const size = selected ? 22 : 18;
   return divIcon(
     `<div style="position:relative;width:${size}px;height:${size}px;">
        <div style="position:absolute;inset:0;border-radius:50%;background:#ffffff;box-shadow:0 2px 6px -2px rgba(15,23,42,0.25);"></div>
-       <div style="position:absolute;inset:3px;border-radius:50%;background:${COLOR.distributor};"></div>
+       <div style="position:absolute;inset:2px;border-radius:50%;background:${COLOR.distributor};"></div>
        <div style="position:absolute;inset:6px;border-radius:50%;background:${inner};"></div>
      </div>`,
     size
@@ -99,74 +124,73 @@ function distributorIcon(status: GeoStatus, selected: boolean): L.DivIcon {
 }
 
 function retailerIcon(status: GeoStatus, selected: boolean): L.DivIcon {
-  const color = geoService.statusColor(status);
-  const size = selected ? 14 : 9;
-  const ring = selected ? "box-shadow:0 0 0 4px rgba(79,70,229,0.25),0 2px 6px -2px rgba(15,23,42,0.25);" : "box-shadow:0 1px 3px -1px rgba(15,23,42,0.2);";
+  const color = status === "healthy" ? COLOR.healthy : status === "warning" ? COLOR.warning : COLOR.critical;
+  const size = selected ? 14 : 10;
+  const ring = selected ? "box-shadow:0 0 0 4px rgba(99,102,241,0.25),0 2px 6px -2px rgba(15,23,42,0.25);" : "box-shadow:0 1px 3px -1px rgba(15,23,42,0.2);";
   return divIcon(
-    `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:1.5px solid #ffffff;${ring}"></div>`,
+    `<div style="width:${size}px;height:${size}px;border-radius:50%;background:#ffffff;border:2.5px solid ${color};${ring}"></div>`,
     size
   );
 }
 
-// Nigeria-only viewport. These bounds clamp panning to mainland Nigeria.
-const NIGERIA_BOUNDS: [[number, number], [number, number]] = [
-  [3.8, 2.6],   // SW
-  [14.0, 14.7], // NE
-];
-const NIGERIA_CENTER: [number, number] = [9.082, 8.6753];
-
-// ---------------- Fly helpers ----------------
-function FlyTo({ to, zoom = 9 }: { to: [number, number] | null; zoom?: number }) {
+// ============================================================================
+// Map helpers
+// ============================================================================
+function FlyTo({ to, zoom = 8 }: { to: [number, number] | null; zoom?: number }) {
   const map = useMap();
   useEffect(() => {
-    if (to) map.flyTo(to, zoom, { duration: 0.9 });
+    if (to) map.flyTo(to, zoom, { duration: 0.85 });
   }, [to, zoom, map]);
   return null;
 }
 
-// Tracks map zoom changes for zoom-aware layer visibility.
 function ZoomTracker({ onZoom }: { onZoom: (z: number) => void }) {
   const map = useMap();
   useEffect(() => {
     const update = () => onZoom(map.getZoom());
     update();
     map.on("zoomend", update);
-    return () => {
-      map.off("zoomend", update);
-    };
+    return () => { map.off("zoomend", update); };
   }, [map, onZoom]);
   return null;
 }
 
-// On mount: snap the map to fit Nigeria bounds exactly.
-function FitNigeriaOnMount() {
+function FitNigeria({ trigger }: { trigger: number }) {
   const map = useMap();
   useEffect(() => {
     map.fitBounds(NIGERIA_BOUNDS, { padding: [20, 20] });
-  }, [map]);
+  }, [trigger, map]);
   return null;
 }
 
-// ---------------- Layer toggle types ----------------
-type Layers = {
-  regions: boolean;
-  distributors: boolean;
-  retailers: boolean;
-  routes: boolean;
-};
+function MapRefBinder({ onReady }: { onReady: (m: L.Map) => void }) {
+  const map = useMap();
+  useEffect(() => { onReady(map); }, [map, onReady]);
+  return null;
+}
 
-// ---------------- Main component ----------------
-export default function NigeriaMapView({ manufacturerId }: { manufacturerId: string }) {
+// ============================================================================
+// Main view
+// ============================================================================
+export default function NigeriaMapView({
+  manufacturerId,
+  onSwitchToRadial,
+}: {
+  manufacturerId: string;
+  onSwitchToRadial?: () => void;
+}) {
   const [data, setData] = useState<GeoNetwork | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [selectedRegion, setSelectedRegion] = useState<string | "all">("all");
-  const [selectedStatus, setSelectedStatus] = useState<"all" | GeoStatus>("all");
+  const [selectedState, setSelectedState] = useState<string | "all">("all");
   const [selectedDist, setSelectedDist] = useState<string | "all">("all");
-
+  const [selectedStatus, setSelectedStatus] = useState<"all" | GeoStatus>("all");
+  const [context, setContext] = useState<ContextLayer>("health");
   const [search, setSearch] = useState("");
-  const [layers, setLayers] = useState<Layers>({
+
+  const [layers, setLayers] = useState({
     regions: true,
     distributors: true,
     retailers: true,
@@ -178,11 +202,14 @@ export default function NigeriaMapView({ manufacturerId }: { manufacturerId: str
   const [detailLoading, setDetailLoading] = useState(false);
 
   const [flyTo, setFlyTo] = useState<{ pos: [number, number]; zoom: number } | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [fullscreen, setFullscreen] = useState(false);
-  const [openPanel, setOpenPanel] = useState<"none" | "layers">("none");
   const [zoom, setZoom] = useState(6);
+  const [fitTrigger, setFitTrigger] = useState(0);
+  const [openPanel, setOpenPanel] = useState<"none" | "layers" | "context">("none");
+  const [fullscreen, setFullscreen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<L.Map | null>(null);
 
+  // Load network
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -196,43 +223,56 @@ export default function NigeriaMapView({ manufacturerId }: { manufacturerId: str
         if (!cancelled) setLoading(false);
       }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [manufacturerId]);
 
-  // Fetch retailer detail on selection
+  // Retailer detail
   useEffect(() => {
-    if (!activeRetailer) {
-      setDetail(null);
-      return;
-    }
+    if (!activeRetailer) { setDetail(null); return; }
     let cancelled = false;
     setDetailLoading(true);
-    geoService
-      .getRetailer(activeRetailer.id)
-      .then((d) => {
-        if (!cancelled) setDetail(d);
-      })
-      .finally(() => !cancelled && setDetailLoading(false));
-    return () => {
-      cancelled = true;
-    };
+    geoService.getRetailer(activeRetailer.id)
+      .then((d) => { if (!cancelled) setDetail(d); })
+      .finally(() => { if (!cancelled) setDetailLoading(false); });
+    return () => { cancelled = true; };
   }, [activeRetailer]);
 
-  // Filter logic
+  // Auto-fly when filters change
+  useEffect(() => {
+    if (!data || selectedRegion === "all") return;
+    const r = data.regions.find((x) => x.name === selectedRegion);
+    if (r) setFlyTo({ pos: [r.lat, r.lon], zoom: 8 });
+  }, [selectedRegion, data]);
+  useEffect(() => {
+    if (!data || selectedDist === "all") return;
+    const d = data.distributors.find((x) => x.id === selectedDist);
+    if (d) setFlyTo({ pos: [d.lat, d.lon], zoom: 11 });
+  }, [selectedDist, data]);
+
+  // Derived: unique states (cities) from distributors
+  const stateOptions = useMemo(() => {
+    if (!data) return [];
+    const set = new Set<string>();
+    data.distributors.forEach((d) => {
+      if (selectedRegion === "all" || d.region === selectedRegion) {
+        if (d.city) set.add(d.city);
+      }
+    });
+    return Array.from(set).sort();
+  }, [data, selectedRegion]);
+
+  // Filtered lists
   const filteredDistributors = useMemo<GeoDistributor[]>(() => {
     if (!data) return [];
     return data.distributors.filter(
       (d) =>
         (selectedRegion === "all" || d.region === selectedRegion) &&
-        (selectedStatus === "all" || d.status === selectedStatus) &&
+        (selectedState === "all" || d.city === selectedState) &&
         (selectedDist === "all" || d.id === selectedDist) &&
-        (!search ||
-          d.name.toLowerCase().includes(search.toLowerCase()) ||
-          d.city.toLowerCase().includes(search.toLowerCase()))
+        (selectedStatus === "all" || d.status === selectedStatus) &&
+        (!search || d.name.toLowerCase().includes(search.toLowerCase()) || d.city.toLowerCase().includes(search.toLowerCase()))
     );
-  }, [data, selectedRegion, selectedStatus, selectedDist, search]);
+  }, [data, selectedRegion, selectedState, selectedDist, selectedStatus, search]);
 
   const filteredRetailers = useMemo<GeoRetailer[]>(() => {
     if (!data) return [];
@@ -248,37 +288,76 @@ export default function NigeriaMapView({ manufacturerId }: { manufacturerId: str
     );
   }, [data, filteredDistributors, selectedStatus, search]);
 
-  // KPIs for sidebar
-  const distributorList = useMemo(() => data?.distributors ?? [], [data]);
+  // Zoom-based layer visibility — match the reference image: regions always
+  // visible (as labels), distributors visible from regional zoom up, retailers
+  // visible everywhere but heavily clustered when zoomed out.
+  const showRegions = layers.regions;
+  const showDistributors = layers.distributors;
+  const showRetailers = layers.retailers;
 
-  // Region click → fly to centroid
+  // Connection lines — Region→Distributor (blue) always rendered as soft
+  // dashed background; Distributor→Retailer (green) appears at regional+
+  // zoom. Lines always thin & low-opacity.
+  const routeLines = useMemo(() => {
+    if (!data || !layers.routes) return [];
+    const lines: { a: [number, number]; b: [number, number]; color: string; weight: number; dash: string; opacity: number }[] = [];
+
+    // Region → Distributor (blue dashed) — always
+    filteredDistributors.forEach((d) => {
+      const region = data.regions.find((r) => r.name === d.region);
+      if (!region) return;
+      lines.push({
+        a: [region.lat, region.lon],
+        b: [d.lat, d.lon],
+        color: COLOR.edgeRegion,
+        opacity: 0.16,
+        weight: 1.0,
+        dash: "4 5",
+      });
+    });
+
+    // Distributor → Retailer (green dashed) — when zoomed in enough that
+    // retailers are likely de-clustered. Limit count to keep things light.
+    if (zoom >= 9 && filteredRetailers.length < 800) {
+      filteredRetailers.forEach((r) => {
+        const d = filteredDistributors.find((dd) => dd.id === r.distributor_id);
+        if (!d) return;
+        lines.push({
+          a: [d.lat, d.lon],
+          b: [r.lat, r.lon],
+          color: COLOR.edgeDistRet,
+          opacity: 0.18,
+          weight: 0.8,
+          dash: "2 4",
+        });
+      });
+    }
+
+    // Active retailer — highlight its distributor line
+    if (activeRetailer) {
+      const d = data.distributors.find((dd) => dd.id === activeRetailer.distributor_id);
+      if (d) {
+        lines.push({
+          a: [d.lat, d.lon],
+          b: [activeRetailer.lat, activeRetailer.lon],
+          color: COLOR.manufacturer,
+          opacity: 0.65,
+          weight: 1.6,
+          dash: "",
+        });
+      }
+    }
+    return lines;
+  }, [data, layers.routes, zoom, filteredDistributors, filteredRetailers, activeRetailer]);
+
   const onRegionClick = useCallback((r: GeoRegion) => {
     setSelectedRegion(r.name);
     setFlyTo({ pos: [r.lat, r.lon], zoom: 8 });
   }, []);
-
-  // Auto-fly when region filter changes via the dropdown
-  useEffect(() => {
-    if (!data) return;
-    if (selectedRegion === "all") return;
-    const r = data.regions.find((x) => x.name === selectedRegion);
-    if (r) setFlyTo({ pos: [r.lat, r.lon], zoom: 8 });
-  }, [selectedRegion, data]);
-
-  // Auto-fly when distributor filter changes
-  useEffect(() => {
-    if (!data) return;
-    if (selectedDist === "all") return;
-    const d = data.distributors.find((x) => x.id === selectedDist);
-    if (d) setFlyTo({ pos: [d.lat, d.lon], zoom: 11 });
-  }, [selectedDist, data]);
-
-  // Distributor click → reveal retailers + fly
   const onDistributorClick = useCallback((d: GeoDistributor) => {
     setSelectedDist(d.id);
     setFlyTo({ pos: [d.lat, d.lon], zoom: 11 });
   }, []);
-
   const onRetailerClick = useCallback((r: GeoRetailer) => {
     setActiveRetailer(r);
     setFlyTo({ pos: [r.lat, r.lon], zoom: 13 });
@@ -286,8 +365,9 @@ export default function NigeriaMapView({ manufacturerId }: { manufacturerId: str
 
   const clearFilters = () => {
     setSelectedRegion("all");
-    setSelectedStatus("all");
+    setSelectedState("all");
     setSelectedDist("all");
+    setSelectedStatus("all");
     setSearch("");
   };
 
@@ -295,19 +375,9 @@ export default function NigeriaMapView({ manufacturerId }: { manufacturerId: str
     const el = containerRef.current;
     if (!el) return;
     if (!document.fullscreenElement) {
-      try {
-        await el.requestFullscreen();
-        setFullscreen(true);
-      } catch {
-        /* noop */
-      }
+      try { await el.requestFullscreen(); setFullscreen(true); } catch {}
     } else {
-      try {
-        await document.exitFullscreen();
-        setFullscreen(false);
-      } catch {
-        /* noop */
-      }
+      try { await document.exitFullscreen(); setFullscreen(false); } catch {}
     }
   };
 
@@ -317,468 +387,391 @@ export default function NigeriaMapView({ manufacturerId }: { manufacturerId: str
     return () => document.removeEventListener("fullscreenchange", onFs);
   }, []);
 
-  // ---- Lines: only for the active drill-down path (selected region /
-  // distributor / retailer). Manufacturer always connects to drilled
-  // distributor; distributor always connects to the selected retailer.
-  const routeLines = useMemo(() => {
-    if (!data || !layers.routes) return [];
-    const lines: { a: [number, number]; b: [number, number]; color: string; opacity: number; weight: number; dash?: string }[] = [];
-    const mfg: [number, number] = [data.manufacturer.lat, data.manufacturer.lon];
-
-    // Active distributor (filter pick OR the retailer's distributor)
-    let activeDist: GeoDistributor | null = null;
-    if (selectedDist !== "all") {
-      activeDist = data.distributors.find((d) => d.id === selectedDist) || null;
-    } else if (activeRetailer) {
-      activeDist = data.distributors.find((d) => d.id === activeRetailer.distributor_id) || null;
-    }
-
-    if (activeDist) {
-      lines.push({
-        a: mfg,
-        b: [activeDist.lat, activeDist.lon],
-        color: COLOR.manufacturer,
-        opacity: 0.45,
-        weight: 1.6,
-        dash: "5 8",
-      });
-      // Distributor → its retailers (only when distributor is selected)
-      if (selectedDist !== "all") {
-        filteredRetailers
-          .filter((r) => r.distributor_id === activeDist!.id)
-          .forEach((r) => {
-            lines.push({
-              a: [activeDist!.lat, activeDist!.lon],
-              b: [r.lat, r.lon],
-              color: geoService.statusColor(r.status),
-              opacity: 0.35,
-              weight: 1.0,
-            });
-          });
-      }
-      // Distributor → selected retailer only
-      if (activeRetailer) {
-        lines.push({
-          a: [activeDist.lat, activeDist.lon],
-          b: [activeRetailer.lat, activeRetailer.lon],
-          color: COLOR.region,
-          opacity: 0.55,
-          weight: 1.6,
-        });
-      }
-    } else if (selectedRegion !== "all") {
-      // Region selected — light traces to its distributors
-      const region = data.regions.find((r) => r.name === selectedRegion);
-      if (region) {
-        filteredDistributors.forEach((d) => {
-          lines.push({
-            a: [region.lat, region.lon],
-            b: [d.lat, d.lon],
-            color: COLOR.region,
-            opacity: 0.18,
-            weight: 1.0,
-            dash: "3 6",
-          });
-        });
-      }
-    }
-    return lines;
-  }, [data, layers.routes, selectedDist, selectedRegion, activeRetailer, filteredRetailers, filteredDistributors]);
-
-  // ---- Zoom-aware layer visibility ----
-  // - Country zoom (≤7): regions only
-  // - Regional zoom (8-10): distributors (+ region label still visible at 8)
-  // - City zoom (≥11): retailers
-  const showRegions = layers.regions && zoom <= 8;
-  const showDistributors = layers.distributors && zoom >= 7 && zoom <= 12;
-  const showRetailers = layers.retailers && zoom >= 9;
-
   if (loading) {
-    return (
-      <div className="h-full w-full flex items-center justify-center bg-slate-50">
-        <div className="text-slate-500 text-sm">Loading Nigeria network map…</div>
-      </div>
-    );
+    return <div className="h-full w-full flex items-center justify-center bg-slate-50 text-sm text-slate-500">Loading Nigeria network map…</div>;
   }
   if (error || !data) {
-    return (
-      <div className="h-full w-full flex items-center justify-center bg-slate-50">
-        <div className="text-rose-600 text-sm">{error || "No data."}</div>
-      </div>
-    );
+    return <div className="h-full w-full flex items-center justify-center bg-slate-50 text-sm text-rose-600">{error || "No data."}</div>;
   }
 
   return (
     <div
       ref={containerRef}
-      className="relative h-full w-full bg-white overflow-hidden"
+      className="relative h-full w-full bg-white flex overflow-hidden"
       data-testid="nigeria-map-view"
     >
-      {/* Inline CSS — mute the tile layer to enterprise-grayscale and trim
-          marker default styles. Scoped via the parent test-id container. */}
+      {/* Scoped CSS — soft basemap (green-tinted), clean marker clusters, controls */}
       <style>{`
         [data-testid="nigeria-map-view"] .leaflet-tile-pane {
-          filter: saturate(0.55) brightness(1.04) contrast(0.92);
+          filter: saturate(0.65) brightness(1.05) contrast(0.93);
         }
-        [data-testid="nigeria-map-view"] .leaflet-container { background: #f1f5f9; }
+        [data-testid="nigeria-map-view"] .leaflet-container { background: #ffffff; }
         [data-testid="nigeria-map-view"] .tk-marker { background: transparent !important; border: 0 !important; }
         [data-testid="nigeria-map-view"] .marker-cluster {
-          background: rgba(79,70,229,0.18) !important;
+          background: rgba(37,99,235,0.18) !important;
         }
         [data-testid="nigeria-map-view"] .marker-cluster div {
-          background: rgba(255,255,255,0.95) !important;
+          background: rgba(255,255,255,0.96) !important;
           color: #1e293b !important;
-          font: 600 12px/1 ui-sans-serif, system-ui !important;
-          border: 1px solid rgba(79,70,229,0.35) !important;
+          font: 700 12px/1 ui-sans-serif, system-ui !important;
+          border: 1px solid rgba(37,99,235,0.35) !important;
           box-shadow: 0 4px 12px -4px rgba(15,23,42,0.18);
         }
-        [data-testid="nigeria-map-view"] .leaflet-control-zoom a {
-          background: rgba(255,255,255,0.95) !important;
-          color: #334155 !important;
-          border: 1px solid rgba(226,232,240,0.9) !important;
-          backdrop-filter: blur(8px);
-        }
         [data-testid="nigeria-map-view"] .leaflet-control-attribution {
-          font-size: 9.5px !important;
-          background: rgba(255,255,255,0.65) !important;
+          font-size: 9.5px !important; background: rgba(255,255,255,0.65) !important;
         }
       `}</style>
-      {/* Left filter rail */}
+
+      {/* ====================== LEFT FILTER RAIL ====================== */}
       <aside
-        className="absolute top-3 left-3 z-[500] w-[260px] bg-white/95 backdrop-blur-md border border-slate-200/80 rounded-2xl shadow-lg p-3 max-h-[calc(100%-1.5rem)] overflow-y-auto"
-        data-testid="map-filter-rail"
+        className="relative z-10 w-[260px] flex-shrink-0 bg-white border-r border-slate-200/80 flex flex-col"
+        data-testid="map-side-rail"
       >
-        <div className="flex items-center gap-2 mb-3">
-          <Search className="h-3.5 w-3.5 text-slate-400" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search store, city, code…"
-            className="flex-1 bg-transparent outline-none text-[13px] text-slate-700 placeholder:text-slate-400"
-            data-testid="map-search-input"
-          />
-          {search && (
+        <div className="px-5 py-4 border-b border-slate-200/70">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] uppercase tracking-[0.16em] text-slate-500 font-semibold">Filters</span>
             <button
-              onClick={() => setSearch("")}
-              className="text-slate-400 hover:text-slate-600"
-              aria-label="Clear search"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          )}
+              onClick={clearFilters}
+              className="text-[11.5px] text-indigo-600 hover:text-indigo-700 font-medium"
+              data-testid="map-clear-filters"
+            >Clear All</button>
+          </div>
         </div>
-        <div className="h-px bg-slate-200/70 mb-3" />
-        <SectionTitle title="Filters" right={
-          <button
-            onClick={clearFilters}
-            className="text-[11px] text-indigo-600 hover:text-indigo-700 font-medium"
-            data-testid="map-clear-filters"
-          >
-            Clear all
-          </button>
-        } />
-        <FilterSelect
-          label="Region"
-          value={selectedRegion}
-          onChange={setSelectedRegion}
-          options={[
-            { value: "all", label: "All Regions" },
-            ...data.regions.map((r) => ({ value: r.name, label: `${r.name} (${r.retailers})` })),
-          ]}
-          testId="map-filter-region"
-        />
-        <FilterSelect
-          label="Distributor"
-          value={selectedDist}
-          onChange={setSelectedDist}
-          options={[
-            { value: "all", label: "All Distributors" },
-            ...distributorList
-              .filter((d) => selectedRegion === "all" || d.region === selectedRegion)
-              .map((d) => ({ value: d.id, label: d.name })),
-          ]}
-          testId="map-filter-distributor"
-        />
-        <FilterSelect
-          label="Retailer Status"
-          value={selectedStatus}
-          onChange={(v) => setSelectedStatus(v as any)}
-          options={[
-            { value: "all", label: "All Statuses" },
-            { value: "healthy", label: "Healthy" },
-            { value: "warning", label: "Warning" },
-            { value: "critical", label: "Critical" },
-          ]}
-          testId="map-filter-status"
-        />
-        <div className="h-px bg-slate-200/70 my-3" />
-        <SectionTitle title="Legend" />
-        <Legend />
+
+        <div className="flex-1 overflow-y-auto px-5 py-3 space-y-3">
+          <SearchBox value={search} onChange={setSearch} />
+          <FilterSelect
+            label="Region"
+            value={selectedRegion}
+            onChange={setSelectedRegion}
+            options={[
+              { value: "all", label: "All Regions" },
+              ...data.regions.map((r) => ({ value: r.name, label: r.name })),
+            ]}
+            testId="map-filter-region"
+          />
+          <FilterSelect
+            label="State / City"
+            value={selectedState}
+            onChange={setSelectedState}
+            options={[
+              { value: "all", label: "All States" },
+              ...stateOptions.map((s) => ({ value: s, label: s })),
+            ]}
+            testId="map-filter-state"
+          />
+          <FilterSelect
+            label="Distributor"
+            value={selectedDist}
+            onChange={setSelectedDist}
+            options={[
+              { value: "all", label: "All Distributors" },
+              ...data.distributors
+                .filter((d) => selectedRegion === "all" || d.region === selectedRegion)
+                .map((d) => ({ value: d.id, label: d.name })),
+            ]}
+            testId="map-filter-distributor"
+          />
+          <FilterSelect
+            label="Retailer Status"
+            value={selectedStatus}
+            onChange={(v) => setSelectedStatus(v as any)}
+            options={[
+              { value: "all", label: "All Statuses" },
+              { value: "healthy", label: "Healthy" },
+              { value: "warning", label: "Warning" },
+              { value: "critical", label: "Critical" },
+            ]}
+            testId="map-filter-status"
+          />
+          <ContextLayerSelect value={context} onChange={setContext} />
+
+          <div className="pt-4 mt-2 border-t border-slate-200/70">
+            <div className="text-[11px] uppercase tracking-[0.16em] text-slate-500 font-semibold mb-2">Legend</div>
+            <Legend />
+          </div>
+        </div>
       </aside>
 
-      {/* Top-right controls */}
-      <div className="absolute top-3 right-3 z-[500] flex items-center gap-2">
-        <button
-          onClick={() => setOpenPanel(openPanel === "layers" ? "none" : "layers")}
-          className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl bg-white/95 backdrop-blur-md border border-slate-200/80 shadow-sm text-[12px] font-medium text-slate-700 hover:text-slate-900 hover:shadow-md transition-shadow"
-          data-testid="map-layers-toggle"
-        >
-          <Layers className="h-3.5 w-3.5" />
-          Layers
-        </button>
-        <button
-          onClick={toggleFullscreen}
-          className="inline-flex items-center justify-center h-9 w-9 rounded-xl bg-white/95 backdrop-blur-md border border-slate-200/80 shadow-sm text-slate-700 hover:text-slate-900 hover:shadow-md transition-shadow"
-          aria-label="Toggle fullscreen"
-          data-testid="map-fullscreen-toggle"
-        >
-          {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
-        </button>
-      </div>
-
-      {openPanel === "layers" && (
-        <div
-          className="absolute top-14 right-3 z-[500] w-56 bg-white/95 backdrop-blur-md border border-slate-200/80 rounded-2xl shadow-lg p-3"
-          data-testid="map-layers-panel"
-        >
-          <div className="text-[10px] uppercase tracking-[0.18em] text-slate-400 mb-2 font-medium">
-            Map Layers
-          </div>
-          <LayerCheckbox
-            label="Regions"
-            checked={layers.regions}
-            onChange={(c) => setLayers({ ...layers, regions: c })}
-            testId="map-layer-regions"
-          />
-          <LayerCheckbox
-            label="Distributors"
-            checked={layers.distributors}
-            onChange={(c) => setLayers({ ...layers, distributors: c })}
-            testId="map-layer-distributors"
-          />
-          <LayerCheckbox
-            label="Retailers"
-            checked={layers.retailers}
-            onChange={(c) => setLayers({ ...layers, retailers: c })}
-            testId="map-layer-retailers"
-          />
-          <LayerCheckbox
-            label="Connection routes"
-            checked={layers.routes}
-            onChange={(c) => setLayers({ ...layers, routes: c })}
-            testId="map-layer-routes"
-          />
+      {/* ====================== CENTER MAP AREA ====================== */}
+      <div className="relative flex-1 min-w-0">
+        {/* Top floating chrome — view toggle (left) + Network Health + Layers (right) */}
+        <div className="absolute top-3 left-3 z-[600]">
+          <ViewToggle active="map" onSwitch={onSwitchToRadial} />
         </div>
-      )}
 
-      {/* The map itself */}
-      <MapContainer
-        center={NIGERIA_CENTER}
-        zoom={6}
-        minZoom={6}
-        maxZoom={16}
-        scrollWheelZoom
-        zoomControl={false}
-        maxBounds={NIGERIA_BOUNDS}
-        maxBoundsViscosity={1.0}
-        className="absolute inset-0 z-0 bg-slate-100"
-        worldCopyJump={false}
-      >
-        <TileLayer
-          attribution='&copy; OpenStreetMap'
-          url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-          bounds={NIGERIA_BOUNDS}
-          noWrap
-        />
-        <ZoomControl position="bottomright" />
-        <FitNigeriaOnMount />
-        <ZoomTracker onZoom={setZoom} />
-        <FlyTo to={flyTo?.pos || null} zoom={flyTo?.zoom || 8} />
-
-        {/* Mask for areas outside Nigeria — fades neighbors out */}
-        <Polygon
-          positions={[
-            // Outer ring (world)
-            [[-90, -360], [-90, 360], [90, 360], [90, -360]],
-            // Hole — Nigeria bounds
-            [
-              [NIGERIA_BOUNDS[0][0], NIGERIA_BOUNDS[0][1]],
-              [NIGERIA_BOUNDS[1][0], NIGERIA_BOUNDS[0][1]],
-              [NIGERIA_BOUNDS[1][0], NIGERIA_BOUNDS[1][1]],
-              [NIGERIA_BOUNDS[0][0], NIGERIA_BOUNDS[1][1]],
-            ],
-          ] as any}
-          pathOptions={{
-            fillColor: "#f8fafc",
-            fillOpacity: 0.78,
-            color: "#cbd5e1",
-            weight: 0.6,
-            interactive: false,
-          }}
-        />
-
-        {/* Connection routes — only active drill-down */}
-        {routeLines.map((l, i) => (
-          <Polyline
-            key={i}
-            positions={[l.a, l.b]}
-            pathOptions={{
-              color: l.color,
-              opacity: l.opacity,
-              weight: l.weight,
-              dashArray: l.dash,
-              lineCap: "round",
-              lineJoin: "round",
-            }}
+        <div className="absolute top-3 right-3 z-[600] flex items-center gap-2">
+          <ContextDropdown
+            value={context}
+            onChange={setContext}
+            open={openPanel === "context"}
+            onToggle={() => setOpenPanel(openPanel === "context" ? "none" : "context")}
           />
-        ))}
+          <button
+            onClick={() => setOpenPanel(openPanel === "layers" ? "none" : "layers")}
+            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-xl bg-white/95 backdrop-blur-md border border-slate-200/80 shadow-sm text-[12.5px] font-medium text-slate-700 hover:text-slate-900 hover:shadow-md transition-all"
+            data-testid="map-layers-toggle"
+          >
+            <Layers className="h-3.5 w-3.5" /> Layers
+          </button>
+          <button
+            onClick={toggleFullscreen}
+            className="inline-flex items-center justify-center h-9 w-9 rounded-xl bg-white/95 backdrop-blur-md border border-slate-200/80 shadow-sm text-slate-700 hover:text-slate-900 hover:shadow-md transition-all"
+            aria-label="Fullscreen"
+            data-testid="map-fullscreen-toggle"
+          >
+            {fullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+          </button>
+        </div>
 
-        {/* Manufacturer marker — always visible */}
-        <Marker
-          position={[data.manufacturer.lat, data.manufacturer.lon]}
-          icon={manufacturerIcon()}
-          eventHandlers={{
-            click: () => setFlyTo({ pos: [data.manufacturer.lat, data.manufacturer.lon], zoom: 7 }),
-          }}
-        />
-
-        {/* Region cluster markers — visible at country zoom */}
-        {showRegions &&
-          data.regions
-            .filter((r) => selectedRegion === "all" || r.name === selectedRegion)
-            .map((r) => (
-              <Marker
-                key={r.name}
-                position={[r.lat, r.lon]}
-                icon={regionIcon(r.distributors)}
-                eventHandlers={{ click: () => onRegionClick(r) }}
-              />
+        {openPanel === "layers" && (
+          <div className="absolute top-14 right-3 z-[600] w-56 bg-white/95 backdrop-blur-md border border-slate-200/80 rounded-2xl shadow-lg p-3" data-testid="map-layers-panel">
+            <div className="text-[10px] uppercase tracking-[0.18em] text-slate-400 mb-2 font-medium">Map Layers</div>
+            {(["regions", "distributors", "retailers", "routes"] as const).map((k) => (
+              <LayerCheckbox key={k} label={k[0].toUpperCase() + k.slice(1)} checked={layers[k]} onChange={(c) => setLayers({ ...layers, [k]: c })} testId={`map-layer-${k}`} />
             ))}
+          </div>
+        )}
 
-        {/* Distributor markers — visible at regional zoom */}
-        {showDistributors &&
-          filteredDistributors.map((d) => (
-            <Marker
-              key={d.id}
-              position={[d.lat, d.lon]}
-              icon={distributorIcon(d.status, selectedDist === d.id)}
-              eventHandlers={{ click: () => onDistributorClick(d) }}
-            />
+        {/* Bottom-right floating zoom controls */}
+        <div className="absolute bottom-4 right-4 z-[600] flex flex-col items-center gap-2">
+          <FloatBtn onClick={() => { setFitTrigger((t) => t + 1); setSelectedRegion("all"); setSelectedDist("all"); }} aria-label="Reset to Nigeria"><Home className="h-3.5 w-3.5" /></FloatBtn>
+          <div className="flex flex-col rounded-xl bg-white/95 backdrop-blur-md border border-slate-200/80 shadow-sm overflow-hidden">
+            <button className="h-9 w-9 inline-flex items-center justify-center text-slate-700 hover:bg-slate-50 transition" onClick={() => mapRef.current?.zoomIn()} aria-label="Zoom in">+</button>
+            <div className="h-px bg-slate-200" />
+            <button className="h-9 w-9 inline-flex items-center justify-center text-slate-700 hover:bg-slate-50 transition" onClick={() => mapRef.current?.zoomOut()} aria-label="Zoom out">−</button>
+          </div>
+          <FloatBtn onClick={() => { setFlyTo({ pos: NIGERIA_CENTER, zoom: 6 }); }} aria-label="Locate Nigeria"><Crosshair className="h-3.5 w-3.5" /></FloatBtn>
+        </div>
+
+        {/* Bottom-left summary chips */}
+        <div className="absolute bottom-4 left-4 z-[500] flex items-center gap-2 flex-wrap">
+          <Chip accent={COLOR.distributor} label="Distributors" value={filteredDistributors.length} />
+          <Chip accent={COLOR.healthy} label="Retailers" value={filteredRetailers.length} />
+          <Chip accent={COLOR.critical} label="At risk" value={filteredRetailers.filter((r) => r.status !== "healthy").length} />
+          <DrillChip zoom={zoom} />
+        </div>
+
+        {/* The Leaflet map */}
+        <MapContainer
+          center={NIGERIA_CENTER}
+          zoom={6}
+          minZoom={6}
+          maxZoom={16}
+          scrollWheelZoom
+          zoomControl={false}
+          maxBounds={NIGERIA_BOUNDS}
+          maxBoundsViscosity={1.0}
+          className="absolute inset-0 z-0"
+          worldCopyJump={false}
+          whenReady={() => { /* map ready */ }}
+        >
+          <TileLayer
+            attribution='&copy; OpenStreetMap'
+            url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+            bounds={NIGERIA_BOUNDS}
+            noWrap
+          />
+          <FitNigeria trigger={fitTrigger} />
+          <ZoomTracker onZoom={setZoom} />
+          <MapRefBinder onReady={(m) => { mapRef.current = m; }} />
+          <FlyTo to={flyTo?.pos || null} zoom={flyTo?.zoom || 8} />
+
+          {/* Mask covering outside Nigeria */}
+          <Polygon
+            positions={[
+              [[-90, -360], [-90, 360], [90, 360], [90, -360]],
+              [
+                [NIGERIA_BOUNDS[0][0], NIGERIA_BOUNDS[0][1]],
+                [NIGERIA_BOUNDS[1][0], NIGERIA_BOUNDS[0][1]],
+                [NIGERIA_BOUNDS[1][0], NIGERIA_BOUNDS[1][1]],
+                [NIGERIA_BOUNDS[0][0], NIGERIA_BOUNDS[1][1]],
+              ],
+            ] as any}
+            pathOptions={{ fillColor: "#f8fafc", fillOpacity: 0.78, color: "#cbd5e1", weight: 0.6, interactive: false }}
+          />
+
+          {/* Connection lines — thin dashed, soft opacity */}
+          {routeLines.map((l, i) => (
+            <Polyline key={i} positions={[l.a, l.b]} pathOptions={{
+              color: l.color, opacity: l.opacity, weight: l.weight, dashArray: l.dash || undefined, lineCap: "round", lineJoin: "round",
+            }} />
           ))}
 
-        {/* Retailer markers — visible at city zoom, clustered */}
-        {showRetailers && (
-          <MarkerClusterGroup
-            chunkedLoading
-            maxClusterRadius={55}
-            spiderfyOnMaxZoom
-            showCoverageOnHover={false}
-          >
-            {filteredRetailers.map((r) => (
-              <Marker
-                key={r.id}
-                position={[r.lat, r.lon]}
-                icon={retailerIcon(r.status, activeRetailer?.id === r.id)}
-                eventHandlers={{ click: () => onRetailerClick(r) }}
-              />
+          {/* Manufacturer */}
+          <Marker position={[data.manufacturer.lat, data.manufacturer.lon]} icon={manufacturerIcon()} eventHandlers={{ click: () => setFlyTo({ pos: [data.manufacturer.lat, data.manufacturer.lon], zoom: 7 }) }} />
+
+          {/* Regions */}
+          {showRegions && data.regions
+            .filter((r) => selectedRegion === "all" || r.name === selectedRegion)
+            .map((r) => (
+              <Marker key={r.name} position={[r.lat, r.lon]} icon={regionIcon(r.distributors)} eventHandlers={{ click: () => onRegionClick(r) }} />
             ))}
-          </MarkerClusterGroup>
+
+          {/* Distributors */}
+          {showDistributors && filteredDistributors.map((d) => (
+            <Marker key={d.id} position={[d.lat, d.lon]} icon={distributorIcon(d.status, selectedDist === d.id)} eventHandlers={{ click: () => onDistributorClick(d) }} />
+          ))}
+
+          {/* Retailers (clustered) */}
+          {showRetailers && (
+            <MarkerClusterGroup chunkedLoading maxClusterRadius={55} spiderfyOnMaxZoom showCoverageOnHover={false}>
+              {filteredRetailers.map((r) => (
+                <Marker key={r.id} position={[r.lat, r.lon]} icon={retailerIcon(r.status, activeRetailer?.id === r.id)} eventHandlers={{ click: () => onRetailerClick(r) }} />
+              ))}
+            </MarkerClusterGroup>
+          )}
+        </MapContainer>
+
+        {/* RIGHT FLOATING DETAIL PANEL */}
+        {activeRetailer && (
+          <RetailerDetailCard
+            retailer={activeRetailer}
+            detail={detail}
+            loading={detailLoading}
+            onClose={() => setActiveRetailer(null)}
+          />
         )}
-      </MapContainer>
-
-      {/* Bottom-left summary chips */}
-      <div className="absolute bottom-3 left-3 z-[500] flex items-center gap-2 flex-wrap">
-        <SummaryChip label="Distributors" value={filteredDistributors.length} accent="#0d9488" />
-        <SummaryChip label="Retailers" value={filteredRetailers.length} accent="#10b981" />
-        <SummaryChip
-          label="At risk"
-          value={filteredRetailers.filter((r) => r.status !== "healthy").length}
-          accent="#ef4444"
-        />
-        <ZoomLevelHint zoom={zoom} />
       </div>
-
-      {/* Retailer detail card */}
-      {activeRetailer && (
-        <RetailerDetailCard
-          retailer={activeRetailer}
-          detail={detail}
-          loading={detailLoading}
-          onClose={() => setActiveRetailer(null)}
-        />
-      )}
     </div>
   );
 }
 
-// ---------------- Subcomponents ----------------
-function SectionTitle({ title, right }: { title: string; right?: React.ReactNode }) {
+// ============================================================================
+// Subcomponents
+// ============================================================================
+function SearchBox({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   return (
-    <div className="flex items-center justify-between mb-1.5">
-      <div className="text-[10px] uppercase tracking-[0.18em] text-slate-400 font-medium">{title}</div>
-      {right}
+    <div className="flex items-center gap-2 h-9 px-3 rounded-xl bg-slate-50 border border-slate-200/80">
+      <Search className="h-3.5 w-3.5 text-slate-400" />
+      <input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="Search store, city, code…"
+        className="flex-1 bg-transparent outline-none text-[12.5px] text-slate-700 placeholder:text-slate-400"
+        data-testid="map-search-input"
+      />
+      {value && <button onClick={() => onChange("")} className="text-slate-400 hover:text-slate-600"><X className="h-3.5 w-3.5" /></button>}
     </div>
   );
 }
 
-function FilterSelect({
-  label,
-  value,
-  onChange,
-  options,
-  testId,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  options: { value: string; label: string }[];
-  testId?: string;
-}) {
+function FilterSelect({ label, value, onChange, options, testId }: { label: string; value: string; onChange: (v: string) => void; options: { value: string; label: string }[]; testId?: string }) {
   return (
-    <label className="block mb-2.5">
+    <label className="block">
       <div className="text-[11px] text-slate-500 mb-1 font-medium">{label}</div>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
         data-testid={testId}
-        className="w-full h-9 px-3 rounded-xl bg-white border border-slate-200/80 text-[13px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-300/60 transition-shadow"
+        className="w-full h-9 px-3 rounded-xl bg-white border border-slate-200/80 text-[12.5px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-300/60 transition"
       >
-        {options.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
-          </option>
-        ))}
+        {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
     </label>
   );
 }
 
-function LayerCheckbox({
-  label,
-  checked,
-  onChange,
-  testId,
-}: {
-  label: string;
-  checked: boolean;
-  onChange: (c: boolean) => void;
-  testId?: string;
-}) {
+const CTX_OPTIONS: { id: ContextLayer; label: string; color: string }[] = [
+  { id: "health", label: "Network Health", color: "#10b981" },
+  { id: "density", label: "Retailer Density", color: "#4f46e5" },
+  { id: "fulfillment", label: "Fulfillment Risk", color: "#dc2626" },
+  { id: "shipment", label: "Shipment Activity", color: "#06b6d4" },
+  { id: "velocity", label: "Sales Velocity", color: "#ea580c" },
+];
+
+function ContextLayerSelect({ value, onChange }: { value: ContextLayer; onChange: (v: ContextLayer) => void }) {
+  const opt = CTX_OPTIONS.find((o) => o.id === value) || CTX_OPTIONS[0];
+  return (
+    <label className="block">
+      <div className="text-[11px] text-slate-500 mb-1 font-medium">Context Layer</div>
+      <div className="relative">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 h-2 w-2 rounded-full" style={{ background: opt.color }} />
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value as ContextLayer)}
+          data-testid="map-filter-context"
+          className="w-full h-9 pl-7 pr-3 rounded-xl bg-white border border-slate-200/80 text-[12.5px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-300/60 transition appearance-none"
+        >
+          {CTX_OPTIONS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+        </select>
+      </div>
+    </label>
+  );
+}
+
+function ContextDropdown({ value, onChange, open, onToggle }: { value: ContextLayer; onChange: (v: ContextLayer) => void; open: boolean; onToggle: () => void }) {
+  const opt = CTX_OPTIONS.find((o) => o.id === value) || CTX_OPTIONS[0];
+  return (
+    <div className="relative">
+      <button
+        onClick={onToggle}
+        className="inline-flex items-center gap-2 h-9 pl-3 pr-2.5 rounded-xl bg-white/95 backdrop-blur-md border border-slate-200/80 shadow-sm text-[12.5px] font-medium text-slate-700 hover:text-slate-900 hover:shadow-md transition-all"
+        data-testid="map-context-dropdown"
+      >
+        <Activity className="h-3.5 w-3.5" style={{ color: opt.color }} />
+        {opt.label}
+        <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-11 w-56 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200/80 shadow-lg overflow-hidden">
+          {CTX_OPTIONS.map((o) => (
+            <button
+              key={o.id}
+              onClick={() => { onChange(o.id); onToggle(); }}
+              className={`w-full flex items-center gap-2 px-3 py-2 text-left text-[12.5px] hover:bg-slate-50 transition ${value === o.id ? "bg-slate-50" : ""}`}
+            >
+              <span className="h-2 w-2 rounded-full" style={{ background: o.color }} />
+              <span className="text-slate-700">{o.label}</span>
+              {value === o.id && <span className="ml-auto text-[10px] text-indigo-600 font-semibold">ON</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LayerCheckbox({ label, checked, onChange, testId }: { label: string; checked: boolean; onChange: (c: boolean) => void; testId?: string }) {
   return (
     <label className="flex items-center gap-2 py-1.5 cursor-pointer">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        data-testid={testId}
-        className="h-3.5 w-3.5 rounded text-indigo-600 focus:ring-indigo-300"
-      />
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} data-testid={testId} className="h-3.5 w-3.5 rounded text-indigo-600 focus:ring-indigo-300" />
       <span className="text-[12.5px] text-slate-700">{label}</span>
     </label>
   );
 }
 
-function SummaryChip({ label, value, accent }: { label: string; value: number; accent: string }) {
+function ViewToggle({ active, onSwitch }: { active: "radial" | "map"; onSwitch?: () => void }) {
+  return (
+    <div className="inline-flex items-center gap-0.5 rounded-2xl bg-white/95 backdrop-blur-md border border-slate-200/80 shadow-sm p-1" role="tablist" data-testid="map-view-toggle">
+      <button
+        onClick={onSwitch}
+        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold transition-all ${active === "radial" ? "bg-gradient-to-b from-indigo-500 to-indigo-600 text-white shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
+        data-testid="map-switch-radial"
+      >
+        <NetworkIcon className="h-3.5 w-3.5" /> Radial View
+      </button>
+      <button
+        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold transition-all ${active === "map" ? "bg-gradient-to-b from-indigo-500 to-indigo-600 text-white shadow-sm" : "text-slate-600 hover:text-slate-900"}`}
+        data-testid="map-switch-map"
+      >
+        <MapIcon className="h-3.5 w-3.5" /> Nigeria Map View
+      </button>
+    </div>
+  );
+}
+
+function FloatBtn({ children, onClick, ...rest }: React.ButtonHTMLAttributes<HTMLButtonElement>) {
+  return (
+    <button
+      onClick={onClick}
+      {...rest}
+      className="inline-flex items-center justify-center h-9 w-9 rounded-xl bg-white/95 backdrop-blur-md border border-slate-200/80 shadow-sm text-slate-700 hover:text-slate-900 hover:shadow-md transition-all"
+    >{children}</button>
+  );
+}
+
+function Chip({ accent, label, value }: { accent: string; label: string; value: number }) {
   return (
     <div className="inline-flex items-center gap-2 bg-white/95 backdrop-blur-md border border-slate-200/80 rounded-full px-3 py-1.5 shadow-sm">
       <span className="h-2 w-2 rounded-full" style={{ background: accent }} />
@@ -788,16 +781,10 @@ function SummaryChip({ label, value, accent }: { label: string; value: number; a
   );
 }
 
-function ZoomLevelHint({ zoom }: { zoom: number }) {
-  const level =
-    zoom <= 7 ? { label: "Regional view", color: "#4f46e5" }
-    : zoom <= 10 ? { label: "Distributor view", color: "#0d9488" }
-    : { label: "Retailer view", color: "#10b981" };
+function DrillChip({ zoom }: { zoom: number }) {
+  const level = zoom <= 7 ? { label: "Regional view", color: COLOR.region } : zoom <= 10 ? { label: "Distributor view", color: COLOR.distributor } : { label: "Retailer view", color: COLOR.healthy };
   return (
-    <div
-      className="inline-flex items-center gap-1.5 bg-white/95 backdrop-blur-md border border-slate-200/80 rounded-full px-3 py-1.5 shadow-sm"
-      data-testid="map-zoom-hint"
-    >
+    <div className="inline-flex items-center gap-1.5 bg-white/95 backdrop-blur-md border border-slate-200/80 rounded-full px-3 py-1.5 shadow-sm" data-testid="map-zoom-hint">
       <span className="h-2 w-2 rounded-full" style={{ background: level.color }} />
       <span className="text-[11px] text-slate-500 font-medium">Drill-down:</span>
       <span className="text-[12px] font-semibold text-slate-900">{level.label}</span>
@@ -808,146 +795,118 @@ function ZoomLevelHint({ zoom }: { zoom: number }) {
 function Legend() {
   return (
     <div className="space-y-1.5">
-      <LegendRow color="#2563eb" label="Manufacturer" shape="square" />
-      <LegendRow color="#4f46e5" label="Region" shape="circle" />
-      <LegendRow color="#0d9488" label="Distributor" shape="ring" />
-      <LegendRow color="#10b981" label="Healthy" shape="dot" />
-      <LegendRow color="#f59e0b" label="Warning" shape="dot" />
-      <LegendRow color="#ef4444" label="Critical" shape="dot" />
+      <LegendRow color={COLOR.manufacturer} label="Manufacturer" shape="square" />
+      <LegendRow color={COLOR.region} label="Region" shape="circle" />
+      <LegendRow color={COLOR.distributor} label="Distributor" shape="ring" />
+      <LegendRow color={COLOR.healthy} label="Retailer" shape="ring2" />
+      <div className="h-px bg-slate-200/70 my-1" />
+      <LegendRow color={COLOR.edgeRegion} label="Region → Distributor" shape="dashLine" />
+      <LegendRow color={COLOR.edgeDistRet} label="Distributor → Retailer" shape="dashLine" />
+      <div className="h-px bg-slate-200/70 my-1" />
+      <LegendRow color={COLOR.healthy} label="Healthy" shape="dot" />
+      <LegendRow color={COLOR.warning} label="Warning" shape="dot" />
+      <LegendRow color={COLOR.critical} label="Critical" shape="dot" />
     </div>
   );
 }
 
-function LegendRow({ color, label, shape }: { color: string; label: string; shape: "dot" | "circle" | "square" | "ring" }) {
+function LegendRow({ color, label, shape }: { color: string; label: string; shape: "dot" | "circle" | "square" | "ring" | "ring2" | "dashLine" }) {
+  if (shape === "dashLine") {
+    return (
+      <div className="flex items-center gap-2">
+        <svg width="20" height="6" viewBox="0 0 20 6">
+          <line x1="0" y1="3" x2="20" y2="3" stroke={color} strokeWidth="1.5" strokeDasharray="3 3" />
+        </svg>
+        <span className="text-[11.5px] text-slate-600">{label}</span>
+      </div>
+    );
+  }
   const cls =
-    shape === "square"
-      ? "h-3 w-3 rounded-[4px]"
-      : shape === "circle"
-      ? "h-3 w-3 rounded-full"
-      : shape === "ring"
-      ? "h-3 w-3 rounded-full ring-2 ring-white"
-      : "h-2 w-2 rounded-full";
+    shape === "square" ? "h-3 w-3 rounded-[4px]" :
+    shape === "circle" ? "h-3 w-3 rounded-full" :
+    shape === "ring" ? "h-3 w-3 rounded-full ring-2 ring-white" :
+    shape === "ring2" ? "h-3 w-3 rounded-full bg-white border-2" :
+    "h-2 w-2 rounded-full";
+  const style: React.CSSProperties = shape === "ring2"
+    ? { borderColor: color }
+    : { background: color, ...(shape === "ring" ? { boxShadow: "0 0 0 1px #cbd5e1" } : {}) };
   return (
     <div className="flex items-center gap-2">
-      <span className={cls} style={{ background: color, boxShadow: shape === "ring" ? "0 0 0 1px #cbd5e1" : undefined }} />
+      <span className={cls} style={style} />
       <span className="text-[11.5px] text-slate-600">{label}</span>
     </div>
   );
 }
 
-// ---------------- Retailer Detail Card ----------------
-function RetailerDetailCard({
-  retailer,
-  detail,
-  loading,
-  onClose,
-}: {
-  retailer: GeoRetailer;
-  detail: RetailerDetail | null;
-  loading: boolean;
-  onClose: () => void;
-}) {
+// ============================================================================
+// Retailer Detail Card
+// ============================================================================
+type DetailTab = "overview" | "inventory" | "sales" | "shipments";
+
+function RetailerDetailCard({ retailer, detail, loading, onClose }: { retailer: GeoRetailer; detail: RetailerDetail | null; loading: boolean; onClose: () => void }) {
+  const [tab, setTab] = useState<DetailTab>("overview");
   const status = retailer.status;
-  const statusBg =
-    status === "healthy" ? "bg-emerald-50 text-emerald-700" : status === "warning" ? "bg-amber-50 text-amber-700" : "bg-rose-50 text-rose-700";
+  const statusBg = status === "healthy" ? "bg-emerald-50 text-emerald-700" : status === "warning" ? "bg-amber-50 text-amber-700" : "bg-rose-50 text-rose-700";
 
   return (
-    <div
-      className="absolute top-3 right-3 z-[600] w-[340px] bg-white/97 backdrop-blur-xl border border-slate-200/80 rounded-2xl shadow-[0_18px_50px_-12px_rgba(15,23,42,0.22)] overflow-hidden"
-      data-testid="map-retailer-detail"
-    >
-      <div className="p-4">
+    <div className="absolute top-4 right-4 z-[600] w-[340px] max-h-[calc(100%-2rem)] flex flex-col bg-white/97 backdrop-blur-xl border border-slate-200/80 rounded-2xl shadow-[0_18px_50px_-12px_rgba(15,23,42,0.22)] overflow-hidden" data-testid="map-retailer-detail">
+      <div className="px-4 pt-4 pb-3">
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="text-[14.5px] font-semibold text-slate-900 truncate" title={retailer.name}>
-              {retailer.name}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="text-[15px] font-semibold text-slate-900 truncate" title={retailer.name}>{retailer.name}</div>
+              <span className={`text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full ${statusBg}`}>{status}</span>
             </div>
-            <div className="text-[11.5px] text-slate-500 mt-0.5 truncate">
+            <div className="text-[11.5px] text-slate-500 mt-1 flex items-center gap-1">
               {retailer.city ? `${retailer.city}, ` : ""}{retailer.region}
             </div>
+            {detail?.distributor.name && (
+              <div className="text-[11.5px] text-slate-500 mt-0.5">
+                Distributor: <span className="text-indigo-600 font-medium">{detail.distributor.name}</span>
+              </div>
+            )}
           </div>
-          <span className={`text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full ${statusBg}`}>
-            {status}
-          </span>
-          <button onClick={onClose} className="text-slate-400 hover:text-slate-700 ml-1" aria-label="Close" data-testid="map-retailer-close">
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-700" aria-label="Close" data-testid="map-retailer-close">
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        {detail && detail.distributor.name && (
-          <div className="mt-2 text-[11.5px] text-slate-500">
-            Distributor: <span className="text-indigo-600 font-medium">{detail.distributor.name}</span>
-          </div>
-        )}
+        {/* Tabs */}
+        <div className="mt-3 grid grid-cols-4 gap-1 bg-slate-50 rounded-xl p-1" role="tablist">
+          {([
+            { id: "overview", label: "Overview", icon: FileText },
+            { id: "inventory", label: "Inventory", icon: Package },
+            { id: "sales", label: "Sales", icon: BarChart3 },
+            { id: "shipments", label: "Shipments", icon: Send },
+          ] as { id: DetailTab; label: string; icon: React.ComponentType<any> }[]).map((t) => {
+            const Icon = t.icon;
+            const active = tab === t.id;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                role="tab"
+                aria-selected={active}
+                data-testid={`map-detail-tab-${t.id}`}
+                className={`inline-flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-lg text-[10.5px] font-semibold transition-all ${active ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {t.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
+      <div className="flex-1 overflow-y-auto px-4 pb-4">
         {loading || !detail ? (
           <div className="py-8 text-center text-[12px] text-slate-400">Loading insights…</div>
         ) : (
           <>
-            <div className="mt-3 rounded-xl border border-slate-200/70 p-3">
-              <div className="flex items-center justify-between">
-                <div className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Inventory health</div>
-                <div className="text-[12px] font-semibold text-slate-900">{detail.inventory.health_pct}%</div>
-              </div>
-              <div className="mt-2 h-1.5 rounded-full bg-slate-100 overflow-hidden">
-                <div
-                  className="h-full rounded-full"
-                  style={{
-                    width: `${detail.inventory.health_pct}%`,
-                    background:
-                      detail.inventory.health_pct >= 75
-                        ? "#10b981"
-                        : detail.inventory.health_pct >= 40
-                        ? "#f59e0b"
-                        : "#ef4444",
-                  }}
-                />
-              </div>
-              <div className="mt-2 grid grid-cols-3 gap-2 text-center">
-                <Stat tone="emerald" label="In stock" value={detail.inventory.in_stock} />
-                <Stat tone="amber" label="Low stock" value={detail.inventory.low_stock} />
-                <Stat tone="rose" label="Out" value={detail.inventory.out_of_stock} />
-              </div>
-            </div>
-
-            <div className="mt-3 rounded-xl border border-slate-200/70 p-3">
-              <div className="flex items-center justify-between">
-                <div className="text-[11px] font-medium text-slate-500 uppercase tracking-wider">Sales · 7 days</div>
-                <div className={`inline-flex items-center gap-1 text-[11.5px] font-semibold ${detail.sales.delta_pct >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
-                  {detail.sales.delta_pct >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                  {Math.abs(detail.sales.delta_pct)}%
-                </div>
-              </div>
-              <div className="mt-1 text-[16px] font-semibold text-slate-900">
-                ₦{detail.sales.revenue_7d.toLocaleString()}
-              </div>
-              <Sparkline data={detail.sales.trend} />
-            </div>
-
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <MiniStat
-                icon={<FileText className="h-3.5 w-3.5" />}
-                label="Pending requests"
-                value={detail.pending_requests}
-                tone={detail.pending_requests > 0 ? "amber" : "slate"}
-              />
-              <MiniStat
-                icon={<Truck className="h-3.5 w-3.5" />}
-                label="Last shipment"
-                value={detail.last_shipment ? detail.last_shipment.status.replace("_", " ") : "—"}
-                tone="slate"
-              />
-            </div>
-
-            <div className="mt-3 rounded-xl bg-gradient-to-br from-indigo-50 via-indigo-50 to-purple-50 border border-indigo-100/80 p-3">
-              <div className="inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-indigo-600 font-semibold">
-                <Sparkles className="h-3 w-3" />
-                AI Insight
-              </div>
-              <div className="mt-1 text-[12.5px] text-slate-700 leading-relaxed">
-                {detail.ai_insight}
-              </div>
-            </div>
+            {tab === "overview" && <OverviewTab detail={detail} />}
+            {tab === "inventory" && <InventoryTab detail={detail} />}
+            {tab === "sales" && <SalesTab detail={detail} />}
+            {tab === "shipments" && <ShipmentsTab detail={detail} />}
           </>
         )}
       </div>
@@ -955,77 +914,172 @@ function RetailerDetailCard({
   );
 }
 
-function Stat({ tone, label, value }: { tone: "emerald" | "amber" | "rose"; label: string; value: number }) {
-  const color =
-    tone === "emerald" ? "text-emerald-700" : tone === "amber" ? "text-amber-700" : "text-rose-700";
+function OverviewTab({ detail }: { detail: RetailerDetail }) {
   return (
-    <div>
-      <div className={`text-[15px] font-semibold ${color}`}>{value}</div>
-      <div className="text-[10px] text-slate-500 mt-0.5 uppercase tracking-wider">{label}</div>
+    <div className="space-y-3">
+      <InventoryHealthCard detail={detail} />
+      <SalesCard detail={detail} />
+      <PendingRequestsCard detail={detail} />
+      <LastShipmentCard detail={detail} />
+      <AIInsightCard detail={detail} />
     </div>
   );
 }
 
-function MiniStat({
-  icon,
-  label,
-  value,
-  tone,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: React.ReactNode;
-  tone: "amber" | "slate";
-}) {
-  const tag =
-    tone === "amber"
-      ? "bg-amber-50 text-amber-700 border-amber-200/60"
-      : "bg-slate-50 text-slate-700 border-slate-200/60";
+function InventoryTab({ detail }: { detail: RetailerDetail }) {
   return (
-    <div className={`rounded-xl border ${tag} px-3 py-2`}>
-      <div className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-wider opacity-80">
-        {icon}
-        {label}
+    <div className="space-y-3">
+      <InventoryHealthCard detail={detail} />
+    </div>
+  );
+}
+function SalesTab({ detail }: { detail: RetailerDetail }) {
+  return (
+    <div className="space-y-3">
+      <SalesCard detail={detail} />
+      <AIInsightCard detail={detail} />
+    </div>
+  );
+}
+function ShipmentsTab({ detail }: { detail: RetailerDetail }) {
+  return (
+    <div className="space-y-3">
+      <LastShipmentCard detail={detail} />
+      <PendingRequestsCard detail={detail} />
+    </div>
+  );
+}
+
+function InventoryHealthCard({ detail }: { detail: RetailerDetail }) {
+  const pct = detail.inventory.health_pct;
+  const color = pct >= 75 ? COLOR.healthy : pct >= 40 ? COLOR.warning : COLOR.critical;
+  return (
+    <div className="rounded-xl border border-slate-200/70 p-3">
+      <div className="text-[12px] font-semibold text-slate-900 mb-2.5">Inventory Health</div>
+      <div className="flex items-center gap-3">
+        <Donut value={pct} color={color} />
+        <div className="flex-1 grid grid-cols-2 gap-x-3 gap-y-2">
+          <Stat tone="emerald" label="In Stock" value={detail.inventory.in_stock} />
+          <Stat tone="amber" label="Low Stock" value={detail.inventory.low_stock} />
+          <Stat tone="rose" label="Out of Stock" value={detail.inventory.out_of_stock} />
+        </div>
       </div>
-      <div className="text-[13px] font-semibold mt-0.5 capitalize">{value}</div>
+    </div>
+  );
+}
+
+function Donut({ value, color }: { value: number; color: string }) {
+  const r = 26;
+  const c = 2 * Math.PI * r;
+  const dash = (value / 100) * c;
+  return (
+    <div className="relative h-[72px] w-[72px] flex-shrink-0">
+      <svg viewBox="0 0 64 64" className="-rotate-90">
+        <circle cx="32" cy="32" r={r} stroke="#f1f5f9" strokeWidth="7" fill="none" />
+        <circle cx="32" cy="32" r={r} stroke={color} strokeWidth="7" fill="none" strokeDasharray={`${dash} ${c}`} strokeLinecap="round" />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <div className="text-[15px] font-bold text-slate-900 leading-none">{value}%</div>
+        <div className="text-[9px] text-slate-400 mt-0.5">Healthy</div>
+      </div>
+    </div>
+  );
+}
+
+function Stat({ tone, label, value }: { tone: "emerald" | "amber" | "rose"; label: string; value: number }) {
+  const color = tone === "emerald" ? "text-emerald-700" : tone === "amber" ? "text-amber-700" : "text-rose-700";
+  return (
+    <div>
+      <div className="text-[10px] text-slate-500 uppercase tracking-wider">{label}</div>
+      <div className={`text-[14px] font-semibold ${color}`}>{value}</div>
+    </div>
+  );
+}
+
+function SalesCard({ detail }: { detail: RetailerDetail }) {
+  return (
+    <div className="rounded-xl border border-slate-200/70 p-3">
+      <div className="flex items-center justify-between">
+        <div className="text-[12px] font-semibold text-slate-900">Sales (Last 7 Days)</div>
+        <div className={`inline-flex items-center gap-1 text-[11.5px] font-semibold ${detail.sales.delta_pct >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+          {detail.sales.delta_pct >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+          {Math.abs(detail.sales.delta_pct)}%
+        </div>
+      </div>
+      <div className="mt-1 text-[18px] font-bold text-slate-900">₦{detail.sales.revenue_7d.toLocaleString()}</div>
+      <div className="text-[10.5px] text-slate-500">vs prev 7 days</div>
+      <Sparkline data={detail.sales.trend} />
     </div>
   );
 }
 
 function Sparkline({ data }: { data: { date: string; revenue: number }[] }) {
   if (!data.length) return null;
-  const W = 280;
-  const H = 36;
+  const W = 280, H = 40;
   const max = Math.max(...data.map((d) => d.revenue), 1);
   const min = Math.min(...data.map((d) => d.revenue));
   const range = max - min || 1;
-  const pts = data
-    .map((d, i) => {
-      const x = (i / (data.length - 1)) * W;
-      const y = H - ((d.revenue - min) / range) * (H - 4) - 2;
-      return `${x},${y}`;
-    })
-    .join(" ");
+  const pts = data.map((d, i) => {
+    const x = (i / (data.length - 1)) * W;
+    const y = H - ((d.revenue - min) / range) * (H - 6) - 3;
+    return `${x},${y}`;
+  }).join(" ");
   return (
-    <svg width="100%" viewBox={`0 0 ${W} ${H}`} className="mt-2 overflow-visible">
+    <svg width="100%" viewBox={`0 0 ${W} ${H}`} className="mt-2">
       <defs>
-        <linearGradient id="spark" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id="spark2" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="rgba(99,102,241,0.45)" />
           <stop offset="100%" stopColor="rgba(99,102,241,0.02)" />
         </linearGradient>
       </defs>
-      <polyline
-        points={pts}
-        fill="none"
-        stroke="rgb(79,70,229)"
-        strokeWidth={1.8}
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
-      <polygon
-        points={`0,${H} ${pts} ${W},${H}`}
-        fill="url(#spark)"
-      />
+      <polyline points={pts} fill="none" stroke="rgb(79,70,229)" strokeWidth={1.8} strokeLinejoin="round" strokeLinecap="round" />
+      <polygon points={`0,${H} ${pts} ${W},${H}`} fill="url(#spark2)" />
     </svg>
+  );
+}
+
+function PendingRequestsCard({ detail }: { detail: RetailerDetail }) {
+  return (
+    <div className="rounded-xl border border-slate-200/70 p-3">
+      <div className="flex items-center justify-between">
+        <div className="text-[12px] font-semibold text-slate-900">Pending Requests</div>
+        <a className="text-[11.5px] text-indigo-600 hover:text-indigo-700 font-medium" href="#">View all</a>
+      </div>
+      <div className="mt-1 inline-flex items-center gap-2 text-[18px] font-bold text-slate-900">
+        <FileText className="h-4 w-4 text-slate-400" />
+        {detail.pending_requests}
+      </div>
+    </div>
+  );
+}
+
+function LastShipmentCard({ detail }: { detail: RetailerDetail }) {
+  const s = detail.last_shipment;
+  const isTransit = s?.status === "in_transit";
+  return (
+    <div className="rounded-xl border border-slate-200/70 p-3">
+      <div className="flex items-center justify-between">
+        <div className="text-[12px] font-semibold text-slate-900">Last Shipment</div>
+        <span className={`text-[10.5px] font-semibold ${isTransit ? "text-indigo-600" : "text-slate-500"}`}>
+          {s ? s.status.replace("_", " ") : "—"}
+        </span>
+      </div>
+      <div className="mt-1.5 flex items-center gap-2 text-[11.5px] text-slate-500">
+        <Truck className="h-3.5 w-3.5" />
+        {s?.eta ? <span>ETA: {new Date(s.eta).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span> : <span>No active shipment</span>}
+      </div>
+    </div>
+  );
+}
+
+function AIInsightCard({ detail }: { detail: RetailerDetail }) {
+  return (
+    <div className="rounded-xl bg-gradient-to-br from-indigo-50 via-indigo-50 to-purple-50 border border-indigo-100/80 p-3">
+      <div className="inline-flex items-center gap-1.5 text-[11px] text-indigo-600 font-semibold">
+        <Sparkles className="h-3.5 w-3.5" />
+        AI Insight
+      </div>
+      <div className="mt-1.5 text-[12.5px] text-slate-700 leading-relaxed">{detail.ai_insight}</div>
+    </div>
   );
 }
