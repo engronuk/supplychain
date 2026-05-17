@@ -6,12 +6,13 @@ import { PageHeader } from "@/components/Common";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
-  AreaChart, Area, BarChart, Bar, ResponsiveContainer, XAxis, YAxis,
+  AreaChart, Area, BarChart, Bar, PieChart, Pie, ResponsiveContainer, XAxis, YAxis,
   CartesianGrid, Tooltip, Legend, Cell,
 } from "recharts";
 import {
   TrendingUp, TrendingDown, Sparkles, AlertOctagon, AlertTriangle,
   Clock, ShieldCheck, Trophy, Info, Package, Users, MapPin, Activity,
+  Truck, Factory, Store, Boxes, CheckCircle2, CircleDashed, Send,
 } from "lucide-react";
 
 const fmtMoney = (v) => "₦" + Number(v || 0).toLocaleString(undefined, { maximumFractionDigits: 0 });
@@ -40,8 +41,7 @@ export default function AnalyticsView() {
   if (session.role === "distributor") {
     return <DistributorExecutiveAnalytics session={session} />;
   }
-  // For other roles, fall back to original simple analytics
-  return <SimpleAnalytics session={session} />;
+  return <NetworkAnalytics session={session} />;
 }
 
 // =========================================================================
@@ -261,15 +261,233 @@ function DistributorExecutiveAnalytics({ session }) {
   );
 }
 
-function SimpleAnalytics({ session }) {
-  // Backward-compat lightweight view for non-distributor roles
+function NetworkAnalytics({ session }) {
   const [data, setData] = useState(null);
-  useEffect(() => { Api.analytics(session.role, session.entity.id).then(setData); }, [session.role, session.entity.id]);
-  if (!data) return <div className="p-8 max-w-7xl mx-auto"><PageHeader title="Analytics" description="Loading…" /></div>;
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    Api.analytics(session.role, session.entity.id)
+      .then(setData)
+      .finally(() => setLoading(false));
+  }, [session.role, session.entity.id]);
+
+  const isManufacturer = session.role === "manufacturer";
+  const title = isManufacturer ? "Production Network Analytics" : "Retailer Analytics";
+  const subtitle = isManufacturer
+    ? `${session.entity.name} · last 14 days of shipment & distribution health`
+    : `${session.entity.name} · shipment, request & inventory pulse`;
+
+  if (loading || !data) {
+    return (
+      <div className="p-6 lg:p-8 max-w-[1500px] mx-auto" data-testid="network-analytics-loading">
+        <PageHeader title={title} description="Loading network intelligence…" />
+      </div>
+    );
+  }
+
+  const { kpis, status_breakdown, timeline, top_products } = data;
+  const totalShipments = kpis.total_shipments || 0;
+  const fulfillmentRate = totalShipments > 0
+    ? Math.round((kpis.received / totalShipments) * 100)
+    : 0;
+  const inflightPct = totalShipments > 0
+    ? Math.round(((kpis.pending + kpis.in_transit) / totalShipments) * 100)
+    : 0;
+  const STATUS_COLORS = { Pending: "#f59e0b", "In Transit": "#3b82f6", Received: "#10b981" };
+
   return (
-    <div className="p-8 max-w-7xl mx-auto">
-      <PageHeader title="Analytics" description={`Performance for ${session.entity.name}`} />
-      <pre className="text-xs bg-slate-50 p-4 rounded-xl overflow-x-auto">{JSON.stringify(data, null, 2)}</pre>
+    <div className="p-6 lg:p-8 max-w-[1500px] mx-auto" data-testid="network-analytics">
+      <PageHeader title={title} description={subtitle} />
+
+      {/* KPI strip */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+        {isManufacturer ? (
+          <>
+            <KPI label="Distributors" value={kpis.distributors_count?.toLocaleString() || "0"}
+                 sub="connected partners" tone="indigo" />
+            <KPI label="Retailers" value={kpis.retailers_count?.toLocaleString() || "0"}
+                 sub="reach across network" tone="blue" />
+            <KPI label="Inventory Units" value={kpis.inventory_total?.toLocaleString() || "0"}
+                 sub={`${kpis.low_stock || 0} SKUs low`} tone="emerald" />
+            <KPI label="Total Shipments" value={totalShipments.toLocaleString()}
+                 sub={`${fulfillmentRate}% fulfilled`} tone="slate" />
+          </>
+        ) : (
+          <>
+            <KPI label="Total Shipments" value={totalShipments.toLocaleString()}
+                 sub={`${fulfillmentRate}% received`} tone="indigo" />
+            <KPI label="In Flight" value={(kpis.pending + kpis.in_transit).toLocaleString()}
+                 sub={`${inflightPct}% of pipeline`} tone="blue" />
+            <KPI label="Inventory Units" value={kpis.inventory_total?.toLocaleString() || "0"}
+                 sub={`${kpis.low_stock || 0} SKUs low`} tone="emerald" />
+            <KPI label="Open Requests" value={(kpis.open_requests || 0).toLocaleString()}
+                 sub="awaiting distributor" tone="amber" />
+          </>
+        )}
+      </div>
+
+      {/* Pipeline strip */}
+      <Card className="mb-5"><CardContent className="p-5">
+        <SectionTitle title="Shipment Pipeline" icon={Truck}
+          right={<span className="text-[11px] text-slate-500">{totalShipments} shipments tracked</span>} />
+        <div className="grid grid-cols-3 gap-3">
+          <PipelineTile icon={CircleDashed} label="Pending" value={kpis.pending}
+            total={totalShipments} tone="amber" />
+          <PipelineTile icon={Send} label="In Transit" value={kpis.in_transit}
+            total={totalShipments} tone="blue" />
+          <PipelineTile icon={CheckCircle2} label="Received" value={kpis.received}
+            total={totalShipments} tone="emerald" />
+        </div>
+      </CardContent></Card>
+
+      {/* Shipment trend + status mix */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-5">
+        <Card className="xl:col-span-2"><CardContent className="p-5">
+          <SectionTitle title="Shipments · last 14 days" icon={Activity}
+            right={<span className="text-[11px] text-slate-500">Daily volume</span>} />
+          {timeline.every((t) => t.shipments === 0) ? (
+            <Empty msg="No shipment activity in this window yet." />
+          ) : (
+            <div className="h-64">
+              <ResponsiveContainer>
+                <AreaChart data={timeline}>
+                  <defs>
+                    <linearGradient id="ships" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#6366f1" stopOpacity={0.35} />
+                      <stop offset="100%" stopColor="#6366f1" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid stroke="#f1f5f9" strokeDasharray="3 3" />
+                  <XAxis dataKey="date" fontSize={10} stroke="#94a3b8" />
+                  <YAxis allowDecimals={false} fontSize={10} stroke="#94a3b8" />
+                  <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                  <Area type="monotone" dataKey="shipments" stroke="#6366f1"
+                    strokeWidth={2} fill="url(#ships)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </CardContent></Card>
+
+        <Card><CardContent className="p-5">
+          <SectionTitle title="Status Mix" icon={Boxes} />
+          {totalShipments === 0 ? <Empty msg="No shipments yet." /> : (
+            <div className="h-64">
+              <ResponsiveContainer>
+                <PieChart>
+                  <Pie data={status_breakdown.filter((s) => s.value > 0)} dataKey="value"
+                       nameKey="name" innerRadius={48} outerRadius={78} paddingAngle={3}>
+                    {status_breakdown.filter((s) => s.value > 0).map((s, i) => (
+                      <Cell key={i} fill={STATUS_COLORS[s.name] || "#94a3b8"} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                  <Legend iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </CardContent></Card>
+      </div>
+
+      {/* Top products + Network snapshot */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-5">
+        <Card><CardContent className="p-5">
+          <SectionTitle title="Top Products by Units Shipped" icon={Trophy} />
+          {(!top_products || top_products.length === 0) ? <Empty /> : (
+            <div className="h-64">
+              <ResponsiveContainer>
+                <BarChart data={top_products} layout="vertical" margin={{ left: 24 }}>
+                  <CartesianGrid stroke="#f1f5f9" strokeDasharray="3 3" />
+                  <XAxis type="number" fontSize={10} stroke="#94a3b8" allowDecimals={false} />
+                  <YAxis type="category" dataKey="name" fontSize={11} stroke="#475569" width={130} />
+                  <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }}
+                    formatter={(v) => [`${v} units`, "Volume"]} />
+                  <Bar dataKey="units" radius={[0, 4, 4, 0]}>
+                    {top_products.map((_, i) => (
+                      <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </CardContent></Card>
+
+        <Card><CardContent className="p-5">
+          <SectionTitle title={isManufacturer ? "Network Snapshot" : "Inventory & Requests"}
+            icon={isManufacturer ? Factory : Store}
+            right={
+              <Link to="/network" className="text-[11px] font-semibold text-indigo-600 hover:underline">
+                View network →
+              </Link>
+            } />
+          <div className="grid grid-cols-2 gap-3">
+            {isManufacturer ? (
+              <>
+                <SnapshotTile icon={Factory} label="Distributors" value={kpis.distributors_count?.toLocaleString() || "0"} tone="indigo" />
+                <SnapshotTile icon={Store} label="Retailers" value={kpis.retailers_count?.toLocaleString() || "0"} tone="blue" />
+                <SnapshotTile icon={Boxes} label="Master Inventory" value={kpis.inventory_total?.toLocaleString() || "0"} tone="emerald" />
+                <SnapshotTile icon={AlertTriangle} label="Low-Stock SKUs" value={(kpis.low_stock || 0).toLocaleString()}
+                  tone={kpis.low_stock > 0 ? "rose" : "slate"} />
+              </>
+            ) : (
+              <>
+                <SnapshotTile icon={Boxes} label="Inventory Units" value={kpis.inventory_total?.toLocaleString() || "0"} tone="emerald" />
+                <SnapshotTile icon={AlertTriangle} label="Low-Stock SKUs" value={(kpis.low_stock || 0).toLocaleString()}
+                  tone={kpis.low_stock > 0 ? "rose" : "slate"} />
+                <SnapshotTile icon={Send} label="Open Requests" value={(kpis.open_requests || 0).toLocaleString()} tone="amber" />
+                <SnapshotTile icon={CheckCircle2} label="Fulfillment Rate" value={`${fulfillmentRate}%`} tone="indigo" />
+              </>
+            )}
+          </div>
+        </CardContent></Card>
+      </div>
+    </div>
+  );
+}
+
+function PipelineTile({ icon: Icon, label, value, total, tone }) {
+  const tones = {
+    amber: { bg: "from-amber-50 to-white", border: "border-amber-100/80", text: "text-amber-600", bar: "from-amber-400 to-amber-500" },
+    blue: { bg: "from-blue-50 to-white", border: "border-blue-100/80", text: "text-blue-600", bar: "from-blue-400 to-blue-500" },
+    emerald: { bg: "from-emerald-50 to-white", border: "border-emerald-100/80", text: "text-emerald-600", bar: "from-emerald-400 to-emerald-500" },
+  };
+  const t = tones[tone] || tones.blue;
+  const pct = total > 0 ? Math.round((value / total) * 100) : 0;
+  return (
+    <div className={`rounded-2xl border ${t.border} bg-gradient-to-br ${t.bg} p-4`}>
+      <div className="flex items-center justify-between">
+        <div className={`inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider ${t.text}`}>
+          <Icon className="h-3.5 w-3.5" /> {label}
+        </div>
+        <div className="text-[11px] text-slate-500 tabular-nums">{pct}%</div>
+      </div>
+      <div className="text-[22px] font-bold text-slate-900 mt-1 tabular-nums">{value}</div>
+      <div className="h-1.5 rounded-full bg-white/70 overflow-hidden mt-2">
+        <div className={`h-full rounded-full bg-gradient-to-r ${t.bar}`} style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function SnapshotTile({ icon: Icon, label, value, tone }) {
+  const tones = {
+    indigo: { bg: "from-indigo-50 to-white", text: "text-indigo-600" },
+    blue: { bg: "from-blue-50 to-white", text: "text-blue-600" },
+    emerald: { bg: "from-emerald-50 to-white", text: "text-emerald-600" },
+    amber: { bg: "from-amber-50 to-white", text: "text-amber-600" },
+    rose: { bg: "from-rose-50 to-white", text: "text-rose-600" },
+    slate: { bg: "from-slate-50 to-white", text: "text-slate-500" },
+  };
+  const t = tones[tone] || tones.slate;
+  return (
+    <div className={`rounded-2xl border border-slate-200/80 bg-gradient-to-br ${t.bg} p-3.5`}>
+      <div className={`inline-flex items-center gap-1.5 text-[10.5px] font-semibold uppercase tracking-wider ${t.text}`}>
+        <Icon className="h-3.5 w-3.5" /> {label}
+      </div>
+      <div className="text-[19px] font-bold text-slate-900 mt-1 tabular-nums">{value}</div>
     </div>
   );
 }
