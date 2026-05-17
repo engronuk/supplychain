@@ -64,7 +64,7 @@ const ROOT_RING = 145;
 const ORBIT_BY_DEPTH: Record<number, { baseOrbit: number; growth: number; maxOrbit: number; minFan: number; maxFan: number }> = {
   2: { baseOrbit: 88, growth: 4, maxOrbit: 155, minFan: Math.PI * 0.65, maxFan: Math.PI * 1.20 }, // state
   3: { baseOrbit: 66, growth: 3, maxOrbit: 115, minFan: Math.PI * 0.60, maxFan: Math.PI * 1.10 }, // distributor
-  4: { baseOrbit: 46, growth: 2, maxOrbit:  82, minFan: Math.PI * 0.50, maxFan: Math.PI * 0.95 }, // retailer
+  4: { baseOrbit: 62, growth: 3, maxOrbit:  98, minFan: Math.PI * 0.50, maxFan: Math.PI * 0.95 }, // retailer
 };
 
 const NODE_SIZES: Record<HierarchyNode["type"], number> = {
