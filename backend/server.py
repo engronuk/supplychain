@@ -23,6 +23,7 @@ from routes import (
     stock_requests,
 )
 from services.seed import seed_from_csv
+from services.migrations import ensure_indexes
 
 app = FastAPI(title="TradeKonekt API")
 api_router = APIRouter(prefix="/api")
@@ -58,9 +59,25 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def auto_seed_if_needed():
+    """On boot: ensure indexes (idempotent) and auto-seed when the DB is empty.
+
+    This is what makes a fresh PRODUCTION deployment usable on first request
+    without a manual migration step. If the data dir is missing in the
+    deployed image, the seed will short-circuit gracefully (empty inserts).
+    """
+    try:
+        idx = await ensure_indexes()
+        logger.info("Indexes ensured: %s", idx)
+    except Exception:
+        logger.exception("ensure_indexes failed on startup (continuing)")
+
     if await db.manufacturers.count_documents({}) == 0:
         logger.info("Empty manufacturer collection — auto-seeding from CSVs.")
-        await seed_from_csv()
+        try:
+            result = await seed_from_csv()
+            logger.info("Auto-seed complete: %s", result)
+        except Exception:
+            logger.exception("Auto-seed failed — run `python seed.py --force` manually.")
 
 
 @app.on_event("shutdown")
