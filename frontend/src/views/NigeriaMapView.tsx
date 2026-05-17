@@ -56,6 +56,7 @@ import {
   RetailerDetail,
   geoService,
 } from "@/services/geoService";
+import { NIGERIA_BOUNDARY, WORLD_RING } from "@/data/nigeriaBoundary";
 
 // ============================================================================
 // Constants
@@ -577,18 +578,49 @@ export default function NigeriaMapView({
           <MapRefBinder onReady={(m) => { mapRef.current = m; }} />
           <FlyTo to={flyTo?.pos || null} zoom={flyTo?.zoom || 8} />
 
-          {/* Mask covering outside Nigeria */}
+          {/* === Country focus mask ===
+              Inverse polygon: outer ring = world, inner ring (hole) = Nigeria.
+              Renders a soft grey wash everywhere OUTSIDE Nigeria; Nigeria
+              itself remains fully clear and interactive. No rectangular
+              edges because the outer ring extends far beyond the viewport. */}
           <Polygon
-            positions={[
-              [[-90, -360], [-90, 360], [90, 360], [90, -360]],
-              [
-                [NIGERIA_BOUNDS[0][0], NIGERIA_BOUNDS[0][1]],
-                [NIGERIA_BOUNDS[1][0], NIGERIA_BOUNDS[0][1]],
-                [NIGERIA_BOUNDS[1][0], NIGERIA_BOUNDS[1][1]],
-                [NIGERIA_BOUNDS[0][0], NIGERIA_BOUNDS[1][1]],
-              ],
-            ] as any}
-            pathOptions={{ fillColor: "#f8fafc", fillOpacity: 0.78, color: "#cbd5e1", weight: 0.6, interactive: false }}
+            positions={[WORLD_RING, NIGERIA_BOUNDARY] as any}
+            pathOptions={{
+              fillColor: "#e2e8f0",
+              fillOpacity: 0.72,
+              color: "transparent",
+              weight: 0,
+              interactive: false,
+              fillRule: "evenodd",
+            }}
+          />
+
+          {/* === Subtle glow ring around Nigeria === */}
+          <Polygon
+            positions={NIGERIA_BOUNDARY}
+            pathOptions={{
+              color: "#6366f1",
+              opacity: 0.16,
+              weight: 8,
+              fillOpacity: 0,
+              interactive: false,
+              lineJoin: "round",
+              lineCap: "round",
+            }}
+          />
+
+          {/* === Bold Nigeria national border === */}
+          <Polygon
+            positions={NIGERIA_BOUNDARY}
+            pathOptions={{
+              color: "#475569",
+              opacity: 0.85,
+              weight: 1.8,
+              fillOpacity: 0,
+              interactive: false,
+              lineJoin: "round",
+              lineCap: "round",
+            }}
           />
 
           {/* Connection lines — thin dashed, soft opacity */}
