@@ -692,8 +692,11 @@ function SaleEntryDialog({ retailerId, onClose, onCreated }) {
 
   return (
     <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="max-w-5xl p-0 overflow-hidden gap-0 sm:rounded-2xl" data-testid="sale-entry-dialog">
-        <DialogHeader className="px-5 py-4 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white">
+      <DialogContent
+        className="max-w-5xl w-[95vw] p-0 overflow-hidden gap-0 sm:rounded-2xl h-[92vh] sm:h-[88vh] flex flex-col"
+        data-testid="sale-entry-dialog"
+      >
+        <DialogHeader className="px-5 py-4 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Receipt className="h-5 w-5 text-indigo-600" />
             New Sale
@@ -703,10 +706,10 @@ function SaleEntryDialog({ retailerId, onClose, onCreated }) {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 lg:grid-cols-5 max-h-[78vh] overflow-hidden">
+        <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-5 overflow-hidden">
           {/* Product picker */}
-          <div className="lg:col-span-2 border-r border-slate-200 flex flex-col bg-slate-50/50">
-            <div className="p-4 border-b border-slate-200 bg-white">
+          <div className="lg:col-span-2 lg:border-r border-b lg:border-b-0 border-slate-200 flex flex-col bg-slate-50/50 min-h-0 max-h-[38vh] lg:max-h-none">
+            <div className="p-4 border-b border-slate-200 bg-white flex-shrink-0">
               <div className="relative">
                 <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <Input
@@ -718,7 +721,7 @@ function SaleEntryDialog({ retailerId, onClose, onCreated }) {
                 />
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
+            <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-1.5">
               {filteredProducts.length === 0 && (
                 <div className="text-xs text-slate-500 text-center py-6">No products match.</div>
               )}
@@ -752,8 +755,8 @@ function SaleEntryDialog({ retailerId, onClose, onCreated }) {
           </div>
 
           {/* Cart + payment */}
-          <div className="lg:col-span-3 flex flex-col">
-            <div className="flex-1 overflow-y-auto p-4 sm:p-5">
+          <div className="lg:col-span-3 flex flex-col min-h-0">
+            <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5">
               <div className="flex items-center justify-between mb-3">
                 <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider inline-flex items-center gap-1.5">
                   <ShoppingCart className="h-3.5 w-3.5" /> Cart ({cart.length})
@@ -872,7 +875,7 @@ function SaleEntryDialog({ retailerId, onClose, onCreated }) {
             </div>
 
             {/* Sticky total + submit */}
-            <div className="border-t border-slate-200 bg-white p-4">
+            <div className="border-t border-slate-200 bg-white p-4 flex-shrink-0">
               <div className="flex items-center justify-between mb-3">
                 <div className="text-xs text-slate-500">
                   {totalUnits} unit{totalUnits !== 1 ? "s" : ""} · {cart.length} line item{cart.length !== 1 ? "s" : ""}
