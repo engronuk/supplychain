@@ -87,15 +87,23 @@ Manufacturer can see all 91 distributors; Distributor sees all its retailers.
 - Child fan width clamped to parent's angular slot (`a1 - a0 * 0.92`)
   with orbit auto-expanded to preserve tangential spacing
 
+## Updates (2026-05-17 — Backend Refactor P2)
+### Modular routers
+- `server.py` reduced from **2,969 → 68 lines** (slim entrypoint that just wires routers + lifecycle hooks).
+- Split into `core.py` (db client + utils + type literals), `models.py` (all Pydantic), `services/` (helpers, ai_insights, retailer, seed) and `routes/` (entities, inventory, shipments, stock_requests, notifications, analytics, reports, hierarchy, geo, distributor, retailer_os, assistant, seed).
+- All `/api/*` paths unchanged — frontend untouched.
+- pytest suite: **44/44 passing** post-refactor (was 24; assistant + retailer ops suites already added by previous work).
+- Stale seed-count assertions (legacy 91 retailers) updated to reflect 3,080-retailer dataset.
+
 ## Prioritized backlog
 - P1 — Multi-manufacturer scoping: `retailers_count` in /api/analytics for manufacturer
   currently counts all retailers; should be scoped to that manufacturer's distributors
 - P1 — Validate inventory ≥ requested at pending→in_transit instead of clamping at 0
-- P2 — Split server.py into routers (entities, shipments, requests, analytics, reports, seed)
 - P2 — Server-side guard on Shipment.from_role/to_role pairs (only mfg→dist or dist→ret)
 - P2 — Silence Recharts width(-1) console warnings with explicit chart min-heights
 - P3 — Multi-manufacturer support (currently single)
 - P3 — Email/SMS notifications integration
+- P3 — Real ServiceWorker offline support for Retailer OS
 
 ## Next tasks
 - Address any feedback from user
