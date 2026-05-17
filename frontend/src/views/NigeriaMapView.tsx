@@ -13,6 +13,7 @@ import {
   TileLayer,
   Marker,
   Polyline,
+  Polygon,
   ZoomControl,
   useMap,
 } from "react-leaflet";
@@ -55,50 +56,64 @@ function divIcon(html: string, size: number, anchor?: [number, number]): L.DivIc
   });
 }
 
+// Clean enterprise color palette
+const COLOR = {
+  manufacturer: "#2563eb", // blue
+  region: "#4f46e5",       // indigo
+  distributor: "#0d9488",  // teal
+  healthy: "#10b981",
+  warning: "#f59e0b",
+  critical: "#ef4444",
+} as const;
+
 function manufacturerIcon(): L.DivIcon {
   return divIcon(
-    `<div style="display:flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:14px;background:linear-gradient(180deg,#6366f1,#4f46e5);color:#fff;box-shadow:0 8px 24px -8px rgba(79,70,229,0.55),0 0 0 4px rgba(255,255,255,0.9);">
-       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8l-7 5V8l-7 5V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/></svg>
+    `<div style="display:flex;align-items:center;justify-content:center;width:48px;height:48px;border-radius:14px;background:${COLOR.manufacturer};color:#fff;box-shadow:0 4px 14px -4px rgba(37,99,235,0.45),0 0 0 4px rgba(255,255,255,0.92);">
+       <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8l-7 5V8l-7 5V4a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/></svg>
      </div>`,
-    44
+    48
   );
 }
 
 function regionIcon(count: number): L.DivIcon {
   return divIcon(
-    `<div style="display:flex;align-items:center;justify-content:center;width:54px;height:54px;border-radius:50%;background:linear-gradient(180deg,#3b82f6,#2563eb);color:#fff;font-weight:700;font-size:18px;font-family:ui-sans-serif,system-ui;box-shadow:0 8px 22px -8px rgba(37,99,235,0.55),0 0 0 5px rgba(219,234,254,0.9);">
+    `<div style="display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:50%;background:${COLOR.region};color:#fff;font-weight:700;font-size:14px;font-family:ui-sans-serif,system-ui;box-shadow:0 3px 10px -3px rgba(79,70,229,0.45),0 0 0 4px rgba(255,255,255,0.95);">
        ${count}
      </div>`,
-    54
+    40
   );
 }
 
-function distributorIcon(status: GeoStatus): L.DivIcon {
-  const color = geoService.statusColor(status);
+function distributorIcon(status: GeoStatus, selected: boolean): L.DivIcon {
+  // Outer ring = teal (entity type), inner = health status, slight emphasis when selected
+  const inner = geoService.statusColor(status);
+  const size = selected ? 22 : 18;
   return divIcon(
-    `<div style="position:relative;width:22px;height:22px;">
-       <div style="position:absolute;inset:0;border-radius:50%;background:#ffffff;box-shadow:0 6px 14px -6px rgba(15,23,42,0.35);"></div>
-       <div style="position:absolute;inset:4px;border-radius:50%;background:${color};border:2px solid #ffffff;"></div>
+    `<div style="position:relative;width:${size}px;height:${size}px;">
+       <div style="position:absolute;inset:0;border-radius:50%;background:#ffffff;box-shadow:0 2px 6px -2px rgba(15,23,42,0.25);"></div>
+       <div style="position:absolute;inset:3px;border-radius:50%;background:${COLOR.distributor};"></div>
+       <div style="position:absolute;inset:6px;border-radius:50%;background:${inner};"></div>
      </div>`,
-    22
+    size
   );
 }
 
 function retailerIcon(status: GeoStatus, selected: boolean): L.DivIcon {
   const color = geoService.statusColor(status);
-  const size = selected ? 18 : 12;
-  const ring = selected ? "0 0 0 4px rgba(99,102,241,0.35)," : "";
+  const size = selected ? 14 : 9;
+  const ring = selected ? "box-shadow:0 0 0 4px rgba(79,70,229,0.25),0 2px 6px -2px rgba(15,23,42,0.25);" : "box-shadow:0 1px 3px -1px rgba(15,23,42,0.2);";
   return divIcon(
-    `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:2px solid #ffffff;box-shadow:${ring}0 4px 10px -4px rgba(15,23,42,0.35);"></div>`,
+    `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:1.5px solid #ffffff;${ring}"></div>`,
     size
   );
 }
 
-const NIGERIA_CENTER: [number, number] = [9.082, 8.6753];
+// Nigeria-only viewport. These bounds clamp panning to mainland Nigeria.
 const NIGERIA_BOUNDS: [[number, number], [number, number]] = [
-  [3.0, 2.5],
-  [14.5, 15.5],
+  [3.8, 2.6],   // SW
+  [14.0, 14.7], // NE
 ];
+const NIGERIA_CENTER: [number, number] = [9.082, 8.6753];
 
 // ---------------- Fly helpers ----------------
 function FlyTo({ to, zoom = 9 }: { to: [number, number] | null; zoom?: number }) {
@@ -106,6 +121,29 @@ function FlyTo({ to, zoom = 9 }: { to: [number, number] | null; zoom?: number })
   useEffect(() => {
     if (to) map.flyTo(to, zoom, { duration: 0.9 });
   }, [to, zoom, map]);
+  return null;
+}
+
+// Tracks map zoom changes for zoom-aware layer visibility.
+function ZoomTracker({ onZoom }: { onZoom: (z: number) => void }) {
+  const map = useMap();
+  useEffect(() => {
+    const update = () => onZoom(map.getZoom());
+    update();
+    map.on("zoomend", update);
+    return () => {
+      map.off("zoomend", update);
+    };
+  }, [map, onZoom]);
+  return null;
+}
+
+// On mount: snap the map to fit Nigeria bounds exactly.
+function FitNigeriaOnMount() {
+  const map = useMap();
+  useEffect(() => {
+    map.fitBounds(NIGERIA_BOUNDS, { padding: [20, 20] });
+  }, [map]);
   return null;
 }
 
@@ -143,6 +181,7 @@ export default function NigeriaMapView({ manufacturerId }: { manufacturerId: str
   const containerRef = useRef<HTMLDivElement>(null);
   const [fullscreen, setFullscreen] = useState(false);
   const [openPanel, setOpenPanel] = useState<"none" | "layers">("none");
+  const [zoom, setZoom] = useState(6);
 
   useEffect(() => {
     let cancelled = false;
@@ -218,6 +257,22 @@ export default function NigeriaMapView({ manufacturerId }: { manufacturerId: str
     setFlyTo({ pos: [r.lat, r.lon], zoom: 8 });
   }, []);
 
+  // Auto-fly when region filter changes via the dropdown
+  useEffect(() => {
+    if (!data) return;
+    if (selectedRegion === "all") return;
+    const r = data.regions.find((x) => x.name === selectedRegion);
+    if (r) setFlyTo({ pos: [r.lat, r.lon], zoom: 8 });
+  }, [selectedRegion, data]);
+
+  // Auto-fly when distributor filter changes
+  useEffect(() => {
+    if (!data) return;
+    if (selectedDist === "all") return;
+    const d = data.distributors.find((x) => x.id === selectedDist);
+    if (d) setFlyTo({ pos: [d.lat, d.lon], zoom: 11 });
+  }, [selectedDist, data]);
+
   // Distributor click → reveal retailers + fly
   const onDistributorClick = useCallback((d: GeoDistributor) => {
     setSelectedDist(d.id);
@@ -262,37 +317,81 @@ export default function NigeriaMapView({ manufacturerId }: { manufacturerId: str
     return () => document.removeEventListener("fullscreenchange", onFs);
   }, []);
 
-  // ---- Lines: manufacturer → distributor and distributor → retailer ----
+  // ---- Lines: only for the active drill-down path (selected region /
+  // distributor / retailer). Manufacturer always connects to drilled
+  // distributor; distributor always connects to the selected retailer.
   const routeLines = useMemo(() => {
-    if (!data || !layers.routes) return null;
-    const lines: { a: [number, number]; b: [number, number]; color: string; opacity: number; weight: number }[] = [];
+    if (!data || !layers.routes) return [];
+    const lines: { a: [number, number]; b: [number, number]; color: string; opacity: number; weight: number; dash?: string }[] = [];
     const mfg: [number, number] = [data.manufacturer.lat, data.manufacturer.lon];
-    filteredDistributors.forEach((d) => {
+
+    // Active distributor (filter pick OR the retailer's distributor)
+    let activeDist: GeoDistributor | null = null;
+    if (selectedDist !== "all") {
+      activeDist = data.distributors.find((d) => d.id === selectedDist) || null;
+    } else if (activeRetailer) {
+      activeDist = data.distributors.find((d) => d.id === activeRetailer.distributor_id) || null;
+    }
+
+    if (activeDist) {
       lines.push({
         a: mfg,
-        b: [d.lat, d.lon],
-        color: "#6366f1",
-        opacity: 0.18,
-        weight: 1.2,
+        b: [activeDist.lat, activeDist.lon],
+        color: COLOR.manufacturer,
+        opacity: 0.45,
+        weight: 1.6,
+        dash: "5 8",
       });
-    });
-    // distributor → retailer only when zoomed enough — we just always include
-    // them when 1 distributor is filtered, to keep the line count manageable.
-    if (selectedDist !== "all") {
-      filteredRetailers.forEach((r) => {
-        const dist = filteredDistributors.find((d) => d.id === r.distributor_id);
-        if (!dist) return;
+      // Distributor → its retailers (only when distributor is selected)
+      if (selectedDist !== "all") {
+        filteredRetailers
+          .filter((r) => r.distributor_id === activeDist!.id)
+          .forEach((r) => {
+            lines.push({
+              a: [activeDist!.lat, activeDist!.lon],
+              b: [r.lat, r.lon],
+              color: geoService.statusColor(r.status),
+              opacity: 0.35,
+              weight: 1.0,
+            });
+          });
+      }
+      // Distributor → selected retailer only
+      if (activeRetailer) {
         lines.push({
-          a: [dist.lat, dist.lon],
-          b: [r.lat, r.lon],
-          color: geoService.statusColor(r.status),
-          opacity: 0.45,
-          weight: 1.1,
+          a: [activeDist.lat, activeDist.lon],
+          b: [activeRetailer.lat, activeRetailer.lon],
+          color: COLOR.region,
+          opacity: 0.55,
+          weight: 1.6,
         });
-      });
+      }
+    } else if (selectedRegion !== "all") {
+      // Region selected — light traces to its distributors
+      const region = data.regions.find((r) => r.name === selectedRegion);
+      if (region) {
+        filteredDistributors.forEach((d) => {
+          lines.push({
+            a: [region.lat, region.lon],
+            b: [d.lat, d.lon],
+            color: COLOR.region,
+            opacity: 0.18,
+            weight: 1.0,
+            dash: "3 6",
+          });
+        });
+      }
     }
     return lines;
-  }, [data, filteredDistributors, filteredRetailers, selectedDist, layers.routes]);
+  }, [data, layers.routes, selectedDist, selectedRegion, activeRetailer, filteredRetailers, filteredDistributors]);
+
+  // ---- Zoom-aware layer visibility ----
+  // - Country zoom (≤7): regions only
+  // - Regional zoom (8-10): distributors (+ region label still visible at 8)
+  // - City zoom (≥11): retailers
+  const showRegions = layers.regions && zoom <= 8;
+  const showDistributors = layers.distributors && zoom >= 7 && zoom <= 12;
+  const showRetailers = layers.retailers && zoom >= 9;
 
   if (loading) {
     return (
@@ -315,6 +414,35 @@ export default function NigeriaMapView({ manufacturerId }: { manufacturerId: str
       className="relative h-full w-full bg-white overflow-hidden"
       data-testid="nigeria-map-view"
     >
+      {/* Inline CSS — mute the tile layer to enterprise-grayscale and trim
+          marker default styles. Scoped via the parent test-id container. */}
+      <style>{`
+        [data-testid="nigeria-map-view"] .leaflet-tile-pane {
+          filter: saturate(0.55) brightness(1.04) contrast(0.92);
+        }
+        [data-testid="nigeria-map-view"] .leaflet-container { background: #f1f5f9; }
+        [data-testid="nigeria-map-view"] .tk-marker { background: transparent !important; border: 0 !important; }
+        [data-testid="nigeria-map-view"] .marker-cluster {
+          background: rgba(79,70,229,0.18) !important;
+        }
+        [data-testid="nigeria-map-view"] .marker-cluster div {
+          background: rgba(255,255,255,0.95) !important;
+          color: #1e293b !important;
+          font: 600 12px/1 ui-sans-serif, system-ui !important;
+          border: 1px solid rgba(79,70,229,0.35) !important;
+          box-shadow: 0 4px 12px -4px rgba(15,23,42,0.18);
+        }
+        [data-testid="nigeria-map-view"] .leaflet-control-zoom a {
+          background: rgba(255,255,255,0.95) !important;
+          color: #334155 !important;
+          border: 1px solid rgba(226,232,240,0.9) !important;
+          backdrop-filter: blur(8px);
+        }
+        [data-testid="nigeria-map-view"] .leaflet-control-attribution {
+          font-size: 9.5px !important;
+          background: rgba(255,255,255,0.65) !important;
+        }
+      `}</style>
       {/* Left filter rail */}
       <aside
         className="absolute top-3 left-3 z-[500] w-[260px] bg-white/95 backdrop-blur-md border border-slate-200/80 rounded-2xl shadow-lg p-3 max-h-[calc(100%-1.5rem)] overflow-y-auto"
@@ -447,45 +575,75 @@ export default function NigeriaMapView({ manufacturerId }: { manufacturerId: str
       <MapContainer
         center={NIGERIA_CENTER}
         zoom={6}
-        minZoom={5}
-        maxZoom={17}
+        minZoom={6}
+        maxZoom={16}
         scrollWheelZoom
         zoomControl={false}
         maxBounds={NIGERIA_BOUNDS}
-        maxBoundsViscosity={0.6}
-        className="absolute inset-0 z-0 bg-slate-50"
+        maxBoundsViscosity={1.0}
+        className="absolute inset-0 z-0 bg-slate-100"
+        worldCopyJump={false}
       >
         <TileLayer
           attribution='&copy; OpenStreetMap'
           url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
+          bounds={NIGERIA_BOUNDS}
+          noWrap
         />
         <ZoomControl position="bottomright" />
+        <FitNigeriaOnMount />
+        <ZoomTracker onZoom={setZoom} />
         <FlyTo to={flyTo?.pos || null} zoom={flyTo?.zoom || 8} />
 
-        {/* Connection routes */}
-        {routeLines &&
-          routeLines.map((l, i) => (
-            <Polyline
-              key={i}
-              positions={[l.a, l.b]}
-              pathOptions={{
-                color: l.color,
-                opacity: l.opacity,
-                weight: l.weight,
-                dashArray: "4 6",
-              }}
-            />
-          ))}
+        {/* Mask for areas outside Nigeria — fades neighbors out */}
+        <Polygon
+          positions={[
+            // Outer ring (world)
+            [[-90, -360], [-90, 360], [90, 360], [90, -360]],
+            // Hole — Nigeria bounds
+            [
+              [NIGERIA_BOUNDS[0][0], NIGERIA_BOUNDS[0][1]],
+              [NIGERIA_BOUNDS[1][0], NIGERIA_BOUNDS[0][1]],
+              [NIGERIA_BOUNDS[1][0], NIGERIA_BOUNDS[1][1]],
+              [NIGERIA_BOUNDS[0][0], NIGERIA_BOUNDS[1][1]],
+            ],
+          ] as any}
+          pathOptions={{
+            fillColor: "#f8fafc",
+            fillOpacity: 0.78,
+            color: "#cbd5e1",
+            weight: 0.6,
+            interactive: false,
+          }}
+        />
 
-        {/* Manufacturer marker */}
+        {/* Connection routes — only active drill-down */}
+        {routeLines.map((l, i) => (
+          <Polyline
+            key={i}
+            positions={[l.a, l.b]}
+            pathOptions={{
+              color: l.color,
+              opacity: l.opacity,
+              weight: l.weight,
+              dashArray: l.dash,
+              lineCap: "round",
+              lineJoin: "round",
+            }}
+          />
+        ))}
+
+        {/* Manufacturer marker — always visible */}
         <Marker
           position={[data.manufacturer.lat, data.manufacturer.lon]}
           icon={manufacturerIcon()}
-          eventHandlers={{ click: () => setFlyTo({ pos: [data.manufacturer.lat, data.manufacturer.lon], zoom: 7 }) }}
+          eventHandlers={{
+            click: () => setFlyTo({ pos: [data.manufacturer.lat, data.manufacturer.lon], zoom: 7 }),
+          }}
         />
 
-        {/* Region cluster markers (visual aggregates, not Leaflet clusters) */}
-        {layers.regions &&
+        {/* Region cluster markers — visible at country zoom */}
+        {showRegions &&
           data.regions
             .filter((r) => selectedRegion === "all" || r.name === selectedRegion)
             .map((r) => (
@@ -497,22 +655,22 @@ export default function NigeriaMapView({ manufacturerId }: { manufacturerId: str
               />
             ))}
 
-        {/* Distributor markers */}
-        {layers.distributors &&
+        {/* Distributor markers — visible at regional zoom */}
+        {showDistributors &&
           filteredDistributors.map((d) => (
             <Marker
               key={d.id}
               position={[d.lat, d.lon]}
-              icon={distributorIcon(d.status)}
+              icon={distributorIcon(d.status, selectedDist === d.id)}
               eventHandlers={{ click: () => onDistributorClick(d) }}
             />
           ))}
 
-        {/* Retailer markers — clustered for performance */}
-        {layers.retailers && (
+        {/* Retailer markers — visible at city zoom, clustered */}
+        {showRetailers && (
           <MarkerClusterGroup
             chunkedLoading
-            maxClusterRadius={45}
+            maxClusterRadius={55}
             spiderfyOnMaxZoom
             showCoverageOnHover={false}
           >
@@ -529,14 +687,15 @@ export default function NigeriaMapView({ manufacturerId }: { manufacturerId: str
       </MapContainer>
 
       {/* Bottom-left summary chips */}
-      <div className="absolute bottom-3 left-3 z-[500] flex items-center gap-2">
-        <SummaryChip label="Distributors" value={filteredDistributors.length} accent="#2563eb" />
+      <div className="absolute bottom-3 left-3 z-[500] flex items-center gap-2 flex-wrap">
+        <SummaryChip label="Distributors" value={filteredDistributors.length} accent="#0d9488" />
         <SummaryChip label="Retailers" value={filteredRetailers.length} accent="#10b981" />
         <SummaryChip
           label="At risk"
           value={filteredRetailers.filter((r) => r.status !== "healthy").length}
           accent="#ef4444"
         />
+        <ZoomLevelHint zoom={zoom} />
       </div>
 
       {/* Retailer detail card */}
@@ -629,28 +788,48 @@ function SummaryChip({ label, value, accent }: { label: string; value: number; a
   );
 }
 
-function Legend() {
+function ZoomLevelHint({ zoom }: { zoom: number }) {
+  const level =
+    zoom <= 7 ? { label: "Regional view", color: "#4f46e5" }
+    : zoom <= 10 ? { label: "Distributor view", color: "#0d9488" }
+    : { label: "Retailer view", color: "#10b981" };
   return (
-    <div className="space-y-1.5">
-      <LegendRow color="#6366f1" label="Manufacturer" shape="square" />
-      <LegendRow color="#3b82f6" label="Region" shape="circle" />
-      <LegendRow color="#10b981" label="Retailer · Healthy" shape="dot" />
-      <LegendRow color="#f59e0b" label="Retailer · Warning" shape="dot" />
-      <LegendRow color="#ef4444" label="Retailer · Critical" shape="dot" />
+    <div
+      className="inline-flex items-center gap-1.5 bg-white/95 backdrop-blur-md border border-slate-200/80 rounded-full px-3 py-1.5 shadow-sm"
+      data-testid="map-zoom-hint"
+    >
+      <span className="h-2 w-2 rounded-full" style={{ background: level.color }} />
+      <span className="text-[11px] text-slate-500 font-medium">Drill-down:</span>
+      <span className="text-[12px] font-semibold text-slate-900">{level.label}</span>
     </div>
   );
 }
 
-function LegendRow({ color, label, shape }: { color: string; label: string; shape: "dot" | "circle" | "square" }) {
+function Legend() {
+  return (
+    <div className="space-y-1.5">
+      <LegendRow color="#2563eb" label="Manufacturer" shape="square" />
+      <LegendRow color="#4f46e5" label="Region" shape="circle" />
+      <LegendRow color="#0d9488" label="Distributor" shape="ring" />
+      <LegendRow color="#10b981" label="Healthy" shape="dot" />
+      <LegendRow color="#f59e0b" label="Warning" shape="dot" />
+      <LegendRow color="#ef4444" label="Critical" shape="dot" />
+    </div>
+  );
+}
+
+function LegendRow({ color, label, shape }: { color: string; label: string; shape: "dot" | "circle" | "square" | "ring" }) {
   const cls =
     shape === "square"
       ? "h-3 w-3 rounded-[4px]"
       : shape === "circle"
-      ? "h-3 w-3 rounded-full border-2 border-white shadow"
+      ? "h-3 w-3 rounded-full"
+      : shape === "ring"
+      ? "h-3 w-3 rounded-full ring-2 ring-white"
       : "h-2 w-2 rounded-full";
   return (
     <div className="flex items-center gap-2">
-      <span className={cls} style={{ background: color }} />
+      <span className={cls} style={{ background: color, boxShadow: shape === "ring" ? "0 0 0 1px #cbd5e1" : undefined }} />
       <span className="text-[11.5px] text-slate-600">{label}</span>
     </div>
   );
