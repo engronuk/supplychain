@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useSession } from "@/context/SessionContext";
 import { Api } from "@/lib/api";
 import { PageHeader } from "@/components/Common";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, AlertTriangle } from "lucide-react";
+import { Search, AlertTriangle, ArrowUpRight } from "lucide-react";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -85,10 +86,22 @@ export default function InventoryView() {
               )}
               {filtered.map((i) => {
                 const low = i.quantity <= i.reorder_level;
+                const isClickable = role === "distributor" && i.product?.id;
+                const productLink = isClickable ? `/inventory/product/${i.product.id}` : null;
                 return (
-                  <TableRow key={i.id} data-testid={`inventory-row-${i.product?.sku}`}>
+                  <TableRow key={i.id} data-testid={`inventory-row-${i.product?.sku}`}
+                            className={isClickable ? "hover:bg-slate-50/60 cursor-pointer transition-colors" : ""}>
                     <TableCell className="font-mono text-xs text-slate-500">{i.product?.sku}</TableCell>
-                    <TableCell className="font-medium text-slate-900">{i.product?.name}</TableCell>
+                    <TableCell className="font-medium text-slate-900">
+                      {productLink ? (
+                        <Link to={productLink} className="inline-flex items-center gap-1 hover:text-indigo-600 group">
+                          {i.product?.name}
+                          <ArrowUpRight className="h-3 w-3 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                        </Link>
+                      ) : (
+                        i.product?.name
+                      )}
+                    </TableCell>
                     <TableCell className="text-slate-600">{i.product?.category}</TableCell>
                     <TableCell className="text-right font-semibold">{i.quantity}</TableCell>
                     <TableCell className="text-right text-slate-500">{i.reorder_level}</TableCell>

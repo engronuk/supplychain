@@ -617,6 +617,577 @@ def _retailer_insights(
     return out[:6]
 
 
+# ============================================================================
+# Phase 3 — Product Intelligence (distributor-scoped)
+# ============================================================================
+@api_router.get("/distributor/{distributor_id}/product/{product_id}")
+async def distributor_product_detail(distributor_id: str, product_id: str):
+    """Full product intelligence — overview, monthly revenue trend, regional &
+    retailer breakdown, shop distribution & stock intelligence, performance.
+    """
+    product = await db.products.find_one({"id": product_id}, {"_id": 0})
+    if not product:
+        raise HTTPException(404, "Product not found")
+
+    # Retailers under this distributor
+    retailers = await db.retailers.find(
+        {"distributor_id": distributor_id}, {"_id": 0}
+    ).to_list(20000)
+    if not retailers:
+        return _empty_product_detail(product)
+    retailer_ids = [r["id"] for r in retailers]
+    retailer_by_id = {r["id"]: r for r in retailers}
+    unit_price = float(product["unit_price"])
+
+    # ---- Shop distribution / Stock Intelligence (per retailer) ----
+    inv_rows = await db.inventory.find(
+        {"owner_type": "retailer", "owner_id": {"$in": retailer_ids}, "product_id": product_id},
+        {"_id": 0}
+    ).to_list(10000)
+    last_restock_by_owner: Dict[str, str] = {}
+    # Pull received-shipment dates as proxy for last restock date
+    async for s in db.shipments.find(
+        {"to_role": "retailer", "to_id": {"$in": retailer_ids}, "status": "received"},
+        {"_id": 0, "to_id": 1, "received_at": 1, "items": 1}
+    ):
+        for it in s.get("items", []):
+            if it.get("product_id") == product_id:
+                t = s.get("received_at") or ""
+                rid = s["to_id"]
+                if t > last_restock_by_owner.get(rid, ""):
+                    last_restock_by_owner[rid] = t
+
+    shop_dist: List[dict] = []
+    bucket = {"overstocked": 0, "healthy": 0, "understocked": 0, "critical": 0}
+    for inv in inv_rows:
+        r = retailer_by_id.get(inv["owner_id"])
+        if not r:
+            continue
+        qty = int(inv.get("quantity", 0))
+        reorder = int(inv.get("reorder_level", 0))
+        if qty == 0:
+            tier = "critical"
+        elif qty <= reorder:
+            tier = "understocked"
+        elif reorder > 0 and qty > reorder * 3:
+            tier = "overstocked"
+        else:
+            tier = "healthy"
+        bucket[tier] = bucket.get(tier, 0) + 1
+        shop_dist.append({
+            "retailer_id": r["id"],
+            "retailer_name": r["name"],
+            "city": r.get("city", ""),
+            "region": r.get("region", ""),
+            "quantity": qty,
+            "reorder_level": reorder,
+            "tier": tier,
+            "last_restock": last_restock_by_owner.get(r["id"]),
+        })
+    shop_dist.sort(key=lambda x: x["quantity"], reverse=True)
+
+    # ---- Revenue analytics from daily_sales (90 days) ----
+    today = datetime.now(timezone.utc).date()
+    start_90 = (today - timedelta(days=89)).isoformat()
+    daily = await db.daily_sales.find(
+        {"product_id": product_id, "retailer_id": {"$in": retailer_ids},
+         "date": {"$gte": start_90}},
+        {"_id": 0}
+    ).to_list(60000)
+
+    # Monthly revenue trend
+    by_month: Dict[str, float] = {}
+    by_region: Dict[str, float] = {}
+    by_retailer: Dict[str, dict] = {}
+    total_units = 0
+    total_revenue = 0.0
+    last_30_units = 0
+    last_30_start = (today - timedelta(days=29)).isoformat()
+    for s in daily:
+        rev = float(s.get("revenue", 0))
+        units = int(s.get("quantity_sold", 0))
+        total_revenue += rev
+        total_units += units
+        if s["date"] >= last_30_start:
+            last_30_units += units
+        month_key = s["date"][:7]
+        by_month[month_key] = by_month.get(month_key, 0) + rev
+        rid = s.get("retailer_id")
+        r = retailer_by_id.get(rid)
+        if r:
+            by_region[r.get("region", "—")] = by_region.get(r.get("region", "—"), 0) + rev
+            agg = by_retailer.setdefault(rid, {"name": r["name"], "city": r.get("city", ""),
+                                                "region": r.get("region", ""), "revenue": 0.0, "units": 0})
+            agg["revenue"] += rev
+            agg["units"] += units
+
+    months_sorted = sorted(by_month.keys())[-6:]
+    monthly_trend = [{"month": m, "revenue": round(by_month[m], 2)} for m in months_sorted]
+    region_breakdown = sorted(
+        [{"region": k, "revenue": round(v, 2)} for k, v in by_region.items()],
+        key=lambda x: x["revenue"], reverse=True
+    )
+    top_retailers = sorted(by_retailer.values(), key=lambda x: x["revenue"], reverse=True)[:10]
+    for tr in top_retailers:
+        tr["revenue"] = round(tr["revenue"], 2)
+
+    # ---- Inventory at distributor level ----
+    dist_inv = await db.inventory.find_one(
+        {"owner_type": "distributor", "owner_id": distributor_id, "product_id": product_id},
+        {"_id": 0}
+    ) or {}
+    dist_qty = int(dist_inv.get("quantity", 0))
+    dist_reorder = int(dist_inv.get("reorder_level", 0))
+    dist_stock_status = "critical" if dist_qty == 0 else "understocked" if dist_qty <= dist_reorder else "healthy"
+
+    # Avg daily sales (last 30 days) = total units last 30 / 30
+    avg_daily_sales = round(last_30_units / 30, 1)
+
+    # ---- Performance flags ----
+    sold_per_shop = [(s["retailer_id"], next((tr["units"] for tr in by_retailer.values() if tr["name"] == s["retailer_name"]), 0)) for s in shop_dist]
+    moving_units_total = sum(u for _, u in sold_per_shop)
+    fast_moving = total_units > 0 and avg_daily_sales >= 5
+    slow_moving = total_units > 0 and avg_daily_sales < 1
+    most_requested_count = 0
+    async for q in db.requests.find(
+        {"distributor_id": distributor_id, "items.product_id": product_id},
+        {"_id": 0, "items": 1}
+    ):
+        for it in q.get("items", []):
+            if it.get("product_id") == product_id:
+                most_requested_count += int(it.get("quantity", 0))
+
+    # ---- AI insights via Claude Haiku ----
+    insights = await _generate_ai_insights(
+        prompt_id=f"product-{product_id}",
+        kind="product",
+        context=_build_product_insight_context(
+            product=product,
+            bucket=bucket,
+            total_revenue=total_revenue,
+            avg_daily_sales=avg_daily_sales,
+            top_region=region_breakdown[0]["region"] if region_breakdown else None,
+            top_retailer=top_retailers[0]["name"] if top_retailers else None,
+            dist_qty=dist_qty,
+            dist_stock_status=dist_stock_status,
+            most_requested_count=most_requested_count,
+        ),
+    )
+
+    return {
+        "product": {
+            "id": product["id"],
+            "name": product["name"],
+            "sku": product["sku"],
+            "barcode": product.get("barcode", ""),
+            "category": product.get("category", ""),
+            "unit_price": unit_price,
+        },
+        "overview": {
+            "current_inventory": dist_qty,
+            "reorder_level": dist_reorder,
+            "stock_status": dist_stock_status,
+            "total_revenue": round(total_revenue, 2),
+            "total_units_sold": total_units,
+            "avg_daily_sales": avg_daily_sales,
+            "shops_stocking": len(shop_dist),
+            "shops_critical": bucket["critical"],
+            "shops_understocked": bucket["understocked"],
+            "shops_healthy": bucket["healthy"],
+            "shops_overstocked": bucket["overstocked"],
+        },
+        "revenue_analytics": {
+            "monthly_trend": monthly_trend,
+            "region_breakdown": region_breakdown,
+            "top_retailers": top_retailers,
+        },
+        "shop_distribution": shop_dist,
+        "stock_intelligence": {
+            "buckets": bucket,
+            "recommendations": _stock_recommendations(shop_dist, dist_qty, avg_daily_sales),
+        },
+        "performance": {
+            "fast_moving": fast_moving,
+            "slow_moving": slow_moving,
+            "most_requested_units": most_requested_count,
+            "last_30_units": last_30_units,
+        },
+        "ai_insights": insights,
+    }
+
+
+def _empty_product_detail(product):
+    return {
+        "product": {"id": product["id"], "name": product["name"], "sku": product["sku"],
+                    "barcode": product.get("barcode", ""), "category": product.get("category", ""),
+                    "unit_price": float(product["unit_price"])},
+        "overview": {"current_inventory": 0, "reorder_level": 0, "stock_status": "critical",
+                     "total_revenue": 0, "total_units_sold": 0, "avg_daily_sales": 0,
+                     "shops_stocking": 0, "shops_critical": 0, "shops_understocked": 0,
+                     "shops_healthy": 0, "shops_overstocked": 0},
+        "revenue_analytics": {"monthly_trend": [], "region_breakdown": [], "top_retailers": []},
+        "shop_distribution": [],
+        "stock_intelligence": {"buckets": {"overstocked": 0, "healthy": 0, "understocked": 0, "critical": 0},
+                                "recommendations": []},
+        "performance": {"fast_moving": False, "slow_moving": False, "most_requested_units": 0, "last_30_units": 0},
+        "ai_insights": [],
+    }
+
+
+def _stock_recommendations(shop_dist: List[dict], dist_qty: int, avg_daily_sales: float) -> List[dict]:
+    """Generate actionable reorder/rebalance recommendations."""
+    out: List[dict] = []
+    critical_shops = [s for s in shop_dist if s["tier"] == "critical"][:3]
+    under_shops = [s for s in shop_dist if s["tier"] == "understocked"][:3]
+    over_shops = [s for s in shop_dist if s["tier"] == "overstocked"][:2]
+    for s in critical_shops:
+        out.append({"tone": "critical", "title": f"Restock {s['retailer_name']}",
+                    "detail": f"Out of stock — last restock {s['last_restock'][:10] if s['last_restock'] else 'unknown'}."})
+    for s in under_shops:
+        out.append({"tone": "warning", "title": f"Top up {s['retailer_name']}",
+                    "detail": f"Only {s['quantity']} units (reorder level {s['reorder_level']})."})
+    for s in over_shops:
+        out.append({"tone": "info", "title": f"Rebalance from {s['retailer_name']}",
+                    "detail": f"Overstocked — could redistribute {s['quantity']} units to under-stocked shops."})
+    if dist_qty == 0:
+        out.insert(0, {"tone": "critical", "title": "Replenish distributor stock",
+                       "detail": "Zero inventory at distributor level — request from manufacturer."})
+    elif avg_daily_sales > 0 and dist_qty / max(avg_daily_sales, 1) < 7:
+        days = round(dist_qty / max(avg_daily_sales, 1), 1)
+        out.insert(0, {"tone": "warning", "title": "Distributor stock running low",
+                       "detail": f"{dist_qty} units = ~{days} days of cover at current pace."})
+    return out[:6]
+
+
+def _build_product_insight_context(*, product, bucket, total_revenue, avg_daily_sales,
+                                   top_region, top_retailer, dist_qty, dist_stock_status,
+                                   most_requested_count) -> str:
+    return f"""You are analyzing performance for product **{product['name']}** (SKU {product['sku']}, category {product.get('category', '')}).
+
+Key data (last 90 days):
+- Revenue: ₦{total_revenue:,.0f}
+- Avg daily units sold: {avg_daily_sales}
+- Distributor inventory: {dist_qty} units (status: {dist_stock_status})
+- Shop distribution: {bucket['healthy']} healthy, {bucket['understocked']} understocked, {bucket['critical']} critical, {bucket['overstocked']} overstocked
+- Top region: {top_region or 'n/a'}
+- Top retailer: {top_retailer or 'n/a'}
+- Pending retailer requests for this SKU: {most_requested_count} units
+"""
+
+
+# ============================================================================
+# Phase 4 — Executive Analytics (distributor-scoped)
+# ============================================================================
+@api_router.get("/distributor/{distributor_id}/analytics/executive")
+async def distributor_executive_analytics(distributor_id: str):
+    """Cross-network analytics: revenue/margin trend, WoW/MoM, category &
+    regional intelligence, product & retailer rankings."""
+    retailers = await db.retailers.find(
+        {"distributor_id": distributor_id}, {"_id": 0}
+    ).to_list(20000)
+    if not retailers:
+        return _empty_executive_analytics()
+    retailer_ids = [r["id"] for r in retailers]
+    retailer_by_id = {r["id"]: r for r in retailers}
+    products = {p["id"]: p for p in await db.products.find({}, {"_id": 0}).to_list(5000)}
+
+    today = datetime.now(timezone.utc).date()
+    start_60 = (today - timedelta(days=59)).isoformat()
+
+    daily = await db.daily_sales.find(
+        {"retailer_id": {"$in": retailer_ids}, "date": {"$gte": start_60}},
+        {"_id": 0}
+    ).to_list(80000)
+
+    # Aggregate by date / category / region / product / retailer
+    by_date: Dict[str, dict] = {}
+    by_category: Dict[str, dict] = {}
+    by_region: Dict[str, dict] = {}
+    by_product: Dict[str, dict] = {}
+    by_retailer: Dict[str, dict] = {}
+
+    for s in daily:
+        rev = float(s.get("revenue", 0))
+        units = int(s.get("quantity_sold", 0))
+        date = s["date"]
+        p = products.get(s.get("product_id"))
+        r = retailer_by_id.get(s.get("retailer_id"))
+
+        d = by_date.setdefault(date, {"revenue": 0.0, "units": 0})
+        d["revenue"] += rev
+        d["units"] += units
+
+        if p:
+            cat = by_category.setdefault(p["category"], {"revenue": 0.0, "units": 0})
+            cat["revenue"] += rev
+            cat["units"] += units
+            pa = by_product.setdefault(p["id"], {"name": p["name"], "category": p["category"],
+                                                   "revenue": 0.0, "units": 0})
+            pa["revenue"] += rev
+            pa["units"] += units
+        if r:
+            reg = by_region.setdefault(r.get("region", "—"), {"revenue": 0.0, "units": 0,
+                                                                "retailers": set(), "low_health_count": 0})
+            reg["revenue"] += rev
+            reg["units"] += units
+            reg["retailers"].add(r["id"])
+            ra = by_retailer.setdefault(r["id"], {"name": r["name"], "city": r.get("city", ""),
+                                                    "region": r.get("region", ""),
+                                                    "revenue": 0.0, "units": 0})
+            ra["revenue"] += rev
+            ra["units"] += units
+
+    # 30-day trend (date series with date,revenue,units,margin=20%)
+    trend: List[dict] = []
+    for i in range(30):
+        day = (today - timedelta(days=29 - i)).isoformat()
+        agg = by_date.get(day, {"revenue": 0.0, "units": 0})
+        trend.append({"date": day, "revenue": round(agg["revenue"], 2),
+                      "units": agg["units"], "margin": round(agg["revenue"] * 0.20, 2)})
+
+    # Revenue totals
+    revenue_30d = round(sum(t["revenue"] for t in trend), 2)
+    revenue_prev_30d = round(sum(
+        float(by_date.get((today - timedelta(days=d)).isoformat(), {"revenue": 0})["revenue"])
+        for d in range(30, 60)
+    ), 2)
+    revenue_7d = round(sum(t["revenue"] for t in trend[-7:]), 2)
+    revenue_prev_7d = round(sum(t["revenue"] for t in trend[-14:-7]), 2)
+    wow_pct = round(((revenue_7d - revenue_prev_7d) / revenue_prev_7d) * 100, 1) if revenue_prev_7d else 0.0
+    mom_pct = round(((revenue_30d - revenue_prev_30d) / revenue_prev_30d) * 100, 1) if revenue_prev_30d else 0.0
+    margin_30d = round(revenue_30d * 0.20, 2)
+
+    # Category performance
+    category_perf = sorted(
+        [{"category": k, "revenue": round(v["revenue"], 2), "units": v["units"]}
+         for k, v in by_category.items()],
+        key=lambda x: x["revenue"], reverse=True
+    )
+
+    # Regional intelligence — compute low stock retailers per region too
+    inv_pipeline = [
+        {"$match": {"owner_type": "retailer", "owner_id": {"$in": retailer_ids}}},
+        {"$group": {
+            "_id": "$owner_id",
+            "low": {"$sum": {"$cond": [{"$or": [
+                {"$eq": ["$quantity", 0]},
+                {"$lte": ["$quantity", "$reorder_level"]},
+            ]}, 1, 0]}},
+            "total": {"$sum": 1},
+        }},
+    ]
+    low_stock_map: Dict[str, float] = {}
+    async for row in db.inventory.aggregate(inv_pipeline):
+        if row["total"]:
+            low_stock_map[row["_id"]] = row["low"] / row["total"]
+
+    region_intel: List[dict] = []
+    for name, v in by_region.items():
+        rid_set = v["retailers"]
+        low_count = sum(1 for rid in rid_set if low_stock_map.get(rid, 0) > 0.35)
+        region_intel.append({
+            "region": name,
+            "revenue": round(v["revenue"], 2),
+            "units": v["units"],
+            "retailers": len(rid_set),
+            "low_stock_retailers": low_count,
+        })
+    region_intel.sort(key=lambda x: x["revenue"], reverse=True)
+    high_demand_region = region_intel[0]["region"] if region_intel else None
+    low_stock_region = max(region_intel, key=lambda x: x["low_stock_retailers"])["region"] if region_intel else None
+
+    # Product intelligence
+    best_products = sorted(by_product.values(), key=lambda x: x["revenue"], reverse=True)[:10]
+    underperforming = sorted(
+        [p for p in by_product.values() if p["units"] > 0],
+        key=lambda x: x["revenue"]
+    )[:5]
+    for p in best_products + underperforming:
+        p["revenue"] = round(p["revenue"], 2)
+
+    # Retailer intelligence (top, lowest, fastest growing)
+    # For "declining" / "growing" we compare last_15 vs prev_15
+    last15_start = (today - timedelta(days=14)).isoformat()
+    prev15_start = (today - timedelta(days=29)).isoformat()
+    last15: Dict[str, float] = {}
+    prev15: Dict[str, float] = {}
+    for s in daily:
+        rid = s.get("retailer_id")
+        rev = float(s.get("revenue", 0))
+        d = s["date"]
+        if d >= last15_start:
+            last15[rid] = last15.get(rid, 0) + rev
+        elif d >= prev15_start:
+            prev15[rid] = prev15.get(rid, 0) + rev
+
+    growth_list: List[dict] = []
+    for rid, r in by_retailer.items():
+        cur = last15.get(rid, 0)
+        prev = prev15.get(rid, 0)
+        delta = round(((cur - prev) / prev) * 100, 1) if prev else (100 if cur else 0)
+        growth_list.append({**r, "growth_pct": delta, "last15": round(cur, 2)})
+
+    best_retailers = sorted(growth_list, key=lambda x: x["revenue"], reverse=True)[:5]
+    fastest_growing = sorted([r for r in growth_list if r["last15"] > 0],
+                              key=lambda x: x["growth_pct"], reverse=True)[:5]
+    declining = sorted([r for r in growth_list if r["last15"] > 0],
+                       key=lambda x: x["growth_pct"])[:5]
+
+    # Retailers with low stock health
+    low_health = sorted([
+        {"id": rid, "name": retailer_by_id[rid]["name"],
+         "region": retailer_by_id[rid].get("region", ""),
+         "low_pct": round(pct * 100, 1)}
+        for rid, pct in low_stock_map.items()
+        if pct > 0.35 and rid in retailer_by_id
+    ], key=lambda x: x["low_pct"], reverse=True)[:5]
+
+    # Margin trend = 20% gross margin proxy
+    margin_trend = [{"date": t["date"], "margin": t["margin"]} for t in trend]
+
+    # AI insights via Claude Haiku
+    insights = await _generate_ai_insights(
+        prompt_id=f"exec-{distributor_id}",
+        kind="executive",
+        context=_build_executive_insight_context(
+            revenue_30d=revenue_30d, wow_pct=wow_pct, mom_pct=mom_pct,
+            margin_30d=margin_30d, top_category=category_perf[0]["category"] if category_perf else None,
+            high_demand_region=high_demand_region, low_stock_region=low_stock_region,
+            top_product=best_products[0]["name"] if best_products else None,
+            declining_count=len(declining), low_health_count=len(low_health),
+        ),
+    )
+
+    return {
+        "kpis": {
+            "revenue_30d": revenue_30d,
+            "revenue_7d": revenue_7d,
+            "margin_30d": margin_30d,
+            "wow_pct": wow_pct,
+            "mom_pct": mom_pct,
+            "active_retailers": len([r for r in growth_list if r["last15"] > 0]),
+            "total_retailers": len(retailers),
+        },
+        "trend": trend,
+        "margin_trend": margin_trend,
+        "category_performance": category_perf,
+        "region_intelligence": region_intel,
+        "best_products": best_products,
+        "underperforming_products": underperforming,
+        "best_retailers": best_retailers,
+        "fastest_growing": fastest_growing,
+        "declining": declining,
+        "low_health_retailers": low_health,
+        "ai_insights": insights,
+    }
+
+
+def _empty_executive_analytics():
+    return {
+        "kpis": {"revenue_30d": 0, "revenue_7d": 0, "margin_30d": 0, "wow_pct": 0, "mom_pct": 0,
+                 "active_retailers": 0, "total_retailers": 0},
+        "trend": [], "margin_trend": [], "category_performance": [],
+        "region_intelligence": [], "best_products": [], "underperforming_products": [],
+        "best_retailers": [], "fastest_growing": [], "declining": [],
+        "low_health_retailers": [], "ai_insights": [],
+    }
+
+
+def _build_executive_insight_context(*, revenue_30d, wow_pct, mom_pct, margin_30d,
+                                     top_category, high_demand_region, low_stock_region,
+                                     top_product, declining_count, low_health_count) -> str:
+    return f"""You are advising a Unilever distributor's executive on their last 30-day performance.
+
+KPIs:
+- 30-day revenue: ₦{revenue_30d:,.0f}
+- 30-day gross margin (est. 20%): ₦{margin_30d:,.0f}
+- Week-on-week growth: {wow_pct}%
+- Month-on-month growth: {mom_pct}%
+
+Highlights:
+- Top category by revenue: {top_category or 'n/a'}
+- Highest demand region: {high_demand_region or 'n/a'}
+- Region with most low-stock retailers: {low_stock_region or 'n/a'}
+- Top product: {top_product or 'n/a'}
+- Retailers showing decline: {declining_count}
+- Retailers with low stock health (>35% SKUs low): {low_health_count}
+"""
+
+
+# ============================================================================
+# AI Insights helper — Claude Haiku via emergentintegrations
+# ============================================================================
+_INSIGHTS_CACHE: Dict[str, Tuple[float, List[dict]]] = {}  # key -> (expires_at, insights)
+
+
+async def _generate_ai_insights(*, prompt_id: str, kind: str, context: str) -> List[dict]:
+    """Returns 3–5 short, action-oriented insights as JSON objects.
+    Cached for 5 minutes to avoid hammering the LLM on every page load.
+    """
+    import time
+    cached = _INSIGHTS_CACHE.get(prompt_id)
+    if cached and cached[0] > time.time():
+        return cached[1]
+
+    api_key = os.environ.get("EMERGENT_LLM_KEY")
+    if not api_key:
+        # Fall back to a simple deterministic placeholder
+        return _fallback_insights(kind, context)
+
+    try:
+        from emergentintegrations.llm.chat import LlmChat, UserMessage  # type: ignore
+    except Exception:
+        return _fallback_insights(kind, context)
+
+    system = (
+        "You are a supply-chain analytics advisor. Reply with STRICT JSON ONLY: "
+        "an array of 3-5 insight objects. Each object must have:\n"
+        '  "tone"  : "positive" | "warning" | "critical" | "info"\n'
+        '  "icon"  : one of "trending-up","trending-down","sparkles","alert-octagon","alert-triangle","clock","shield-check","trophy","info"\n'
+        '  "title" : <= 70 chars, no markdown\n'
+        '  "detail": <= 140 chars, single actionable line\n'
+        "No prose, no markdown fences, no commentary — only the JSON array."
+    )
+    chat = (
+        LlmChat(api_key=api_key, session_id=prompt_id, system_message=system)
+        .with_model("anthropic", "claude-haiku-4-5-20251001")
+    )
+    try:
+        resp = await chat.send_message(UserMessage(text=context))
+        text = str(resp or "").strip()
+        # Strip optional fences just in case
+        import re, json as _json
+        m = re.search(r"\[.*\]", text, re.DOTALL)
+        if not m:
+            return _fallback_insights(kind, context)
+        parsed = _json.loads(m.group(0))
+        clean: List[dict] = []
+        for item in parsed[:5]:
+            clean.append({
+                "tone": item.get("tone", "info"),
+                "icon": item.get("icon", "info"),
+                "title": str(item.get("title", "")).strip()[:90],
+                "detail": str(item.get("detail", "")).strip()[:180],
+            })
+        _INSIGHTS_CACHE[prompt_id] = (time.time() + 300, clean)
+        return clean
+    except Exception:
+        logger.exception("AI insights generation failed")
+        return _fallback_insights(kind, context)
+
+
+def _fallback_insights(kind: str, context: str) -> List[dict]:
+    if kind == "product":
+        return [
+            {"tone": "info", "icon": "info", "title": "Insights unavailable",
+             "detail": "Could not contact the LLM service — showing baseline view."},
+        ]
+    return [
+        {"tone": "info", "icon": "info", "title": "Insights unavailable",
+         "detail": "Could not contact the LLM service — showing baseline view."},
+    ]
+
+
 @api_router.get("/products", response_model=List[Product])
 async def list_products(manufacturer_id: Optional[str] = None):
     q = {"manufacturer_id": manufacturer_id} if manufacturer_id else {}

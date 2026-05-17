@@ -16,6 +16,10 @@ export const Api = {
     api.get(`/distributor/${distributor_id}/retailers`).then((r) => r.data),
   distributorRetailerDetail: (distributor_id, retailer_id) =>
     api.get(`/distributor/${distributor_id}/retailer/${retailer_id}`).then((r) => r.data),
+  distributorProductDetail: (distributor_id, product_id) =>
+    api.get(`/distributor/${distributor_id}/product/${product_id}`).then((r) => r.data),
+  distributorExecutiveAnalytics: (distributor_id) =>
+    api.get(`/distributor/${distributor_id}/analytics/executive`).then((r) => r.data),
   products: (manufacturer_id) =>
     api.get("/products", { params: manufacturer_id ? { manufacturer_id } : {} }).then((r) => r.data),
 

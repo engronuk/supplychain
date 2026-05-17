@@ -14,6 +14,7 @@ import ReportsView from "@/views/ReportsView";
 import NetworkView from "@/views/NetworkView";
 import ManufacturerNetworkView from "@/views/ManufacturerNetworkView";
 import DistributorRetailerDetail from "@/views/DistributorRetailerDetail";
+import DistributorProductDetail from "@/views/DistributorProductDetail";
 import { Toaster } from "@/components/ui/sonner";
 
 function RoleDashboard() {
@@ -48,6 +49,7 @@ function App() {
             <Route path="/requests" element={<RequestsView />} />
             <Route path="/network" element={<NetworkView />} />
             <Route path="/network/retailer/:retailerId" element={<DistributorRetailerDetail />} />
+            <Route path="/inventory/product/:productId" element={<DistributorProductDetail />} />
             <Route path="/network-map" element={<ManufacturerNetworkView />} />
             <Route path="/analytics" element={<AnalyticsView />} />
             <Route path="/reports" element={<ReportsView />} />
