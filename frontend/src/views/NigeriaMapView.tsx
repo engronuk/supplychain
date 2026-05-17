@@ -164,6 +164,40 @@ function FitNigeria({ trigger }: { trigger: number }) {
   return null;
 }
 
+/**
+ * Curves a straight A→B segment into a soft quadratic-Bezier arc by offsetting
+ * the midpoint along the perpendicular direction. Returns an array of N
+ * intermediate lat/lng points so a regular Leaflet Polyline renders as a
+ * smooth curve.
+ */
+function curvedPath(
+  a: [number, number],
+  b: [number, number],
+  curvature = 0.16,
+  steps = 18
+): [number, number][] {
+  const dLat = b[0] - a[0];
+  const dLng = b[1] - a[1];
+  const dist = Math.hypot(dLat, dLng) || 1;
+  const mLat = (a[0] + b[0]) / 2;
+  const mLng = (a[1] + b[1]) / 2;
+  // Perpendicular unit vector (rotated 90° CCW in lat/lng plane)
+  const pLat = -dLng / dist;
+  const pLng = dLat / dist;
+  const off = dist * curvature;
+  const cLat = mLat + pLat * off;
+  const cLng = mLng + pLng * off;
+  const pts: [number, number][] = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const u = 1 - t;
+    const lat = u * u * a[0] + 2 * u * t * cLat + t * t * b[0];
+    const lng = u * u * a[1] + 2 * u * t * cLng + t * t * b[1];
+    pts.push([lat, lng]);
+  }
+  return pts;
+}
+
 function MapRefBinder({ onReady }: { onReady: (m: L.Map) => void }) {
   const map = useMap();
   useEffect(() => { onReady(map); }, [map, onReady]);
@@ -296,60 +330,74 @@ export default function NigeriaMapView({
   const showDistributors = layers.distributors;
   const showRetailers = layers.retailers;
 
-  // Connection lines — Region→Distributor (blue) always rendered as soft
-  // dashed background; Distributor→Retailer (green) appears at regional+
-  // zoom. Lines always thin & low-opacity.
+  // Connection lines — primary visual layer. Three tiers, all gently curved:
+  //   1) Manufacturer → Region : thin dashed blue (~60% opacity)
+  //   2) Region → Distributor  : thin solid blue (~65% opacity)
+  //   3) Distributor → Retailer: thin green dashed (~45% opacity, close zoom)
   const routeLines = useMemo(() => {
     if (!data || !layers.routes) return [];
-    const lines: { a: [number, number]; b: [number, number]; color: string; weight: number; dash: string; opacity: number }[] = [];
+    const lines: { positions: [number, number][]; color: string; weight: number; dash?: string; opacity: number; key: string }[] = [];
 
-    // Region → Distributor (blue dashed) — always
+    const mfg: [number, number] = [data.manufacturer.lat, data.manufacturer.lon];
+
+    // 1) Manufacturer → Region (dashed blue)
+    data.regions
+      .filter((r) => selectedRegion === "all" || r.name === selectedRegion)
+      .forEach((r) => {
+        lines.push({
+          positions: curvedPath(mfg, [r.lat, r.lon], 0.14),
+          color: COLOR.edgeRegion,
+          opacity: 0.6,
+          weight: 1.1,
+          dash: "4 5",
+          key: `mr-${r.name}`,
+        });
+      });
+
+    // 2) Region → Distributor (solid blue)
     filteredDistributors.forEach((d) => {
       const region = data.regions.find((r) => r.name === d.region);
       if (!region) return;
       lines.push({
-        a: [region.lat, region.lon],
-        b: [d.lat, d.lon],
+        positions: curvedPath([region.lat, region.lon], [d.lat, d.lon], 0.10),
         color: COLOR.edgeRegion,
-        opacity: 0.16,
-        weight: 1.0,
-        dash: "4 5",
+        opacity: 0.65,
+        weight: 1.1,
+        key: `rd-${d.id}`,
       });
     });
 
-    // Distributor → Retailer (green dashed) — when zoomed in enough that
-    // retailers are likely de-clustered. Limit count to keep things light.
+    // 3) Distributor → Retailer (dashed green) — at close zoom only
     if (zoom >= 9 && filteredRetailers.length < 800) {
       filteredRetailers.forEach((r) => {
         const d = filteredDistributors.find((dd) => dd.id === r.distributor_id);
         if (!d) return;
         lines.push({
-          a: [d.lat, d.lon],
-          b: [r.lat, r.lon],
+          positions: curvedPath([d.lat, d.lon], [r.lat, r.lon], 0.06),
           color: COLOR.edgeDistRet,
-          opacity: 0.18,
-          weight: 0.8,
-          dash: "2 4",
+          opacity: 0.45,
+          weight: 0.9,
+          dash: "3 4",
+          key: `dr-${r.id}`,
         });
       });
     }
 
-    // Active retailer — highlight its distributor line
+    // Highlight — selected retailer's line shines brighter
     if (activeRetailer) {
       const d = data.distributors.find((dd) => dd.id === activeRetailer.distributor_id);
       if (d) {
         lines.push({
-          a: [d.lat, d.lon],
-          b: [activeRetailer.lat, activeRetailer.lon],
+          positions: curvedPath([d.lat, d.lon], [activeRetailer.lat, activeRetailer.lon], 0.04),
           color: COLOR.manufacturer,
-          opacity: 0.65,
-          weight: 1.6,
-          dash: "",
+          opacity: 0.85,
+          weight: 1.8,
+          key: `active-${activeRetailer.id}`,
         });
       }
     }
     return lines;
-  }, [data, layers.routes, zoom, filteredDistributors, filteredRetailers, activeRetailer]);
+  }, [data, layers.routes, zoom, filteredDistributors, filteredRetailers, activeRetailer, selectedRegion]);
 
   const onRegionClick = useCallback((r: GeoRegion) => {
     setSelectedRegion(r.name);
@@ -404,7 +452,7 @@ export default function NigeriaMapView({
       {/* Scoped CSS — soft basemap (green-tinted), clean marker clusters, controls */}
       <style>{`
         [data-testid="nigeria-map-view"] .leaflet-tile-pane {
-          filter: saturate(0.65) brightness(1.05) contrast(0.93);
+          filter: saturate(0.5) brightness(1.08) contrast(0.88);
         }
         [data-testid="nigeria-map-view"] .leaflet-container { background: #ffffff; }
         [data-testid="nigeria-map-view"] .tk-marker { background: transparent !important; border: 0 !important; }
@@ -578,16 +626,12 @@ export default function NigeriaMapView({
           <MapRefBinder onReady={(m) => { mapRef.current = m; }} />
           <FlyTo to={flyTo?.pos || null} zoom={flyTo?.zoom || 8} />
 
-          {/* === Country focus mask ===
-              Inverse polygon: outer ring = world, inner ring (hole) = Nigeria.
-              Renders a soft grey wash everywhere OUTSIDE Nigeria; Nigeria
-              itself remains fully clear and interactive. No rectangular
-              edges because the outer ring extends far beyond the viewport. */}
+          {/* === Country focus mask === */}
           <Polygon
             positions={[WORLD_RING, NIGERIA_BOUNDARY] as any}
             pathOptions={{
               fillColor: "#e2e8f0",
-              fillOpacity: 0.72,
+              fillOpacity: 0.7,
               color: "transparent",
               weight: 0,
               interactive: false,
@@ -595,13 +639,13 @@ export default function NigeriaMapView({
             }}
           />
 
-          {/* === Subtle glow ring around Nigeria === */}
+          {/* === Subtle Nigeria national border === */}
           <Polygon
             positions={NIGERIA_BOUNDARY}
             pathOptions={{
-              color: "#6366f1",
-              opacity: 0.16,
-              weight: 8,
+              color: "#64748b",
+              opacity: 0.4,
+              weight: 1.5,
               fillOpacity: 0,
               interactive: false,
               lineJoin: "round",
@@ -609,25 +653,23 @@ export default function NigeriaMapView({
             }}
           />
 
-          {/* === Bold Nigeria national border === */}
-          <Polygon
-            positions={NIGERIA_BOUNDARY}
-            pathOptions={{
-              color: "#475569",
-              opacity: 0.85,
-              weight: 1.8,
-              fillOpacity: 0,
-              interactive: false,
-              lineJoin: "round",
-              lineCap: "round",
-            }}
-          />
-
-          {/* Connection lines — thin dashed, soft opacity */}
-          {routeLines.map((l, i) => (
-            <Polyline key={i} positions={[l.a, l.b]} pathOptions={{
-              color: l.color, opacity: l.opacity, weight: l.weight, dashArray: l.dash || undefined, lineCap: "round", lineJoin: "round",
-            }} />
+          {/* === Connection lines (curved) ===
+              Rendered above the mask/border but below markers (which always
+              live in markerPane, above overlayPane).                       */}
+          {routeLines.map((l) => (
+            <Polyline
+              key={l.key}
+              positions={l.positions}
+              pathOptions={{
+                color: l.color,
+                opacity: l.opacity,
+                weight: l.weight,
+                dashArray: l.dash,
+                lineCap: "round",
+                lineJoin: "round",
+                interactive: false,
+              }}
+            />
           ))}
 
           {/* Manufacturer */}
