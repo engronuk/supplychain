@@ -56,15 +56,15 @@ interface Props {
 
 // Root-level children (regions) get distributed evenly on an absolute circle.
 // Deeper levels switch to *orbital* clustering around their parent for cohesion.
-const ROOT_RING = 240;
+const ROOT_RING = 175;
 
 // Adaptive orbital parameters per child level (depth of the children, not parent).
 // baseOrbit: minimum distance from parent at that child level
 // growth: orbit grows with child-count beyond this many siblings
 const ORBIT_BY_DEPTH: Record<number, { baseOrbit: number; growth: number; maxOrbit: number; minFan: number; maxFan: number }> = {
-  2: { baseOrbit: 140, growth: 6,  maxOrbit: 220, minFan: Math.PI * 0.55, maxFan: Math.PI * 1.05 }, // state
-  3: { baseOrbit: 110, growth: 5,  maxOrbit: 180, minFan: Math.PI * 0.55, maxFan: Math.PI * 1.00 }, // distributor
-  4: { baseOrbit: 70,  growth: 4,  maxOrbit: 130, minFan: Math.PI * 0.50, maxFan: Math.PI * 0.95 }, // retailer
+  2: { baseOrbit:  95, growth: 4, maxOrbit: 150, minFan: Math.PI * 0.55, maxFan: Math.PI * 1.05 }, // state
+  3: { baseOrbit:  72, growth: 3, maxOrbit: 120, minFan: Math.PI * 0.55, maxFan: Math.PI * 1.00 }, // distributor
+  4: { baseOrbit:  46, growth: 2, maxOrbit:  85, minFan: Math.PI * 0.50, maxFan: Math.PI * 0.95 }, // retailer
 };
 
 const NODE_SIZES: Record<HierarchyNode["type"], number> = {
@@ -249,7 +249,7 @@ export default function RadialHierarchyCanvas({
     const cfg = ORBIT_BY_DEPTH[depth] || ORBIT_BY_DEPTH[4];
     // Fan width grows with sibling count (compact for few, wider for many)
     let fan = cfg.minFan;
-    if (count > 3) fan = cfg.minFan + (count - 3) * 0.045;
+    if (count > 3) fan = cfg.minFan + (count - 3) * 0.035;
     fan = Math.max(cfg.minFan, Math.min(cfg.maxFan, fan));
 
     // Orbit radius grows with count to keep arc-length per sibling sane
@@ -258,7 +258,7 @@ export default function RadialHierarchyCanvas({
     // Collision-aware: ensure tangential spacing >= 2 * (nodeR + padding)
     if (count > 1) {
       const step = fan / count;
-      const required = 2 * (nodeR + 10);
+      const required = 2 * (nodeR + 5);
       const tangential = step * orbit;
       if (tangential < required) {
         orbit = Math.min(cfg.maxOrbit, required / step);
@@ -324,7 +324,7 @@ export default function RadialHierarchyCanvas({
           if (d > 0 && d < minSibDist) minSibDist = d;
         });
         if (isFinite(minSibDist)) {
-          const ceiling = Math.max(28, minSibDist / 2 - childR - 8);
+          const ceiling = Math.max(22, minSibDist / 2 - childR - 4);
           if (orbitRadius > ceiling) orbitRadius = ceiling;
         }
       }
@@ -341,7 +341,7 @@ export default function RadialHierarchyCanvas({
           // (but respect the sibling ceiling computed above).
           if (N > 1) {
             const step = fanWidth / N;
-            const required = 2 * (childR + 10);
+            const required = 2 * (childR + 5);
             const needed = step > 0 ? required / step : orbitRadius;
             if (needed > orbitRadius) orbitRadius = needed;
           }
@@ -412,7 +412,7 @@ export default function RadialHierarchyCanvas({
    * tangentially along the orbit. Only operates on a single sibling group.
    */
   function relaxSiblings(sibs: CanvasNode[], parent: CanvasNode, childR: number) {
-    const pad = 14;
+    const pad = 8;
     const minDist = 2 * childR + pad;
     for (let iter = 0; iter < 4; iter++) {
       let moved = false;
