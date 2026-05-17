@@ -14,7 +14,7 @@ from __future__ import annotations
 import csv
 import io
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
@@ -46,8 +46,8 @@ async def create_sale(retailer_id: str, payload: SaleCreate):
 
     products = {p["id"]: p for p in await db.products.find({}, {"_id": 0}).to_list(5000)}
 
-    # 1) Validate ALL stock first, then deduct — so partial failures don't
-    # leave inventory inconsistent.
+    # 1) Validate ALL stock first (fast-fail with friendly message), then deduct
+    # via atomic conditional $inc per line so concurrent cashiers can't over-sell.
     inv_rows: Dict[str, dict] = {}
     for li in payload.items:
         if li.quantity <= 0:
@@ -67,12 +67,38 @@ async def create_sale(retailer_id: str, payload: SaleCreate):
             )
         inv_rows[li.product_id] = inv
 
-    # 2) Build the sale doc + deduct inventory + sync daily_sales
+    # 2) Conditional atomic deduction — if a concurrent sale already took the
+    # last units, `matched_count` will be 0 and we roll back everything we did.
+    deducted: List[Tuple[str, int]] = []  # (inventory_id, qty) for rollback
+
+    async def _rollback():
+        for inv_id, q in deducted:
+            try:
+                await db.inventory.update_one({"id": inv_id}, {"$inc": {"quantity": q}})
+            except Exception:
+                logger.exception("Rollback failed on %s (+%s)", inv_id, q)
+
     line_docs: List[dict] = []
     grand_total = 0.0
     units_total = 0
     today_iso = datetime.now(timezone.utc).date().isoformat()
+
     for li in payload.items:
+        inv = inv_rows[li.product_id]
+        res = await db.inventory.update_one(
+            {"id": inv["id"], "quantity": {"$gte": li.quantity}},
+            {"$inc": {"quantity": -li.quantity}, "$set": {"updated_at": now_iso()}},
+        )
+        if res.modified_count == 0:
+            await _rollback()
+            p = products.get(li.product_id) or {}
+            raise HTTPException(
+                409,
+                f"Stock changed during checkout for '{p.get('name', li.product_id)}'. "
+                "Please refresh and try again.",
+            )
+        deducted.append((inv["id"], li.quantity))
+
         p = products.get(li.product_id) or {}
         line_total = round(li.unit_price * li.quantity, 2)
         grand_total += line_total
@@ -86,40 +112,41 @@ async def create_sale(retailer_id: str, payload: SaleCreate):
             "unit_price": float(li.unit_price),
             "line_total": line_total,
         })
-        # deduct
-        new_qty = max(0, int(inv_rows[li.product_id]["quantity"]) - li.quantity)
-        await db.inventory.update_one(
-            {"id": inv_rows[li.product_id]["id"]},
-            {"$set": {"quantity": new_qty, "updated_at": now_iso()}},
-        )
-        # daily_sales sync — keeps existing analytics in lockstep
-        await db.daily_sales.insert_one({
-            "id": new_id(),
-            "retailer_id": retailer_id,
-            "product_id": li.product_id,
-            "date": today_iso,
-            "units": li.quantity,
-            "quantity_sold": li.quantity,
-            "revenue": line_total,
-            "source": "sales_book",
-        })
 
-    sale = {
-        "id": new_id(),
-        "transaction_code": _gen_tx_code(),
-        "retailer_id": retailer_id,
-        "items": line_docs,
-        "grand_total": round(grand_total, 2),
-        "units_total": units_total,
-        "payment_method": payload.payment_method,
-        "payment_status": "pending" if payload.payment_method == "credit" else "paid",
-        "customer_name": (payload.customer_name or "").strip(),
-        "attendant": (payload.attendant or "").strip(),
-        "notes": (payload.notes or "").strip(),
-        "created_at": now_iso(),
-        "paid_at": None if payload.payment_method == "credit" else now_iso(),
-    }
-    await db.sales.insert_one(sale)
+    # 3) Persist sale + per-line daily_sales rows. On any failure, rollback the
+    # inventory deductions so we never leave inventory out of sync with sales.
+    try:
+        sale = {
+            "id": new_id(),
+            "transaction_code": _gen_tx_code(),
+            "retailer_id": retailer_id,
+            "items": line_docs,
+            "grand_total": round(grand_total, 2),
+            "units_total": units_total,
+            "payment_method": payload.payment_method,
+            "payment_status": "pending" if payload.payment_method == "credit" else "paid",
+            "customer_name": (payload.customer_name or "").strip(),
+            "attendant": (payload.attendant or "").strip(),
+            "notes": (payload.notes or "").strip(),
+            "created_at": now_iso(),
+            "paid_at": None if payload.payment_method == "credit" else now_iso(),
+        }
+        await db.sales.insert_one(sale)
+        for li, line in zip(payload.items, line_docs):
+            await db.daily_sales.insert_one({
+                "id": new_id(),
+                "retailer_id": retailer_id,
+                "product_id": li.product_id,
+                "date": today_iso,
+                "units": li.quantity,
+                "quantity_sold": li.quantity,
+                "revenue": line["line_total"],
+                "source": "sales_book",
+            })
+    except Exception:
+        logger.exception("Sale persist failed — rolling back inventory")
+        await _rollback()
+        raise HTTPException(500, "Could not record sale — please try again")
 
     if payload.payment_method == "credit":
         await push_notification(

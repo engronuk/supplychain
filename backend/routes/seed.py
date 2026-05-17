@@ -12,11 +12,41 @@ from services.seed import seed_from_csv
 router = APIRouter()
 
 
+async def _primary_ids() -> dict:
+    """Resolve the canonical primary distributor + retailer.
+
+    First checks the `seed_meta` doc (persisted at seed time so the values
+    survive idempotent skip-paths). Falls back to insertion-order discovery
+    so older databases that pre-date seed_meta still get a sensible answer.
+    """
+    meta = await db.seed_meta.find_one({"id": "primary"}, {"_id": 0})
+    if meta and meta.get("primary_distributor_id"):
+        return {
+            "primary_distributor_id": meta["primary_distributor_id"],
+            "primary_retailer_id": meta.get("primary_retailer_id"),
+        }
+    distributors = await db.distributors.find({}, {"_id": 0}).to_list(5000)
+    if not distributors:
+        return {"primary_distributor_id": None, "primary_retailer_id": None}
+    primary_d = distributors[0]
+    primary_r = await db.retailers.find_one(
+        {"distributor_id": primary_d["id"]}, {"_id": 0, "id": 1},
+    )
+    return {
+        "primary_distributor_id": primary_d["id"],
+        "primary_retailer_id": (primary_r or {}).get("id"),
+    }
+
+
 @router.post("/seed")
 async def seed_data():
-    """Idempotent seed: only seeds when the DB is empty. Safe to expose."""
+    """Idempotent seed: only seeds when the DB is empty. Always returns the
+    canonical primary distributor / retailer IDs so callers don't have to
+    branch on the "skipped vs fresh" shape.
+    """
     if await db.manufacturers.count_documents({}) > 0:
-        return {"ok": True, "skipped": True, "reason": "database already populated"}
+        return {"ok": True, "skipped": True, "reason": "database already populated",
+                **(await _primary_ids())}
     result = await seed_from_csv()
     await ensure_indexes()
     return {"ok": True, "seeded": True, **result}

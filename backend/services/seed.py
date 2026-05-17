@@ -321,7 +321,7 @@ async def seed_from_csv() -> dict:
     if notifs:
         await db.notifications.insert_many(notifs)
 
-    return {
+    summary = {
         "manufacturers": 1,
         "distributors": len(distributor_list),
         "retailers": len(retailer_docs),
@@ -331,3 +331,10 @@ async def seed_from_csv() -> dict:
         "primary_distributor_id": (primary_d.id if primary_d else None),
         "primary_retailer_id": (primary_retailers[0].id if primary_retailers else None),
     }
+    # Persist primary IDs so they survive across reseeds and idempotent calls.
+    await db.seed_meta.update_one(
+        {"id": "primary"},
+        {"$set": {"id": "primary", **summary}},
+        upsert=True,
+    )
+    return summary

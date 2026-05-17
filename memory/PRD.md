@@ -87,7 +87,35 @@ Manufacturer can see all 91 distributors; Distributor sees all its retailers.
 - Child fan width clamped to parent's angular slot (`a1 - a0 * 0.92`)
   with orbit auto-expanded to preserve tangential spacing
 
-## Updates (2026-05-17 — Backend Refactor P2)
+## Updates (2026-05-17 — Retailer Sales Book Module)
+### Complete POS / Sales Module for Retailer Workspace
+- **New sidebar entry** "Sales Book" (Receipt icon) — retailer-only.
+- **Backend** (`routes/sales.py` — 6 endpoints, 482 lines):
+  - `POST /api/retailer/{id}/sales` — atomic multi-product sale, conditional `$inc`
+    deduction prevents over-sell under concurrency (4 parallel sales of 5 units
+    each deducted exactly 20). On persist failure, inventory rolls back.
+  - `GET  /api/retailer/{id}/sales` — filters (date_from, date_to, payment_method,
+    payment_status, search), pagination, returns {total, limit, offset, rows}.
+  - `GET  /api/retailer/{id}/sales/summary` — Today KPIs + best seller + 7d/WoW.
+  - `GET  /api/retailer/{id}/sales/analytics` — daily/weekly/monthly trends,
+    best/slow products, payment mix, peak hour & DOW, AI insights (Claude Haiku).
+  - `PATCH /api/retailer/{id}/sales/{id}/mark-paid` — credit settlement.
+  - `GET  /api/retailer/{id}/sales/export.csv` — streaming CSV.
+- **Inventory sync** — sales write to both `sales` and `daily_sales` so existing
+  analytics endpoints (retailer dashboard, distributor retailer-detail) reflect
+  shop-floor activity automatically.
+- **Models**: `SaleLineItem`, `SaleCreate`, `SaleMarkPaid` (in `models.py`).
+- **Indexes**: 5 new sales indexes (by_retailer_recent, by_retailer_payment,
+  by_retailer_status, by_tx_code, uniq_id).
+- **Frontend** (`views/SalesBookView.jsx` — 940 lines): 3-tab layout
+  (Today / Sales Book ledger / Analytics), POS-style multi-product entry dialog
+  with product search, qty/price editing, payment method tiles (cash/transfer/
+  pos/credit), customer/attendant/notes. Mobile FAB for one-tap new sale.
+- **AI insights**: 3-5 contextual cards in Analytics tab via Claude Haiku
+  through the existing `generate_ai_insights` service.
+- **Pytest**: 9 new tests in `test_sales.py`, all 53 tests passing.
+- **Seed meta**: primary distributor/retailer IDs now persisted to `seed_meta`
+  collection so idempotent `/api/seed` calls always return canonical IDs.
 ### Modular routers
 - `server.py` reduced from **2,969 → 68 lines** (slim entrypoint that just wires routers + lifecycle hooks).
 - Split into `core.py` (db client + utils + type literals), `models.py` (all Pydantic), `services/` (helpers, ai_insights, retailer, seed) and `routes/` (entities, inventory, shipments, stock_requests, notifications, analytics, reports, hierarchy, geo, distributor, retailer_os, assistant, seed).

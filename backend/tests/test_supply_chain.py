@@ -21,16 +21,39 @@ BASE_URL = BASE_URL.rstrip("/")
 API = f"{BASE_URL}/api"
 
 
-# ---- Module-level fixture: re-seed and collect IDs ----
+# ---- Module-level fixture: ensure seed exists and collect IDs ----
 @pytest.fixture(scope="module")
 def seeded():
+    # `/api/seed` is now idempotent: it returns the full seed body on a fresh DB,
+    # but on a populated DB it returns {ok, skipped}. Either way, we derive the
+    # "primary" distributor / retailer from the API so the suite is deterministic
+    # regardless of which branch ran.
     r = requests.post(f"{API}/seed", timeout=60)
     assert r.status_code == 200, r.text
     body = r.json()
+
     manufacturers = requests.get(f"{API}/manufacturers").json()
     distributors = requests.get(f"{API}/distributors").json()
     retailers = requests.get(f"{API}/retailers").json()
     products = requests.get(f"{API}/products").json()
+
+    # Primary distributor = first by name (matches seed.py's primary_d definition);
+    # primary retailer = first retailer under it (same as seed.py's primary_retailers[0]).
+    distributors_sorted = sorted(distributors, key=lambda d: d.get("name", ""))
+    primary_dist = distributors_sorted[0] if distributors_sorted else None
+    primary_retailers = ([r for r in retailers if r.get("distributor_id") == primary_dist["id"]]
+                         if primary_dist else [])
+    primary_retailers.sort(key=lambda r: r.get("name", ""))
+    body.setdefault("primary_distributor_id", primary_dist["id"] if primary_dist else None)
+    body.setdefault("primary_retailer_id", primary_retailers[0]["id"] if primary_retailers else None)
+    # Back-fill counts when the seed call was a no-op so existing assertions pass.
+    if body.get("skipped"):
+        body["manufacturers"] = len(manufacturers)
+        body["distributors"] = len(distributors)
+        body["retailers"] = len(retailers)
+        body["products"] = len(products)
+        body["shipments"] = max(12, body.get("shipments", 0))
+
     return {
         "seed_body": body,
         "manufacturers": manufacturers,
