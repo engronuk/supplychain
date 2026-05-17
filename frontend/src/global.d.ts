@@ -98,3 +98,11 @@ declare module "@/lib/api" {
 declare module "@/components/StatusBadge" {
   export const StatusBadge: any;
 }
+declare module "*.css";
+declare module "leaflet/dist/leaflet.css";
+declare module "leaflet.markercluster/dist/MarkerCluster.css";
+declare module "leaflet.markercluster/dist/MarkerCluster.Default.css";
+declare module "react-leaflet-cluster" {
+  const anything: any;
+  export default anything;
+}

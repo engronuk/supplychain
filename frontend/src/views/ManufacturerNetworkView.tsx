@@ -6,6 +6,7 @@ import RadialHierarchyCanvas, {
   CanvasNode,
   NetworkMode,
 } from "@/components/RadialHierarchyCanvas";
+import NigeriaMapView from "@/views/NigeriaMapView";
 import {
   Factory,
   Globe2,
@@ -20,9 +21,12 @@ import {
   Layers,
   Truck,
   Zap,
+  Network,
+  Map as MapIcon,
 } from "lucide-react";
 
 type HoverInfo = { node: CanvasNode; clientX: number; clientY: number };
+type ViewMode = "radial" | "map";
 
 const TYPE_ICON: Record<string, React.ComponentType<any>> = {
   manufacturer: Factory,
@@ -68,6 +72,7 @@ export default function ManufacturerNetworkView() {
   const [hover, setHover] = useState<HoverInfo | null>(null);
   const [path, setPath] = useState<CanvasNode[]>([]);
   const [mode, setMode] = useState<NetworkMode>("health");
+  const [viewMode, setViewMode] = useState<ViewMode>("radial");
 
   if (session.role !== "manufacturer") {
     return (
@@ -101,35 +106,92 @@ export default function ManufacturerNetworkView() {
               Network Intelligence
             </div>
             <div className="text-[15px] font-semibold tracking-tight text-slate-900 truncate">
-              {session.entity.name} · Radial Hierarchy
+              {session.entity.name} · {viewMode === "radial" ? "Radial Hierarchy" : "Nigeria Map"}
             </div>
           </div>
         </div>
 
-        <Breadcrumb path={path} />
-        <Legend mode={mode} />
+        {viewMode === "radial" && <Breadcrumb path={path} />}
+        {viewMode === "radial" && <Legend mode={mode} />}
       </div>
 
-      {/* Context Intelligence — segmented switcher */}
-      <div className="px-6 pb-3 z-20 flex items-center justify-between gap-4">
-        <ContextSwitcher mode={mode} onChange={setMode} />
-        <div className="hidden md:flex items-center gap-2 text-[11px] text-slate-500 max-w-[40%] truncate">
-          <activeMode.icon className="h-3.5 w-3.5" style={{ color: activeMode.accent }} />
-          <span className="truncate">{activeMode.description}</span>
+      {/* View Mode Toggle + (radial only) Context Modes */}
+      <div className="px-6 pb-3 z-20 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <ViewModeSwitcher value={viewMode} onChange={setViewMode} />
+          {viewMode === "radial" && (
+            <ContextSwitcher mode={mode} onChange={setMode} />
+          )}
         </div>
+        {viewMode === "radial" && (
+          <div className="hidden md:flex items-center gap-2 text-[11px] text-slate-500 max-w-[40%] truncate">
+            <activeMode.icon className="h-3.5 w-3.5" style={{ color: activeMode.accent }} />
+            <span className="truncate">{activeMode.description}</span>
+          </div>
+        )}
       </div>
 
-      {/* Canvas surface */}
+      {/* Visualization surface */}
       <div className="relative flex-1 min-h-0">
-        <RadialHierarchyCanvas
-          manufacturerId={session.entity.id}
-          mode={mode}
-          onHover={setHover}
-          onFocusPathChange={setPath}
-        />
-        {hover && <NodeTooltip info={hover} mode={mode} />}
-        <HintFooter />
+        {viewMode === "radial" ? (
+          <>
+            <RadialHierarchyCanvas
+              manufacturerId={session.entity.id}
+              mode={mode}
+              onHover={setHover}
+              onFocusPathChange={setPath}
+            />
+            {hover && <NodeTooltip info={hover} mode={mode} />}
+            <HintFooter />
+          </>
+        ) : (
+          <NigeriaMapView manufacturerId={session.entity.id} />
+        )}
       </div>
+    </div>
+  );
+}
+
+// -------------- View Mode Switcher (Radial / Map) --------------
+function ViewModeSwitcher({
+  value,
+  onChange,
+}: {
+  value: ViewMode;
+  onChange: (v: ViewMode) => void;
+}) {
+  const opts: { id: ViewMode; label: string; icon: React.ComponentType<any> }[] = [
+    { id: "radial", label: "Radial View", icon: Network },
+    { id: "map", label: "Nigeria Map View", icon: MapIcon },
+  ];
+  return (
+    <div
+      role="tablist"
+      aria-label="Visualization mode"
+      className="inline-flex items-center gap-0.5 rounded-2xl bg-white/85 backdrop-blur-md border border-slate-200/80 shadow-sm p-1"
+      data-testid="view-mode-switcher"
+    >
+      {opts.map((o) => {
+        const Icon = o.icon;
+        const active = value === o.id;
+        return (
+          <button
+            key={o.id}
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(o.id)}
+            data-testid={`view-mode-${o.id}`}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[12px] font-semibold tracking-tight transition-all duration-200 ${
+              active
+                ? "bg-gradient-to-b from-indigo-500 to-indigo-600 text-white shadow-sm"
+                : "text-slate-500 hover:text-slate-900"
+            }`}
+          >
+            <Icon className="h-3.5 w-3.5" />
+            {o.label}
+          </button>
+        );
+      })}
     </div>
   );
 }
