@@ -56,15 +56,15 @@ interface Props {
 
 // Root-level children (regions) get distributed evenly on an absolute circle.
 // Deeper levels switch to *orbital* clustering around their parent for cohesion.
-const ROOT_RING = 80;
+const ROOT_RING = 130;
 
 // Adaptive orbital parameters per child level (depth of the children, not parent).
 // baseOrbit: minimum distance from parent at that child level
 // growth: orbit grows with child-count beyond this many siblings
 const ORBIT_BY_DEPTH: Record<number, { baseOrbit: number; growth: number; maxOrbit: number; minFan: number; maxFan: number }> = {
-  2: { baseOrbit: 42, growth: 2, maxOrbit:  75, minFan: Math.PI * 0.55, maxFan: Math.PI * 1.05 }, // state
-  3: { baseOrbit: 32, growth: 2, maxOrbit:  60, minFan: Math.PI * 0.55, maxFan: Math.PI * 1.00 }, // distributor
-  4: { baseOrbit: 22, growth: 1, maxOrbit:  42, minFan: Math.PI * 0.50, maxFan: Math.PI * 0.95 }, // retailer
+  2: { baseOrbit: 72, growth: 3, maxOrbit: 130, minFan: Math.PI * 0.65, maxFan: Math.PI * 1.20 }, // state
+  3: { baseOrbit: 54, growth: 3, maxOrbit: 100, minFan: Math.PI * 0.60, maxFan: Math.PI * 1.10 }, // distributor
+  4: { baseOrbit: 36, growth: 2, maxOrbit:  70, minFan: Math.PI * 0.50, maxFan: Math.PI * 0.95 }, // retailer
 };
 
 const NODE_SIZES: Record<HierarchyNode["type"], number> = {
@@ -74,6 +74,12 @@ const NODE_SIZES: Record<HierarchyNode["type"], number> = {
   distributor: 7,
   retailer: 5,
 };
+
+// Minimum gap a child must keep from its parent (avoids the child being drawn
+// on top of the parent circle when orbits are aggressively capped).
+function minOrbitFor(parentR: number, childR: number): number {
+  return parentR + childR + 6;
+}
 
 const SPRING = 0.16;          // position lerp factor (0..1)
 const ALPHA_SPRING = 0.12;
@@ -245,11 +251,11 @@ export default function RadialHierarchyCanvas({
   const setDirty = () => { dirtyRef.current = true; };
 
   /** Compute orbit + fan for a sibling group of given size. */
-  function computeOrbit(depth: number, count: number, nodeR: number): { orbit: number; fan: number } {
+  function computeOrbit(depth: number, count: number, nodeR: number, parentR: number): { orbit: number; fan: number } {
     const cfg = ORBIT_BY_DEPTH[depth] || ORBIT_BY_DEPTH[4];
     // Fan width grows with sibling count (compact for few, wider for many)
     let fan = cfg.minFan;
-    if (count > 3) fan = cfg.minFan + (count - 3) * 0.035;
+    if (count > 3) fan = cfg.minFan + (count - 3) * 0.05;
     fan = Math.max(cfg.minFan, Math.min(cfg.maxFan, fan));
 
     // Orbit radius grows with count to keep arc-length per sibling sane
@@ -258,12 +264,15 @@ export default function RadialHierarchyCanvas({
     // Collision-aware: ensure tangential spacing >= 2 * (nodeR + padding)
     if (count > 1) {
       const step = fan / count;
-      const required = 2 * (nodeR + 3);
+      const required = 2 * (nodeR + 5);
       const tangential = step * orbit;
       if (tangential < required) {
-        orbit = Math.min(cfg.maxOrbit, required / step);
+        orbit = required / step;
       }
     }
+    // Floor: never inside the parent circle
+    const minO = minOrbitFor(parentR, nodeR);
+    if (orbit < minO) orbit = minO;
     return { orbit, fan };
   }
 
@@ -303,14 +312,16 @@ export default function RadialHierarchyCanvas({
       // Outward direction from origin through parent — children fan out this way
       const pAngle = Math.atan2(parent.ty || parent.y, parent.tx || parent.x);
       baseAngle = isFinite(pAngle) ? pAngle : parent.angle;
-      const { orbit, fan } = computeOrbit(childDepth, N, childR);
+      const { orbit, fan } = computeOrbit(childDepth, N, childR, parent.tr || NODE_SIZES[parent.data.type] || 8);
       orbitRadius = orbit;
       fanWidth = fan;
 
       // ---- Anti-overlap: cap orbit so this parent's micro-network never
-      // crosses into the territory of its sibling parents. We use the half
-      // distance to the nearest already-known sibling of `parent` (minus
-      // padding) as the hard ceiling for the orbital radius.
+      // crosses into the territory of its sibling parents. The ceiling is
+      // *advisory* — we never let it crush the children inside the parent
+      // (minOrbitFor floor) or below the tangential-collision orbit.
+      const parentR = parent.tr || NODE_SIZES[parent.data.type] || 8;
+      const minOrbit = minOrbitFor(parentR, childR);
       let siblingCeiling = Infinity;
       const gp = parent.parentId ? nodesRef.current.get(parent.parentId) : null;
       if (gp && gp.childrenIds.length > 1) {
@@ -325,30 +336,40 @@ export default function RadialHierarchyCanvas({
           if (d > 0 && d < minSibDist) minSibDist = d;
         });
         if (isFinite(minSibDist)) {
-          siblingCeiling = Math.max(14, minSibDist / 2 - childR - 2);
+          // Leave a corridor of size 2*childR between sibling parents'
+          // micro-networks; floor so we never crowd inside the parent.
+          siblingCeiling = Math.max(minOrbit, minSibDist / 2 - childR - 4);
           if (orbitRadius > siblingCeiling) orbitRadius = siblingCeiling;
         }
       }
 
+      // ---- Tangential spacing must respect minimum spacing.
+      // If sibling-ceiling crushed us below the collision-required orbit,
+      // restore that minimum (we'd rather slightly cross sibling territory
+      // than stack children on top of each other).
+      if (N > 1) {
+        const step = fanWidth / N;
+        const required = 2 * (childR + 5);
+        const needed = step > 0 ? required / step : orbitRadius;
+        if (orbitRadius < needed) orbitRadius = needed;
+      }
+
       // ---- Anti-overlap: when the angular slot inherited from the parent
-      // is narrow (many siblings), clamp fan to that slot so descendants
-      // stay within their parent's wedge.
+      // is narrow (many siblings), widen orbit instead of crushing the fan.
       const slot = Math.max(0, parent.a1 - parent.a0);
-      if (slot > 0) {
-        const maxFan = slot * 0.92;
-        if (fanWidth > maxFan) {
-          fanWidth = maxFan;
-          // If clamping made tangential spacing too tight, push orbit out
-          // — but never beyond the sibling ceiling (preserves compactness;
-          // residual touching is resolved by sibling relaxation below).
-          if (N > 1) {
-            const step = fanWidth / N;
-            const required = 2 * (childR + 3);
-            const needed = step > 0 ? required / step : orbitRadius;
-            if (needed > orbitRadius) orbitRadius = Math.min(needed, siblingCeiling);
-          }
+      if (slot > 0 && fanWidth > slot * 1.05) {
+        // Narrow the fan but keep tangential spacing
+        fanWidth = slot * 1.05;
+        if (N > 1) {
+          const step2 = fanWidth / N;
+          const required2 = 2 * (childR + 5);
+          const needed2 = step2 > 0 ? required2 / step2 : orbitRadius;
+          if (needed2 > orbitRadius) orbitRadius = needed2;
         }
       }
+
+      // Final floor: never inside the parent
+      if (orbitRadius < minOrbit) orbitRadius = minOrbit;
     }
 
     // --- Place each child ---
@@ -406,8 +427,66 @@ export default function RadialHierarchyCanvas({
       relaxSiblings(sibs, parent, childR);
     }
 
+    // --- Global pairwise relaxation across ALL active nodes ---
+    // Resolves cross-subtree collisions (e.g. a freshly-expanded city's
+    // distributors overlapping another city's distributors). Cheap because
+    // the number of materialised nodes is small.
+    relaxAllNodes();
+
     setDirty();
   }, []);
+
+  /**
+   * Cheap global pairwise pass — for every pair of materialised nodes
+   * (skipping the root), if they overlap, push both apart along their
+   * separation vector. Targets `tx/ty` so the spring animation carries
+   * the change. We don't touch root, and we anchor parents stronger than
+   * leaves so the hierarchy stays visually centered.
+   */
+  function relaxAllNodes() {
+    const arr = Array.from(nodesRef.current.values()).filter((n) => n.depth > 0);
+    if (arr.length < 2) return;
+    const pad = 4;
+    for (let iter = 0; iter < 6; iter++) {
+      let moved = false;
+      for (let i = 0; i < arr.length; i++) {
+        const a = arr[i];
+        const aR = a.tr || 6;
+        for (let j = i + 1; j < arr.length; j++) {
+          const b = arr[j];
+          // Don't relax direct parent↔child — they're meant to be close
+          if (b.parentId === a.id || a.parentId === b.id) continue;
+          const bR = b.tr || 6;
+          const minD = aR + bR + pad;
+          const dx = b.tx - a.tx;
+          const dy = b.ty - a.ty;
+          const d2 = dx * dx + dy * dy;
+          if (d2 < 0.0001) {
+            // Exact overlap — nudge along an arbitrary axis
+            b.tx += minD * 0.5;
+            b.ty += 0;
+            moved = true;
+            continue;
+          }
+          const d = Math.sqrt(d2);
+          if (d < minD) {
+            const push = (minD - d) / 2;
+            const ux = dx / d, uy = dy / d;
+            // Leaves move more; parents (have children) move less
+            const aWeight = a.childrenIds.length > 0 ? 0.3 : 1;
+            const bWeight = b.childrenIds.length > 0 ? 0.3 : 1;
+            const total = aWeight + bWeight || 1;
+            a.tx -= ux * push * (aWeight / total) * 2;
+            a.ty -= uy * push * (aWeight / total) * 2;
+            b.tx += ux * push * (bWeight / total) * 2;
+            b.ty += uy * push * (bWeight / total) * 2;
+            moved = true;
+          }
+        }
+      }
+      if (!moved) break;
+    }
+  }
 
   /**
    * Light relaxation: if two siblings are closer than (2r + pad) we nudge them
@@ -916,28 +995,32 @@ export default function RadialHierarchyCanvas({
       }
     }
 
-    // Labels — improved readability with white halo on light bg
-    const showLabel = baseR >= 11 || isFocus || isHover;
+    // Labels — improved readability with white halo on light bg.
+    // Only show automatically for larger nodes (manufacturer / region) — for
+    // smaller nodes labels only appear on focus / hover to prevent clutter.
+    const showLabel = baseR >= 12 || isFocus || isHover;
     if (showLabel && inActivePath) {
       const label = n.data.name;
-      const fontSize = Math.max(11, Math.min(14, baseR * 0.7));
+      const fontSize = isFocus
+        ? Math.max(12, Math.min(14, baseR * 0.85))
+        : Math.max(10, Math.min(12, baseR * 0.7));
       ctx.font = `${isFocus ? 600 : 500} ${fontSize}px ui-sans-serif, system-ui, -apple-system`;
       ctx.textAlign = "center";
       ctx.textBaseline = "top";
-      const ty = n.y + baseR + 9;
-      const text = truncate(label, 24);
+      const ty = n.y + baseR + 7;
+      const text = truncate(label, isFocus ? 22 : 14);
       // soft white outline for AA contrast
       ctx.lineWidth = 3.5;
       ctx.strokeStyle = "rgba(255, 255, 255, 0.95)";
       ctx.lineJoin = "round";
       ctx.strokeText(text, n.x, ty);
-      ctx.fillStyle = isFocus ? "#0f172a" : "#334155";
+      ctx.fillStyle = isFocus ? "#0f172a" : "#475569";
       ctx.fillText(text, n.x, ty);
       // sub-label for focused node showing type
-      if (isFocus && baseR >= 14) {
-        ctx.font = `500 10px ui-sans-serif, system-ui`;
+      if (isFocus && baseR >= 12) {
+        ctx.font = `500 9.5px ui-sans-serif, system-ui`;
         ctx.fillStyle = "#94a3b8";
-        ctx.fillText(n.data.type.toUpperCase(), n.x, ty + fontSize + 3);
+        ctx.fillText(n.data.type.toUpperCase(), n.x, ty + fontSize + 2);
       }
     }
 
