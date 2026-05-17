@@ -8,6 +8,10 @@ from fastapi import APIRouter, HTTPException
 from core import db
 from services.migrations import ensure_indexes
 from services.seed import seed_from_csv
+from services.seed_backfill import (
+    backfill_all, backfill_inventory, backfill_notifications,
+    backfill_sample_requests, backfill_sample_shipments,
+)
 from services.seed_daily_sales import seed_daily_sales
 
 router = APIRouter()
@@ -96,3 +100,47 @@ async def seed_daily_sales_endpoint(
     return await seed_daily_sales(
         days=days, retailers_limit=retailers_limit, force=force,
     )
+
+
+@router.post("/seed/inventory")
+async def seed_inventory_endpoint(retailers_limit: int = 5000):
+    """Backfill inventory rows for any owner missing them.
+
+    Idempotent — skips owner_id × product_id pairs that already exist.
+    Use this when master data is present but the inventory collection is
+    empty (typical state of a fresh production deployment).
+    """
+    return await backfill_inventory(retailers_limit=retailers_limit)
+
+
+@router.post("/seed/notifications")
+async def seed_notifications_endpoint():
+    """Create welcome notifications for primary manufacturer / distributor /
+    retailer if no notifications exist. Idempotent."""
+    return await backfill_notifications()
+
+
+@router.post("/seed/sample-requests")
+async def seed_sample_requests_endpoint():
+    """Create a single demo pending stock request if none exist. Idempotent."""
+    return await backfill_sample_requests()
+
+
+@router.post("/seed/sample-shipments")
+async def seed_sample_shipments_endpoint():
+    """Create 6 demo shipments (mfg→dist + dist→ret) if none exist. Idempotent."""
+    return await backfill_sample_shipments()
+
+
+@router.post("/seed/backfill")
+async def seed_backfill_endpoint(retailers_limit: int = 5000):
+    """One-shot backfill of inventory + notifications + sample requests +
+    sample shipments for environments with master data only.
+
+    Idempotent — each sub-step only writes what's missing. Recommended order
+    after a fresh deployment:
+      1) POST /api/seed                     (master data — if empty)
+      2) POST /api/seed/backfill            (operational data — this endpoint)
+      3) POST /api/seed/daily-sales         (analytics history)
+    """
+    return await backfill_all(retailers_limit=retailers_limit)

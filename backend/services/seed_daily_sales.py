@@ -32,6 +32,17 @@ DOW_MULTIPLIER = [0.85, 0.95, 1.0, 1.05, 1.2, 1.35, 1.15]
 HOT_CATEGORIES = {"Food", "Home Care"}
 
 
+def _default_velocity(category: str | None) -> float:
+    """Reasonable per-day baseline when inventory.velocity is missing or zero.
+
+    Hot consumer categories sell faster than personal care / specialty SKUs.
+    Numbers stay realistic for a small Nigerian retailer (~1-3 units/day/SKU).
+    """
+    if (category or "") in HOT_CATEGORIES:
+        return 2.2
+    return 1.0
+
+
 def _bucket(units_per_day_avg: float, dt: datetime, seed: int) -> int:
     """Realistic synthetic day-level units for a given product+date.
 
@@ -96,9 +107,8 @@ async def seed_daily_sales(*, days: int = 30, retailers_limit: int = 200,
     if not products:
         return {"ok": False, "inserted": 0, "error": "no products in DB — seed master data first"}
 
-    # Pick retailers ordered by total velocity (most active first) so the cap
-    # produces the most useful demo data. Tie-break by owner_id ASC so the same
-    # call always picks the same N retailers — critical for idempotency.
+    # Pick retailers preferring those with velocity, falling back to retailer
+    # collection order. Tie-break by id ASC so idempotency holds across calls.
     vel_pipeline = [
         {"$match": {"owner_type": "retailer", "velocity": {"$gt": 0}}},
         {"$group": {"_id": "$owner_id", "total_velocity": {"$sum": "$velocity"}}},
@@ -107,10 +117,14 @@ async def seed_daily_sales(*, days: int = 30, retailers_limit: int = 200,
     ]
     rid_rows = [r async for r in db.inventory.aggregate(vel_pipeline)]
     retailer_ids = [r["_id"] for r in rid_rows]
-    if not retailer_ids:
-        # Fall back to any first N retailers if velocities are missing.
-        retailer_ids = [r["id"] for r in await db.retailers.find(
-            {}, {"_id": 0, "id": 1}).limit(retailers_limit).to_list(retailers_limit)]
+    if len(retailer_ids) < retailers_limit:
+        # Top-up with retailers that don't have velocity-tagged inventory yet —
+        # they'll still get rows via the per-product default velocity below.
+        have = set(retailer_ids)
+        needed = retailers_limit - len(retailer_ids)
+        extras = await db.retailers.find({"id": {"$nin": list(have)}}, {"_id": 0, "id": 1})\
+            .sort("id", 1).limit(needed).to_list(needed)
+        retailer_ids.extend(r["id"] for r in extras)
     if not retailer_ids:
         return {"ok": False, "inserted": 0, "error": "no retailers in DB"}
 
@@ -121,12 +135,28 @@ async def seed_daily_sales(*, days: int = 30, retailers_limit: int = 200,
             "source": "daily_sales_seeder_v1",
         })
 
-    # Fetch per-retailer inventory once (project velocity + product_id only)
+    # Fetch per-retailer inventory once. We DO NOT filter on velocity > 0 here:
+    # in production seeds the `velocity` field may be missing or zero, but we
+    # still want to generate plausible sales for every retailer × product pair.
+    # Missing velocity gets a sensible default derived from the stocked qty.
     inv_rows = await db.inventory.find(
-        {"owner_type": "retailer", "owner_id": {"$in": retailer_ids},
-         "velocity": {"$gt": 0}},
-        {"_id": 0, "owner_id": 1, "product_id": 1, "velocity": 1},
-    ).to_list(200_000)
+        {"owner_type": "retailer", "owner_id": {"$in": retailer_ids}},
+        {"_id": 0, "owner_id": 1, "product_id": 1, "velocity": 1, "quantity": 1,
+         "reorder_level": 1},
+    ).to_list(500_000)
+
+    # If a retailer has no inventory at all (production case: master data was
+    # seeded but inventory wasn't), synthesize one row per product so the
+    # retailer still gets a full history via the per-category default velocity.
+    rids_with_inv = {r["owner_id"] for r in inv_rows}
+    missing_inv = [rid for rid in retailer_ids if rid not in rids_with_inv]
+    if missing_inv:
+        for rid in missing_inv:
+            for pid in products:
+                inv_rows.append({
+                    "owner_id": rid, "product_id": pid,
+                    "velocity": 0, "quantity": 0, "reorder_level": 0,
+                })
 
     existing = await _existing_keys(retailer_ids, window_set)
 
@@ -138,8 +168,8 @@ async def seed_daily_sales(*, days: int = 30, retailers_limit: int = 200,
         prod = products.get(pid) or {}
         base_velocity = float(inv.get("velocity", 0))
         if base_velocity <= 0:
-            continue
-        if prod.get("category") in HOT_CATEGORIES:
+            base_velocity = _default_velocity(prod.get("category"))
+        elif prod.get("category") in HOT_CATEGORIES:
             base_velocity *= 1.25
         price = float(prod.get("unit_price", 0))
         for date_str in window:
