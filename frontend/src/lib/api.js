@@ -58,6 +58,24 @@ export const Api = {
     `${API_BASE}/reports/inventory.csv?role=${role}&entity_id=${entity_id}`,
 
   seed: () => api.post("/seed").then((r) => r.data),
+
+  // Sales Book (retailer)
+  salesSummary: (retailer_id) =>
+    api.get(`/retailer/${retailer_id}/sales/summary`).then((r) => r.data),
+  salesList: (retailer_id, params = {}) =>
+    api.get(`/retailer/${retailer_id}/sales`, { params }).then((r) => r.data),
+  salesAnalytics: (retailer_id, days = 30) =>
+    api.get(`/retailer/${retailer_id}/sales/analytics`, { params: { days } }).then((r) => r.data),
+  createSale: (retailer_id, payload) =>
+    api.post(`/retailer/${retailer_id}/sales`, payload).then((r) => r.data),
+  markSalePaid: (retailer_id, sale_id, payment_method) =>
+    api.patch(`/retailer/${retailer_id}/sales/${sale_id}/mark-paid`, { payment_method }).then((r) => r.data),
+  salesExportCsvUrl: (retailer_id, date_from, date_to) => {
+    const qs = new URLSearchParams();
+    if (date_from) qs.set("date_from", date_from);
+    if (date_to) qs.set("date_to", date_to);
+    return `${API_BASE}/retailer/${retailer_id}/sales/export.csv${qs.toString() ? "?" + qs : ""}`;
+  },
 };
 
 export default api;

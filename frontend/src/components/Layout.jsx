@@ -21,6 +21,7 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  Receipt,
 } from "lucide-react";
 
 const ROLE_ICON = {
@@ -42,6 +43,7 @@ function navForRole(role) {
     base.push({ to: "/network", label: "Retailers", icon: Network });
     base.push({ to: "/requests", label: "Requests", icon: MessageSquare });
   } else if (role === "retailer") {
+    base.push({ to: "/sales", label: "Sales Book", icon: Receipt });
     base.push({ to: "/requests", label: "Requests", icon: MessageSquare });
   }
   base.push({ to: "/analytics", label: "Analytics", icon: BarChart3 });

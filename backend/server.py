@@ -18,6 +18,7 @@ from routes import (
     notifications,
     reports,
     retailer_os,
+    sales,
     seed as seed_route,
     shipments,
     stock_requests,
@@ -42,6 +43,7 @@ for r in (
     distributor.router,
     retailer_os.router,
     assistant.router,
+    sales.router,
     seed_route.router,
 ):
     api_router.include_router(r)

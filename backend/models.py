@@ -167,3 +167,22 @@ class AssistantPayload(BaseModel):
 
 class AssistantActionPayload(BaseModel):
     action: dict
+
+
+# ---- Sales (Retailer Sales Book) ----
+class SaleLineItem(BaseModel):
+    product_id: str
+    quantity: int
+    unit_price: float
+
+
+class SaleCreate(BaseModel):
+    items: List[SaleLineItem]
+    payment_method: Literal["cash", "transfer", "pos", "credit"]
+    customer_name: Optional[str] = ""
+    attendant: Optional[str] = ""
+    notes: Optional[str] = ""
+
+
+class SaleMarkPaid(BaseModel):
+    payment_method: Literal["cash", "transfer", "pos"] = "cash"

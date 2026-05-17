@@ -51,6 +51,13 @@ INDEX_SPECS: List[Tuple[str, list, dict]] = [
     # Daily sales (analytics-heavy)
     ("daily_sales", [("retailer_id", ASCENDING), ("date", ASCENDING)], {"name": "by_retailer_date"}),
     ("daily_sales", [("product_id", ASCENDING), ("date", ASCENDING)], {"name": "by_product_date"}),
+
+    # Sales Book (retailer POS)
+    ("sales", [("id", ASCENDING)], {"unique": True, "name": "uniq_id"}),
+    ("sales", [("retailer_id", ASCENDING), ("created_at", DESCENDING)], {"name": "by_retailer_recent"}),
+    ("sales", [("retailer_id", ASCENDING), ("payment_method", ASCENDING)], {"name": "by_retailer_payment"}),
+    ("sales", [("retailer_id", ASCENDING), ("payment_status", ASCENDING)], {"name": "by_retailer_status"}),
+    ("sales", [("transaction_code", ASCENDING)], {"name": "by_tx_code"}),
 ]
 
 
