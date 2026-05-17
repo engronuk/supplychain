@@ -56,23 +56,23 @@ interface Props {
 
 // Root-level children (regions) get distributed evenly on an absolute circle.
 // Deeper levels switch to *orbital* clustering around their parent for cohesion.
-const ROOT_RING = 175;
+const ROOT_RING = 80;
 
 // Adaptive orbital parameters per child level (depth of the children, not parent).
 // baseOrbit: minimum distance from parent at that child level
 // growth: orbit grows with child-count beyond this many siblings
 const ORBIT_BY_DEPTH: Record<number, { baseOrbit: number; growth: number; maxOrbit: number; minFan: number; maxFan: number }> = {
-  2: { baseOrbit:  95, growth: 4, maxOrbit: 150, minFan: Math.PI * 0.55, maxFan: Math.PI * 1.05 }, // state
-  3: { baseOrbit:  72, growth: 3, maxOrbit: 120, minFan: Math.PI * 0.55, maxFan: Math.PI * 1.00 }, // distributor
-  4: { baseOrbit:  46, growth: 2, maxOrbit:  85, minFan: Math.PI * 0.50, maxFan: Math.PI * 0.95 }, // retailer
+  2: { baseOrbit: 42, growth: 2, maxOrbit:  75, minFan: Math.PI * 0.55, maxFan: Math.PI * 1.05 }, // state
+  3: { baseOrbit: 32, growth: 2, maxOrbit:  60, minFan: Math.PI * 0.55, maxFan: Math.PI * 1.00 }, // distributor
+  4: { baseOrbit: 22, growth: 1, maxOrbit:  42, minFan: Math.PI * 0.50, maxFan: Math.PI * 0.95 }, // retailer
 };
 
 const NODE_SIZES: Record<HierarchyNode["type"], number> = {
-  manufacturer: 30,
-  region: 18,
-  state: 13,
-  distributor: 9,
-  retailer: 5.5,
+  manufacturer: 22,
+  region: 14,
+  state: 10,
+  distributor: 7,
+  retailer: 5,
 };
 
 const SPRING = 0.16;          // position lerp factor (0..1)
@@ -258,7 +258,7 @@ export default function RadialHierarchyCanvas({
     // Collision-aware: ensure tangential spacing >= 2 * (nodeR + padding)
     if (count > 1) {
       const step = fan / count;
-      const required = 2 * (nodeR + 5);
+      const required = 2 * (nodeR + 3);
       const tangential = step * orbit;
       if (tangential < required) {
         orbit = Math.min(cfg.maxOrbit, required / step);
@@ -311,6 +311,7 @@ export default function RadialHierarchyCanvas({
       // crosses into the territory of its sibling parents. We use the half
       // distance to the nearest already-known sibling of `parent` (minus
       // padding) as the hard ceiling for the orbital radius.
+      let siblingCeiling = Infinity;
       const gp = parent.parentId ? nodesRef.current.get(parent.parentId) : null;
       if (gp && gp.childrenIds.length > 1) {
         let minSibDist = Infinity;
@@ -324,8 +325,8 @@ export default function RadialHierarchyCanvas({
           if (d > 0 && d < minSibDist) minSibDist = d;
         });
         if (isFinite(minSibDist)) {
-          const ceiling = Math.max(22, minSibDist / 2 - childR - 4);
-          if (orbitRadius > ceiling) orbitRadius = ceiling;
+          siblingCeiling = Math.max(14, minSibDist / 2 - childR - 2);
+          if (orbitRadius > siblingCeiling) orbitRadius = siblingCeiling;
         }
       }
 
@@ -338,12 +339,13 @@ export default function RadialHierarchyCanvas({
         if (fanWidth > maxFan) {
           fanWidth = maxFan;
           // If clamping made tangential spacing too tight, push orbit out
-          // (but respect the sibling ceiling computed above).
+          // — but never beyond the sibling ceiling (preserves compactness;
+          // residual touching is resolved by sibling relaxation below).
           if (N > 1) {
             const step = fanWidth / N;
-            const required = 2 * (childR + 5);
+            const required = 2 * (childR + 3);
             const needed = step > 0 ? required / step : orbitRadius;
-            if (needed > orbitRadius) orbitRadius = needed;
+            if (needed > orbitRadius) orbitRadius = Math.min(needed, siblingCeiling);
           }
         }
       }
@@ -412,7 +414,7 @@ export default function RadialHierarchyCanvas({
    * tangentially along the orbit. Only operates on a single sibling group.
    */
   function relaxSiblings(sibs: CanvasNode[], parent: CanvasNode, childR: number) {
-    const pad = 8;
+    const pad = 5;
     const minDist = 2 * childR + pad;
     for (let iter = 0; iter < 4; iter++) {
       let moved = false;
