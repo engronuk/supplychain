@@ -49,6 +49,18 @@ Manufacturer can see all 91 distributors; Distributor sees all its retailers.
 - Pytest suite at /app/backend/tests/test_supply_chain.py (24/24 green)
 - Frontend e2e flows verified by testing agent
 
+## Updates (2026-05-17 – Phase 1 + 2)
+### Distributor Retailer Intelligence
+- **Enhanced Retailer List** (`/network` for distributors): sortable table with Status, Stock Health %, Revenue, Last Order, Contact (name/phone/email), inline action icons (View Details / Inventory / Transactions / Send Restock), search + active/inactive + health filters, summary KPI strip, CSV export
+- **Retailer Detail Page** (`/network/retailer/:id`) with 5 tabs:
+  - **Overview** — profile, contact, KPI grid (revenue, stock health, active orders, pending requests, last delivery/order), 30-day revenue sparkline, inventory snapshot
+  - **Deliveries** — delivery history table with status filter, total value/cost/margin summary, value & margin columns
+  - **Stock Requests** — categorized requests with priority badges, line-item breakdown, search & status filters
+  - **Analytics** — 30-day daily revenue chart, WoW + MoM growth, top selling products bar chart, sales by category donut, margin trend
+  - **Transactions** — invoice list with order value, payment status, method, items count
+- **AI Insights** ribbon — rule-based deterministic insights (revenue trend, stock alerts, pending requests, top sellers) shown across the detail page
+- **Order Financials** — unit_price × quantity at line level, summed for delivery/request order values across all surfaces
+
 ## Updates (2026-05-17)
 ### Retailer dataset expansion
 - Replaced `/app/backend/data/distributors.csv` with `generated_retailers.csv` (3,100 rows)

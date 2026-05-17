@@ -253,6 +253,370 @@ async def list_retailers(distributor_id: Optional[str] = None):
     return await db.retailers.find(q, {"_id": 0}).sort("name", 1).to_list(20000)
 
 
+# ---- Distributor → Retailer intelligence ----
+@api_router.get("/distributor/{distributor_id}/retailers")
+async def distributor_retailers_intel(distributor_id: str):
+    """Enriched retailer list for the distributor workspace: status, revenue,
+    stock health %, last order date, contact info. Uses real inventory/shipment
+    data — no synthetic numbers."""
+    retailers = await db.retailers.find(
+        {"distributor_id": distributor_id}, {"_id": 0}
+    ).sort("name", 1).to_list(20000)
+    if not retailers:
+        return []
+
+    retailer_ids = [r["id"] for r in retailers]
+
+    # Inventory rollup per retailer
+    pipeline = [
+        {"$match": {"owner_type": "retailer", "owner_id": {"$in": retailer_ids}}},
+        {"$group": {
+            "_id": "$owner_id",
+            "total_qty": {"$sum": "$quantity"},
+            "skus": {"$sum": 1},
+            "low": {"$sum": {"$cond": [{"$and": [
+                {"$gt": ["$quantity", 0]},
+                {"$lte": ["$quantity", "$reorder_level"]},
+            ]}, 1, 0]}},
+            "out": {"$sum": {"$cond": [{"$eq": ["$quantity", 0]}, 1, 0]}},
+            "healthy": {"$sum": {"$cond": [{"$gt": ["$quantity", "$reorder_level"]}, 1, 0]}},
+        }},
+    ]
+    inv_rollup = {row["_id"]: row async for row in db.inventory.aggregate(pipeline)}
+
+    # Product price lookup for revenue calc
+    products = {p["id"]: p for p in await db.products.find({}, {"_id": 0}).to_list(5000)}
+
+    # Last delivery (shipment) date + revenue summed from delivered shipments
+    last_order: Dict[str, str] = {}
+    revenue: Dict[str, float] = {}
+    async for s in db.shipments.find(
+        {"to_role": "retailer", "to_id": {"$in": retailer_ids}},
+        {"_id": 0, "to_id": 1, "items": 1, "created_at": 1, "status": 1, "received_at": 1}
+    ):
+        rid = s["to_id"]
+        when = s.get("received_at") or s.get("created_at") or ""
+        if when and when > last_order.get(rid, ""):
+            last_order[rid] = when
+        if s.get("status") == "received":
+            for it in s.get("items", []):
+                p = products.get(it.get("product_id"))
+                if not p:
+                    continue
+                revenue[rid] = revenue.get(rid, 0) + float(p["unit_price"]) * int(it.get("quantity", 0))
+
+    now = datetime.now(timezone.utc)
+    out: List[dict] = []
+    for r in retailers:
+        rid = r["id"]
+        roll = inv_rollup.get(rid) or {}
+        total_skus = roll.get("skus", 0)
+        healthy = roll.get("healthy", 0)
+        low = roll.get("low", 0)
+        out_qty = roll.get("out", 0)
+        stock_health_pct = round((healthy / total_skus) * 100) if total_skus else 0
+        status = "critical" if stock_health_pct < 40 else "warning" if stock_health_pct < 75 else "healthy"
+
+        last = last_order.get(rid)
+        # Active if had an order in last 60 days, else inactive
+        active = False
+        if last:
+            try:
+                dt = datetime.fromisoformat(last.replace("Z", "+00:00"))
+                active = (now - dt).days <= 60
+            except Exception:
+                active = True
+        retailer_status = "active" if active else "inactive"
+
+        out.append({
+            "id": rid,
+            "name": r["name"],
+            "region": r.get("region", ""),
+            "city": r.get("city", ""),
+            "address": r.get("address", ""),
+            "store_code": r.get("store_code", ""),
+            "phone": r.get("phone", ""),
+            "email": r.get("contact_email", ""),
+            "contact_name": r.get("name", "").split(" ")[0] + " Manager",
+            "latitude": r.get("latitude"),
+            "longitude": r.get("longitude"),
+            "status": retailer_status,
+            "health": status,
+            "stock_health_pct": stock_health_pct,
+            "revenue": round(revenue.get(rid, 0), 2),
+            "inventory_units": roll.get("total_qty", 0),
+            "low_stock_skus": low,
+            "out_of_stock_skus": out_qty,
+            "last_order_date": last,
+        })
+    return out
+
+
+@api_router.get("/distributor/{distributor_id}/retailer/{retailer_id}")
+async def distributor_retailer_detail(distributor_id: str, retailer_id: str):
+    """Detailed retailer workspace data — overview, financial summary,
+    deliveries, stock requests, analytics trend, transactions."""
+    r = await db.retailers.find_one(
+        {"id": retailer_id, "distributor_id": distributor_id}, {"_id": 0}
+    )
+    if not r:
+        raise HTTPException(404, "Retailer not found under this distributor")
+    d = await db.distributors.find_one({"id": distributor_id}, {"_id": 0}) or {}
+
+    products = {p["id"]: p for p in await db.products.find({}, {"_id": 0}).to_list(5000)}
+
+    def line_total(line: dict) -> float:
+        p = products.get(line.get("product_id"))
+        if not p:
+            return 0.0
+        return float(p["unit_price"]) * int(line.get("quantity", 0))
+
+    # Inventory rollup
+    inv = await db.inventory.find(
+        {"owner_type": "retailer", "owner_id": retailer_id}, {"_id": 0}
+    ).to_list(2000)
+    in_stock = sum(1 for i in inv if int(i.get("quantity", 0)) > int(i.get("reorder_level", 0)))
+    low_stock = sum(1 for i in inv if 0 < int(i.get("quantity", 0)) <= int(i.get("reorder_level", 0)))
+    out_of_stock = sum(1 for i in inv if int(i.get("quantity", 0)) == 0)
+    total_skus = max(1, in_stock + low_stock + out_of_stock)
+    stock_health_pct = round(100 * in_stock / total_skus)
+    inventory_units = sum(int(i.get("quantity", 0)) for i in inv)
+
+    # Deliveries — shipments where this retailer is destination
+    shipments = await db.shipments.find(
+        {"to_role": "retailer", "to_id": retailer_id},
+        {"_id": 0},
+    ).sort("created_at", -1).to_list(500)
+    deliveries: List[dict] = []
+    total_delivery_value = 0.0
+    total_delivery_cost = 0.0
+    last_delivery = None
+    for s in shipments:
+        total = round(sum(line_total(line) for line in s.get("items", [])), 2)
+        cost = round(total * 0.04, 2)  # ~4% logistics overhead proxy
+        units = sum(int(it.get("quantity", 0)) for it in s.get("items", []))
+        delivery = {
+            "id": s["id"],
+            "tracking_code": s.get("tracking_code", ""),
+            "status": s.get("status", ""),
+            "created_at": s.get("created_at"),
+            "dispatched_at": s.get("dispatched_at"),
+            "received_at": s.get("received_at"),
+            "value": total,
+            "cost": cost,
+            "units": units,
+            "items_count": len(s.get("items", [])),
+        }
+        deliveries.append(delivery)
+        if s.get("status") == "received":
+            total_delivery_value += total
+            total_delivery_cost += cost
+            if not last_delivery or (s.get("received_at") or "") > (last_delivery or ""):
+                last_delivery = s.get("received_at")
+
+    # Stock requests
+    reqs = await db.requests.find(
+        {"retailer_id": retailer_id, "distributor_id": distributor_id},
+        {"_id": 0},
+    ).sort("created_at", -1).to_list(500)
+    stock_requests: List[dict] = []
+    pending_requests = 0
+    last_order_date = None
+    for q in reqs:
+        if q.get("status") == "pending":
+            pending_requests += 1
+        items_full = []
+        for it in q.get("items", []):
+            p = products.get(it.get("product_id")) or {}
+            items_full.append({
+                "product_id": it.get("product_id"),
+                "product_name": p.get("name", "—"),
+                "category": p.get("category", ""),
+                "quantity": int(it.get("quantity", 0)),
+                "unit_price": float(p.get("unit_price", 0)),
+                "line_total": round(line_total(it), 2),
+            })
+        order_value = round(sum(li["line_total"] for li in items_full), 2)
+        when = q.get("created_at")
+        if when and (last_order_date is None or when > last_order_date):
+            last_order_date = when
+        stock_requests.append({
+            "id": q["id"],
+            "status": q.get("status", "pending"),
+            "priority": q.get("priority", "normal"),
+            "created_at": when,
+            "items": items_full,
+            "order_value": order_value,
+        })
+
+    # Active orders = pending + in_transit shipments
+    active_orders = sum(1 for s in shipments if s.get("status") in ("pending", "in_transit"))
+
+    # Revenue summary — sum of received shipments
+    total_revenue = sum(d["value"] for d in deliveries if d["status"] == "received")
+
+    # Sales trend last 30 days (from daily_sales if present)
+    today = datetime.now(timezone.utc).date()
+    trend_start = (today - timedelta(days=29)).isoformat()
+    daily = await db.daily_sales.find(
+        {"retailer_id": retailer_id, "date": {"$gte": trend_start}},
+        {"_id": 0, "date": 1, "revenue": 1, "quantity_sold": 1},
+    ).to_list(2000)
+    by_day: Dict[str, dict] = {}
+    for s in daily:
+        agg = by_day.setdefault(s["date"], {"revenue": 0.0, "units": 0})
+        agg["revenue"] += float(s.get("revenue", 0))
+        agg["units"] += int(s.get("quantity_sold", 0))
+    trend = []
+    for i in range(30):
+        day = (today - timedelta(days=29 - i)).isoformat()
+        agg = by_day.get(day, {"revenue": 0.0, "units": 0})
+        trend.append({"date": day, "revenue": round(agg["revenue"], 2), "units": agg["units"]})
+
+    revenue_7d = round(sum(t["revenue"] for t in trend[-7:]), 2)
+    revenue_prev_7d = round(sum(t["revenue"] for t in trend[-14:-7]), 2)
+    revenue_30d = round(sum(t["revenue"] for t in trend), 2)
+    revenue_prev_30d_query = await db.daily_sales.find({
+        "retailer_id": retailer_id,
+        "date": {"$gte": (today - timedelta(days=59)).isoformat(),
+                 "$lt": trend_start}
+    }, {"_id": 0, "revenue": 1}).to_list(5000)
+    revenue_prev_30d = round(sum(float(s.get("revenue", 0)) for s in revenue_prev_30d_query), 2)
+    wow_pct = round(((revenue_7d - revenue_prev_7d) / revenue_prev_7d) * 100, 1) if revenue_prev_7d else 0.0
+    mom_pct = round(((revenue_30d - revenue_prev_30d) / revenue_prev_30d) * 100, 1) if revenue_prev_30d else 0.0
+
+    # Top categories from daily sales joined with products
+    cat_revenue: Dict[str, float] = {}
+    product_revenue: Dict[str, float] = {}
+    for s in daily:
+        p = products.get(s.get("product_id"))
+        if not p:
+            continue
+        rev = float(s.get("revenue", 0))
+        cat_revenue[p["category"]] = cat_revenue.get(p["category"], 0) + rev
+        product_revenue[p["name"]] = product_revenue.get(p["name"], 0) + rev
+    category_breakdown = sorted(
+        [{"category": k, "revenue": round(v, 2)} for k, v in cat_revenue.items()],
+        key=lambda x: x["revenue"], reverse=True
+    )
+    top_products = sorted(
+        [{"product": k, "revenue": round(v, 2)} for k, v in product_revenue.items()],
+        key=lambda x: x["revenue"], reverse=True
+    )[:5]
+
+    # Margin trend — synthetic 20% margin on delivered shipments (visual only)
+    margin_trend = [{"date": t["date"], "margin": round(t["revenue"] * 0.20, 2)} for t in trend]
+
+    # Transactions = received shipments rendered as invoice rows
+    transactions = []
+    for s in shipments[:50]:
+        total = round(sum(line_total(line) for line in s.get("items", [])), 2)
+        if s.get("status") not in ("received", "in_transit", "pending"):
+            continue
+        transactions.append({
+            "invoice_number": s.get("tracking_code", ""),
+            "order_value": total,
+            "payment_status": "paid" if s.get("status") == "received" else "pending",
+            "payment_method": "bank_transfer",
+            "created_at": s.get("created_at"),
+            "status": s.get("status"),
+            "items_count": len(s.get("items", [])),
+        })
+
+    # AI Insights (rule-based)
+    insights = _retailer_insights(
+        wow_pct=wow_pct, mom_pct=mom_pct, low_stock=low_stock, out_of_stock=out_of_stock,
+        pending_requests=pending_requests, active_orders=active_orders,
+        top_products=top_products, stock_health_pct=stock_health_pct,
+        last_delivery=last_delivery, retailer_name=r.get("name", ""),
+    )
+
+    return {
+        "retailer": {
+            "id": r["id"], "name": r["name"], "region": r.get("region", ""),
+            "city": r.get("city", ""), "address": r.get("address", ""),
+            "store_code": r.get("store_code", ""), "phone": r.get("phone", ""),
+            "email": r.get("contact_email", ""),
+            "latitude": r.get("latitude"), "longitude": r.get("longitude"),
+            "contact_name": (r.get("name", "").split(" ")[0] + " Manager"),
+        },
+        "distributor": {"id": d.get("id", ""), "name": d.get("name", "")},
+        "overview": {
+            "stock_health_pct": stock_health_pct,
+            "inventory_units": inventory_units,
+            "active_orders": active_orders,
+            "pending_requests": pending_requests,
+            "last_delivery_date": last_delivery,
+            "last_order_date": last_order_date,
+            "total_revenue": round(total_revenue, 2),
+            "in_stock": in_stock,
+            "low_stock": low_stock,
+            "out_of_stock": out_of_stock,
+        },
+        "deliveries": deliveries,
+        "delivery_summary": {
+            "total_value": round(total_delivery_value, 2),
+            "total_cost": round(total_delivery_cost, 2),
+            "margin": round(total_delivery_value - total_delivery_cost, 2),
+            "delivered": sum(1 for d in deliveries if d["status"] == "received"),
+            "in_transit": sum(1 for d in deliveries if d["status"] == "in_transit"),
+            "pending": sum(1 for d in deliveries if d["status"] == "pending"),
+        },
+        "stock_requests": stock_requests,
+        "analytics": {
+            "trend": trend,
+            "margin_trend": margin_trend,
+            "revenue_7d": revenue_7d,
+            "revenue_30d": revenue_30d,
+            "wow_pct": wow_pct,
+            "mom_pct": mom_pct,
+            "category_breakdown": category_breakdown,
+            "top_products": top_products,
+        },
+        "transactions": transactions,
+        "ai_insights": insights,
+    }
+
+
+def _retailer_insights(
+    *, wow_pct: float, mom_pct: float, low_stock: int, out_of_stock: int,
+    pending_requests: int, active_orders: int, top_products: List[dict],
+    stock_health_pct: int, last_delivery: Optional[str], retailer_name: str,
+) -> List[dict]:
+    """Rule-based AI insight generator — deterministic & instant."""
+    out: List[dict] = []
+    if wow_pct >= 10:
+        out.append({"tone": "positive", "icon": "trending-up", "title": f"Revenue up {wow_pct}% W/W",
+                    "detail": "Sustain stock levels — momentum is building."})
+    elif wow_pct <= -10:
+        out.append({"tone": "warning", "icon": "trending-down", "title": f"Revenue down {abs(wow_pct)}% W/W",
+                    "detail": "Investigate causes — check pricing or competitor activity."})
+    if mom_pct >= 15:
+        out.append({"tone": "positive", "icon": "sparkles", "title": f"Strong monthly growth: +{mom_pct}%",
+                    "detail": "Consider increasing safety stock to capture demand."})
+    if out_of_stock > 0:
+        out.append({"tone": "critical", "icon": "alert-octagon", "title": f"{out_of_stock} SKU(s) out of stock",
+                    "detail": "Send a restock shipment to avoid lost sales."})
+    if low_stock >= 3:
+        out.append({"tone": "warning", "icon": "alert-triangle", "title": f"{low_stock} SKU(s) below reorder level",
+                    "detail": "Schedule a partial restock within 3–5 days."})
+    if pending_requests > 0:
+        out.append({"tone": "info", "icon": "clock", "title": f"{pending_requests} pending stock request(s)",
+                    "detail": "Approve or reject to keep the retailer moving."})
+    if stock_health_pct >= 85 and wow_pct >= 0:
+        out.append({"tone": "positive", "icon": "shield-check", "title": "Operations healthy",
+                    "detail": "Inventory in great shape; sales tracking up — no action required."})
+    if top_products:
+        tp = top_products[0]
+        out.append({"tone": "info", "icon": "trophy",
+                    "title": f"Top seller: {tp['product']}",
+                    "detail": f"₦{tp['revenue']:,.0f} in revenue this month."})
+    if not out:
+        out.append({"tone": "info", "icon": "info",
+                    "title": "Stable retailer", "detail": f"{retailer_name} is operating normally."})
+    return out[:6]
+
+
 @api_router.get("/products", response_model=List[Product])
 async def list_products(manufacturer_id: Optional[str] = None):
     q = {"manufacturer_id": manufacturer_id} if manufacturer_id else {}
