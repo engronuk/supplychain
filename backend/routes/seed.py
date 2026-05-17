@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException
 from core import db
 from services.migrations import ensure_indexes
 from services.seed import seed_from_csv
+from services.seed_daily_sales import seed_daily_sales
 
 router = APIRouter()
 
@@ -74,3 +75,24 @@ async def migrate():
     """Run index migrations only. Idempotent — safe to call from production."""
     idx = await ensure_indexes()
     return {"ok": True, **idx}
+
+
+@router.post("/seed/daily-sales")
+async def seed_daily_sales_endpoint(
+    days: int = 30,
+    retailers_limit: int = 200,
+    force: bool = False,
+):
+    """Generate realistic historical daily_sales for retailers/products.
+
+    Idempotent — only inserts rows missing from the (retailer_id, product_id,
+    date) key space for the requested window.
+
+    Query params:
+      - days: history depth ending today (default 30, max 120)
+      - retailers_limit: top-N retailers by velocity to seed (default 200, max 5000)
+      - force: wipe this seeder's prior rows in the window first (default false)
+    """
+    return await seed_daily_sales(
+        days=days, retailers_limit=retailers_limit, force=force,
+    )
