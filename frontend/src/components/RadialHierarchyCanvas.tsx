@@ -56,15 +56,15 @@ interface Props {
 
 // Root-level children (regions) get distributed evenly on an absolute circle.
 // Deeper levels switch to *orbital* clustering around their parent for cohesion.
-const ROOT_RING = 130;
+const ROOT_RING = 145;
 
 // Adaptive orbital parameters per child level (depth of the children, not parent).
 // baseOrbit: minimum distance from parent at that child level
 // growth: orbit grows with child-count beyond this many siblings
 const ORBIT_BY_DEPTH: Record<number, { baseOrbit: number; growth: number; maxOrbit: number; minFan: number; maxFan: number }> = {
-  2: { baseOrbit: 72, growth: 3, maxOrbit: 130, minFan: Math.PI * 0.65, maxFan: Math.PI * 1.20 }, // state
-  3: { baseOrbit: 54, growth: 3, maxOrbit: 100, minFan: Math.PI * 0.60, maxFan: Math.PI * 1.10 }, // distributor
-  4: { baseOrbit: 36, growth: 2, maxOrbit:  70, minFan: Math.PI * 0.50, maxFan: Math.PI * 0.95 }, // retailer
+  2: { baseOrbit: 88, growth: 4, maxOrbit: 155, minFan: Math.PI * 0.65, maxFan: Math.PI * 1.20 }, // state
+  3: { baseOrbit: 66, growth: 3, maxOrbit: 115, minFan: Math.PI * 0.60, maxFan: Math.PI * 1.10 }, // distributor
+  4: { baseOrbit: 46, growth: 2, maxOrbit:  82, minFan: Math.PI * 0.50, maxFan: Math.PI * 0.95 }, // retailer
 };
 
 const NODE_SIZES: Record<HierarchyNode["type"], number> = {
@@ -76,9 +76,9 @@ const NODE_SIZES: Record<HierarchyNode["type"], number> = {
 };
 
 // Minimum gap a child must keep from its parent (avoids the child being drawn
-// on top of the parent circle when orbits are aggressively capped).
+// on top of the parent circle, halo, or focus-ring when orbits are capped).
 function minOrbitFor(parentR: number, childR: number): number {
-  return parentR + childR + 6;
+  return parentR + childR + 14;
 }
 
 const SPRING = 0.16;          // position lerp factor (0..1)
@@ -344,8 +344,9 @@ export default function RadialHierarchyCanvas({
           if (d > 0 && d < minSibDist) minSibDist = d;
         });
         if (isFinite(minSibDist)) {
-          // Soft cap: never crowd inside the parent (minOrbit floor)
-          const ceiling = Math.max(minOrbit, minSibDist / 2 - childR - 4);
+          // Soft cap: leave a wider corridor between sibling micro-networks
+          // (8px on each side) and never crowd inside the parent (minOrbit).
+          const ceiling = Math.max(minOrbit, minSibDist / 2 - childR - 8);
           if (orbitRadius > ceiling) orbitRadius = ceiling;
         }
       }
