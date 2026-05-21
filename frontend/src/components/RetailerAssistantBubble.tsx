@@ -1,6 +1,7 @@
 // RetailerAssistantBubble.tsx — floating AI chat bubble for retailers.
-// Chat + voice (Web Speech API for STT, speechSynthesis for TTS).
-// Strictly retailer-scoped on the backend (POST /api/retailer/:id/assistant).
+// Chat (Gemini 2.5 Flash by default; auto-escalates to Claude Sonnet 4.5 for
+// complex queries) + voice (OpenAI Whisper STT for transcription,
+// speechSynthesis for TTS). Strictly retailer-scoped on the backend.
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import { useSession } from "@/context/SessionContext";
@@ -51,9 +52,12 @@ export default function RetailerAssistantBubble({ onUiAction, onRefresh }: Props
   const [input, setInput] = useState("");
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [thinking, setThinking] = useState(false);
-  const [listening, setListening] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
   const [ttsOn, setTtsOn] = useState<boolean>(() => localStorage.getItem("retailer:tts") === "1");
-  const recRef = useRef<any>(null);
+  const mediaRecRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const audioStreamRef = useRef<MediaStream | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const retailerId = session.entity.id;
@@ -89,9 +93,10 @@ export default function RetailerAssistantBubble({ onUiAction, onRefresh }: Props
   }, [turns, thinking]);
 
   const speakSupported = typeof window !== "undefined" && "speechSynthesis" in window;
-  const speechSupported = useMemo(() => {
-    const W: any = typeof window !== "undefined" ? window : {};
-    return !!(W.SpeechRecognition || W.webkitSpeechRecognition);
+  const recordSupported = useMemo(() => {
+    return typeof window !== "undefined"
+      && !!navigator.mediaDevices?.getUserMedia
+      && typeof window.MediaRecorder !== "undefined";
   }, []);
 
   function speak(text: string) {
@@ -168,51 +173,93 @@ export default function RetailerAssistantBubble({ onUiAction, onRefresh }: Props
     }
   }
 
-  function startListening() {
-    const W: any = window;
-    const Speech = W.SpeechRecognition || W.webkitSpeechRecognition;
-    if (!Speech) {
+  function pickMimeType(): string | undefined {
+    // Browsers vary widely. Pick the first supported one Whisper can handle.
+    const candidates = [
+      "audio/webm;codecs=opus",
+      "audio/webm",
+      "audio/ogg;codecs=opus",
+      "audio/mp4",
+    ];
+    for (const t of candidates) {
+      if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(t)) {
+        return t;
+      }
+    }
+    return undefined;
+  }
+
+  async function startRecording() {
+    if (!recordSupported) {
       toast.error("Voice input isn't supported in this browser.");
       return;
     }
-    const rec = new Speech();
-    rec.continuous = false;
-    rec.interimResults = true;
-    rec.lang = "en-US";
-    let finalText = "";
-    rec.onresult = (event: any) => {
-      let interim = "";
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const t = event.results[i][0].transcript;
-        if (event.results[i].isFinal) finalText += t;
-        else interim += t;
-      }
-      setInput((finalText + " " + interim).trim());
-    };
-    rec.onend = () => {
-      setListening(false);
-      if (finalText.trim()) {
-        send(finalText.trim());
-      }
-    };
-    rec.onerror = (e: any) => {
-      setListening(false);
-      if (e.error !== "aborted" && e.error !== "no-speech") {
-        toast.error(`Voice error: ${e.error}`);
-      }
-    };
-    rec.start();
-    recRef.current = rec;
-    setListening(true);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioStreamRef.current = stream;
+      audioChunksRef.current = [];
+      const mimeType = pickMimeType();
+      const rec = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      rec.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+      rec.onstop = async () => {
+        const blobType = mimeType || "audio/webm";
+        const blob = new Blob(audioChunksRef.current, { type: blobType });
+        audioStreamRef.current?.getTracks().forEach((t) => t.stop());
+        audioStreamRef.current = null;
+        if (blob.size < 500) {
+          toast.warning("Didn't catch that — try again.");
+          return;
+        }
+        await transcribeAndSend(blob);
+      };
+      rec.start();
+      mediaRecRef.current = rec;
+      setRecording(true);
+    } catch (e: any) {
+      const msg = e?.name === "NotAllowedError"
+        ? "Microphone permission denied"
+        : "Couldn't access microphone";
+      toast.error(msg);
+      setRecording(false);
+    }
   }
 
-  function stopListening() {
+  function stopRecording() {
     try {
-      recRef.current?.stop();
+      mediaRecRef.current?.stop();
     } catch {
       /* */
     }
-    setListening(false);
+    setRecording(false);
+  }
+
+  async function transcribeAndSend(blob: Blob) {
+    setTranscribing(true);
+    try {
+      const ext = (blob.type.split("/")[1] || "webm").split(";")[0];
+      const fd = new FormData();
+      fd.append("audio", blob, `clip.${ext}`);
+      const { data } = await axios.post(
+        `${API}/retailer/${retailerId}/assistant/transcribe`,
+        fd,
+        { headers: { "Content-Type": "multipart/form-data" } },
+      );
+      const text = (data?.text || "").trim();
+      if (!text) {
+        toast.warning("Couldn't transcribe that — try speaking more clearly.");
+        return;
+      }
+      // Pop into the input box for review, then auto-send.
+      setInput(text);
+      await send(text);
+    } catch (e: any) {
+      const msg = e?.response?.data?.detail || "Voice transcription failed.";
+      toast.error(msg);
+    } finally {
+      setTranscribing(false);
+    }
   }
 
   function clearChat() {
@@ -237,7 +284,7 @@ export default function RetailerAssistantBubble({ onUiAction, onRefresh }: Props
           <Sparkles className="h-6 w-6" />
           <span className="absolute -top-1 -right-1 h-3.5 w-3.5 rounded-full bg-emerald-400 border-2 border-white animate-pulse" />
           <span className="absolute right-16 top-1/2 -translate-y-1/2 whitespace-nowrap text-[12px] font-medium bg-slate-900 text-white px-2.5 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-            Ask Aisle
+            Ask Sabi
           </span>
         </button>
       )}
@@ -254,7 +301,7 @@ export default function RetailerAssistantBubble({ onUiAction, onRefresh }: Props
               <Sparkles className="h-4 w-4" />
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-[15px] font-semibold leading-tight">Aisle</div>
+              <div className="text-[15px] font-semibold leading-tight">Sabi</div>
               <div className="text-[11px] opacity-90 truncate">
                 AI for {retailerName}
               </div>
@@ -291,7 +338,7 @@ export default function RetailerAssistantBubble({ onUiAction, onRefresh }: Props
                 <div className="mx-auto mb-3 h-12 w-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center">
                   <Bot className="h-5 w-5 text-indigo-500" />
                 </div>
-                <div className="font-medium text-slate-800">Hi, I'm Aisle.</div>
+                <div className="font-medium text-slate-800">Hi, I'm Sabi.</div>
                 <div className="mt-1 text-[12px]">
                   Ask me anything about <span className="font-medium">{retailerName}</span>'s stock,
                   sales, or shipments. I can also place reorders for you.
@@ -319,7 +366,13 @@ export default function RetailerAssistantBubble({ onUiAction, onRefresh }: Props
               {thinking && (
                 <div className="flex items-center gap-2 text-slate-500 text-[12px] pl-2">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Aisle is thinking…
+                  Sabi is thinking…
+                </div>
+              )}
+              {transcribing && !thinking && (
+                <div className="flex items-center gap-2 text-slate-500 text-[12px] pl-2">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Transcribing…
                 </div>
               )}
             </div>
@@ -329,19 +382,28 @@ export default function RetailerAssistantBubble({ onUiAction, onRefresh }: Props
           <div className="border-t border-slate-200 bg-white p-2.5">
             <div className="flex items-end gap-2">
               <button
-                onClick={listening ? stopListening : startListening}
-                disabled={!speechSupported}
+                onClick={recording ? stopRecording : startRecording}
+                disabled={!recordSupported || transcribing}
                 className={`h-10 w-10 rounded-xl flex items-center justify-center transition-colors flex-shrink-0 ${
-                  listening
+                  recording
                     ? "bg-rose-500 text-white animate-pulse"
-                    : speechSupported
+                    : transcribing
+                    ? "bg-amber-100 text-amber-700"
+                    : recordSupported
                     ? "bg-slate-100 text-slate-700 hover:bg-slate-200"
                     : "bg-slate-50 text-slate-300 cursor-not-allowed"
                 }`}
-                title={speechSupported ? "Hold to dictate" : "Voice input unavailable"}
+                title={
+                  recording ? "Stop recording"
+                  : transcribing ? "Transcribing…"
+                  : recordSupported ? "Tap to dictate"
+                  : "Microphone unavailable"
+                }
                 data-testid="assistant-mic"
               >
-                {listening ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                {recording ? <Square className="h-4 w-4" />
+                  : transcribing ? <Loader2 className="h-4 w-4 animate-spin" />
+                  : <Mic className="h-4 w-4" />}
               </button>
               <Input
                 value={input}
@@ -352,7 +414,11 @@ export default function RetailerAssistantBubble({ onUiAction, onRefresh }: Props
                     send(input);
                   }
                 }}
-                placeholder={listening ? "Listening…" : "Ask about your store…"}
+                placeholder={
+                  recording ? "Recording — tap stop when done"
+                  : transcribing ? "Transcribing…"
+                  : "Ask about your store…"
+                }
                 className="flex-1 h-10"
                 data-testid="assistant-input"
               />
@@ -366,7 +432,7 @@ export default function RetailerAssistantBubble({ onUiAction, onRefresh }: Props
               </Button>
             </div>
             <div className="mt-1.5 text-[10px] text-slate-400 text-center">
-              Aisle only sees data for {retailerName}.
+              Sabi only sees data for {retailerName}.
             </div>
           </div>
         </div>
