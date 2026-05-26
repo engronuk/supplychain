@@ -87,7 +87,41 @@ Manufacturer can see all 91 distributors; Distributor sees all its retailers.
 - Child fan width clamped to parent's angular slot (`a1 - a0 * 0.92`)
   with orbit auto-expanded to preserve tangential spacing
 
-## Updates (2026-05-17 — Retailer Sales Book Module)
+## Updates (2026-05-26 — Proactive Intelligence Layer · Phases A+B+C)
+### Predictive, real-time intelligence overlay (additive, no rewrites)
+- **12 new `/api/intel/*` endpoints** (`routes/intel.py`):
+  exec-summary (+regenerate), feed, forecasts/stockout, alerts,
+  recommendations (+PATCH ack), retailer-health, delivery-eta, external
+  (weather+holidays), copilot, recompute.
+- **6 background services** (`services/intel/`):
+  forecasts (EWMA + DOW seasonality + external multiplier + Wilson confidence),
+  anomalies (rolling z-score), retailer_health (RFM scoring + churn flag),
+  delivery_risk (lane baseline + weather-adjusted ETA), recommendations
+  (rule engine with urgency/confidence/impact), narrator (Gemini Flash feed
+  + Sonnet 4.5 exec summary).
+- **External signals**: Open-Meteo weather (free, no key) for 6 NG regions +
+  hardcoded NG holiday calendar + salary-window detection. Refreshed every 6h.
+- **APScheduler** in-process: anomalies @5min, forecasts @15min, health/logistics/
+  recommendations/feed @60min, external @6h, daily exec summary + 30-day retention
+  cleanup at 06:00 UTC. Initial pass runs in background on every startup so
+  endpoints never return empty.
+- **Tenant scoping**: every intel record carries `tenant_id` (= manufacturer_id).
+  Role-aware filter in `scoping.py` — distributor sees only their retailers,
+  retailer sees only themselves. Works seamlessly when additional FMCG
+  manufacturers onboard.
+- **Unified Sabi copilot** at `POST /api/intel/copilot` — role-aware
+  (manufacturer/distributor/retailer), auto-routes simple queries to Gemini
+  Flash and complex ones (procurement plan / forecasts / strategy / N-day) to
+  Claude Sonnet 4.5. Read-only recommendations by design (POC safety).
+- **Frontend** (`views/IntelligenceCenter.jsx`, `components/IntelExecSummaryCard.jsx`):
+  Dark "command-center" page with hero, executive brief, live feed (30s polling),
+  forecasts, recommendations (acknowledge button), retailer churn, logistics
+  risk, external signals (weather + holidays), and a floating Sabi panel.
+  AI Executive Brief widget embedded on all 3 role dashboards.
+- **12 new indexes** for intel collections.
+- **Tests**: 18 new pytest tests in `test_intel.py`, all green. 71/71 total
+  pytest passing (45 supply-chain/sales/retailer + 18 intel + 8 assistant).
+- **APScheduler 3.11.2** added to requirements.txt.
 ### Complete POS / Sales Module for Retailer Workspace
 - **New sidebar entry** "Sales Book" (Receipt icon) — retailer-only.
 - **Backend** (`routes/sales.py` — 6 endpoints, 482 lines):

@@ -118,6 +118,8 @@ async def refresh_external_signals(tenant_id: str) -> dict:
             "rainfall_mm_7d": national["rainfall_mm_7d"],
             "temp_max_c": national["temp_max_c"],
         },
+        # Unified holidays object for client convenience + keep flat fields for back-compat
+        "holidays": holidays,
         **holidays,
         "refreshed_at": now_iso(),
     }

@@ -132,6 +132,7 @@ async def compute_delivery_risk(tenant_id: str) -> dict:
             "from_id": from_id, "to_id": to_id,
             "from_region": from_reg, "to_region": to_reg,
             "lane_baseline_days": round(lane_days, 1),
+            "lane_baseline": round(lane_days, 1),  # alias for client convenience
             "external_multiplier": ext,
             "expected_days": expected_days,
             "elapsed_days": round(elapsed, 1),

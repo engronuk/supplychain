@@ -93,7 +93,7 @@ async def generate_feed(tenant_id: str, ttl_seconds: int = 300) -> List[dict]:
 
     instr = (
         "You are the narrator for a live FMCG supply-chain command center. "
-        "Read the JSON ecosystem state below and produce 6-10 SHORT live-feed items "
+        "Read the JSON ecosystem state below and produce 8-12 SHORT live-feed items "
         "(<= 140 chars each). Each item must be one of:\n"
         " - tone: 'positive' | 'warning' | 'critical' | 'info'\n"
         " - icon: one of trending-up, trending-down, sparkles, alert-octagon, alert-triangle, "
