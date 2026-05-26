@@ -22,6 +22,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Receipt,
+  BrainCircuit,
 } from "lucide-react";
 
 const ROLE_ICON = {
@@ -37,12 +38,15 @@ function navForRole(role) {
     { to: "/shipments", label: "Shipments", icon: Truck },
   ];
   if (role === "manufacturer") {
+    base.push({ to: "/intel", label: "Intelligence", icon: BrainCircuit });
     base.push({ to: "/network-map", label: "Network Map", icon: Radar });
     base.push({ to: "/network", label: "Distributors", icon: Network });
   } else if (role === "distributor") {
+    base.push({ to: "/intel", label: "Intelligence", icon: BrainCircuit });
     base.push({ to: "/network", label: "Retailers", icon: Network });
     base.push({ to: "/requests", label: "Requests", icon: MessageSquare });
   } else if (role === "retailer") {
+    base.push({ to: "/intel", label: "Intelligence", icon: BrainCircuit });
     base.push({ to: "/sales", label: "Sales Book", icon: Receipt });
     base.push({ to: "/requests", label: "Requests", icon: MessageSquare });
   }

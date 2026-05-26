@@ -58,6 +58,20 @@ INDEX_SPECS: List[Tuple[str, list, dict]] = [
     ("sales", [("retailer_id", ASCENDING), ("payment_method", ASCENDING)], {"name": "by_retailer_payment"}),
     ("sales", [("retailer_id", ASCENDING), ("payment_status", ASCENDING)], {"name": "by_retailer_status"}),
     ("sales", [("transaction_code", ASCENDING)], {"name": "by_tx_code"}),
+
+    # Proactive Intelligence Layer
+    ("intel_insights", [("tenant_id", ASCENDING), ("created_at", DESCENDING)], {"name": "by_tenant_recent"}),
+    ("intel_forecasts", [("tenant_id", ASCENDING), ("urgency", ASCENDING), ("days_remaining", ASCENDING)], {"name": "by_tenant_urgency_days"}),
+    ("intel_forecasts", [("tenant_id", ASCENDING), ("distributor_id", ASCENDING)], {"name": "by_tenant_distributor"}),
+    ("intel_forecasts", [("tenant_id", ASCENDING), ("retailer_id", ASCENDING)], {"name": "by_tenant_retailer"}),
+    ("intel_alerts", [("tenant_id", ASCENDING), ("category", ASCENDING), ("created_at", DESCENDING)], {"name": "by_tenant_category"}),
+    ("intel_alerts", [("tenant_id", ASCENDING), ("severity", ASCENDING)], {"name": "by_tenant_severity"}),
+    ("intel_recommendations", [("tenant_id", ASCENDING), ("urgency", ASCENDING)], {"name": "by_tenant_urgency"}),
+    ("intel_retailer_health", [("tenant_id", ASCENDING), ("churn_risk", ASCENDING)], {"name": "by_tenant_churn"}),
+    ("intel_retailer_health", [("tenant_id", ASCENDING), ("distributor_id", ASCENDING)], {"name": "by_tenant_distributor"}),
+    ("intel_delivery_eta", [("tenant_id", ASCENDING), ("risk", ASCENDING)], {"name": "by_tenant_risk"}),
+    ("intel_executive_summaries", [("tenant_id", ASCENDING)], {"unique": True, "name": "uniq_tenant"}),
+    ("intel_external_signals", [("tenant_id", ASCENDING)], {"unique": True, "name": "uniq_tenant"}),
 ]
 
 

@@ -1,0 +1,44 @@
+{
+  "summary": "Iteration 4 — Full E2E validation of new Proactive Intelligence Layer (12 /api/intel/* endpoints + frontend /intel command-center + AI Exec Brief widget + Sabi copilot). Backend: 18/18 new intel pytest tests PASS, plus 53/53 existing regression tests (sales + assistant + retailer ops + supply chain) still green. LLM routing verified: 'procurement plan' → Claude Sonnet 4.5 (provider=anthropic, model=claude-sonnet-4-5), 'running out soon' → Gemini Flash (provider=gemini). Distributor copilot scoping works (role=distributor returns scoped reply). Tenant scoping confirmed: distributor stockout forecasts only contain that distributor's retailers. PATCH /intel/recommendations/{id} acknowledgment returns ok:true. External signals returns Open-Meteo weather (national + by_region: South East 36.8mm rainfall) and NG holiday signals (holiday_within_3d/_7d, salary_window, upcoming Eid al-Adha in 12d). Exec-summary returns claude-sonnet-4-5 headline with 4 bullets + recommendation. Feed returns 5 items with tone/icon/title/detail/category. Frontend (manufacturer role): Dashboard renders [data-testid='intel-exec-summary-card'] with [data-testid='intel-exec-headline']='ZERO revenue last 7 days; 20 critical stockouts hit tomorrow, 3 Lagos retailers silent 5 days', sidebar Intelligence nav navigates to /intel, IntelligenceCenter renders [data-testid='intel-center'] with 5 feed-items, 30 forecast-rows, 12 rec-rows, 10 health-rows, 1 copilot-bubble. Copilot bubble opens panel with 4 suggestion buttons and input field. Recompute button visible. External Signals weather panel + Calendar Signals + Logistics Risk + Retailer Churn Risk panels all rendered with real data.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/intel/delivery-eta", "issue": "Field is named lane_baseline_days in the response, but the review-request spec calls it lane_baseline. Trivial — either rename in code or update doc. Same data, just naming."},
+      {"endpoint": "GET /api/intel/external", "issue": "Holiday signals are exposed as multiple boolean/object fields (holiday_within_3d, holiday_within_7d, upcoming, salary_window) rather than a single 'holiday' or 'holidays' key. Spec said 'holiday signals' — current shape is richer but inconsistent with naming; consider also exposing a unified 'holidays' array for client convenience."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Intelligence Center — Ecosystem Feed", "issues": ["Feed shows '5 items'; spec asks for 5-12 items. Acceptable but on the low end — could pad with more narrator output if dataset allows."]},
+      {"screen": "Intelligence Center", "issues": ["Page is content-dense at 1920px — works well; minor scroll on smaller viewports but no breakage observed."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_intel.py",
+    "/app/test_reports/pytest/intel_results.xml"
+  ],
+  "action_items": [
+    "(Optional, doc) Decide whether to rename lane_baseline_days → lane_baseline in /api/intel/delivery-eta response (or update the spec). Functionality is correct.",
+    "(Optional, polish) Add a unified 'holidays' array to /api/intel/external response alongside the existing boolean flags for client ergonomics.",
+    "(Optional, UX) Tune narrator to consistently emit 8-12 feed items so the spec's 5-12 target is comfortably met instead of being floor-bound."
+  ],
+  "critical_code_review_comments": [
+    "intel scheduler is AsyncIOScheduler running in-process — confirmed running (initial pass produced data within seconds of startup). Watch memory if collection retention grows; daily 06:00 UTC cleanup is the only mitigation.",
+    "Copilot endpoint correctly routes by query intent — sonnet for plans/procurement/analysis, gemini for quick lookups. Good cost discipline.",
+    "Recommendations are READ-ONLY by design with only PATCH for ack — matches spec, no execute endpoint exposed.",
+    "Tenant filter in scoping.py confirmed working: distributor request never leaks foreign distributor_id rows in stockout forecasts (verified via test_distributor_forecasts_scoped).",
+    "test_existing_assistant_endpoint and test_existing_sales_endpoint both pass — additive build did not regress prior modules. All 53 prior pytest still green."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_intel.py (new — 18 pytest tests, all green)"
+  ],
+  "success_rate": {"backend": "100% (18/18 intel + 53/53 regression)", "frontend": "100% on manufacturer role (the role explicitly screenshotted by user in agent_to_agent_context_note); distributor/retailer roles partially verified via backend tenant scoping tests (UI sidebar entry rendered for all 3 roles in Layout.jsx code)"},
+  "test_credentials": "None — role/entity selector landing page. Used Manufacturer=Unilever (first manufacturer). Distributor=A-D-BASHARU JIMETA / Retailer=Best Bazaar Lagos exercised via backend tests.",
+  "seed_data_creation": "None new. Used existing seed (POST /api/seed already idempotent). Acknowledged one recommendation via PATCH during testing (status='acknowledged').",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend test file: /app/backend/tests/test_intel.py (18 tests, ~36s runtime). Three IDs discovered at runtime from /api/{manufacturers,distributors,retailers}. LLM routing tests POST /intel/copilot and assert provider+model; if the router heuristic changes (procurement→sonnet, lookup→gemini), update those assertions. UI testids confirmed on /intel: intel-center, feed-item, forecast-row, rec-row, health-row, intel-copilot-bubble; on dashboard: intel-exec-summary-card, intel-exec-headline. Sidebar 'Intelligence' link is shown for all 3 roles per Layout.jsx. Distributor/retailer landing-page login flow requires clicking the role card first, then choosing entity from the now-context-aware select — automation must wait for the select option list to repopulate after role click; we couldn't fully drive it on a 2nd login attempt because localStorage retained the manufacturer session (page jumps straight to /dashboard).",
+  "rca_of_the_issue": "No production bugs found. Two minor naming inconsistencies (lane_baseline_days vs lane_baseline, holiday key shape) between spec text and actual response payload — both are documentation/contract polish, not functional defects. All 14 requirements in the review request are met."
+}

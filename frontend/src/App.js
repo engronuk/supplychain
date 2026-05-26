@@ -16,6 +16,7 @@ import ManufacturerNetworkView from "@/views/ManufacturerNetworkView";
 import DistributorRetailerDetail from "@/views/DistributorRetailerDetail";
 import DistributorProductDetail from "@/views/DistributorProductDetail";
 import SalesBookView from "@/views/SalesBookView";
+import IntelligenceCenter from "@/views/IntelligenceCenter";
 import { Toaster } from "@/components/ui/sonner";
 
 function RoleDashboard() {
@@ -54,6 +55,7 @@ function App() {
             <Route path="/network-map" element={<ManufacturerNetworkView />} />
             <Route path="/analytics" element={<AnalyticsView />} />
             <Route path="/sales" element={<SalesBookView />} />
+            <Route path="/intel" element={<IntelligenceCenter />} />
             <Route path="/reports" element={<ReportsView />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

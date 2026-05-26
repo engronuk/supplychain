@@ -76,6 +76,30 @@ export const Api = {
     if (date_to) qs.set("date_to", date_to);
     return `${API_BASE}/retailer/${retailer_id}/sales/export.csv${qs.toString() ? "?" + qs : ""}`;
   },
+
+  // Proactive Intelligence Layer
+  intelFeed: (role, entity_id, limit = 20) =>
+    api.get("/intel/feed", { params: { role, entity_id, limit } }).then((r) => r.data),
+  intelExecSummary: (role, entity_id) =>
+    api.get("/intel/exec-summary", { params: { role, entity_id } }).then((r) => r.data),
+  intelExecRegen: (role, entity_id) =>
+    api.post("/intel/exec-summary/regenerate", null, { params: { role, entity_id } }).then((r) => r.data),
+  intelForecasts: (role, entity_id, params = {}) =>
+    api.get("/intel/forecasts/stockout", { params: { role, entity_id, ...params } }).then((r) => r.data),
+  intelAlerts: (role, entity_id, params = {}) =>
+    api.get("/intel/alerts", { params: { role, entity_id, ...params } }).then((r) => r.data),
+  intelRecommendations: (role, entity_id, params = {}) =>
+    api.get("/intel/recommendations", { params: { role, entity_id, ...params } }).then((r) => r.data),
+  intelAckRecommendation: (rec_id, role, entity_id, status = "acknowledged") =>
+    api.patch(`/intel/recommendations/${rec_id}`, { status }, { params: { role, entity_id } }).then((r) => r.data),
+  intelRetailerHealth: (role, entity_id, params = {}) =>
+    api.get("/intel/retailer-health", { params: { role, entity_id, ...params } }).then((r) => r.data),
+  intelDeliveryEta: (role, entity_id, params = {}) =>
+    api.get("/intel/delivery-eta", { params: { role, entity_id, ...params } }).then((r) => r.data),
+  intelExternal: (role, entity_id) =>
+    api.get("/intel/external", { params: { role, entity_id } }).then((r) => r.data),
+  intelCopilot: (role, entity_id, message, history = [], session_id) =>
+    api.post("/intel/copilot", { role, entity_id, message, history, session_id }).then((r) => r.data),
 };
 
 export default api;

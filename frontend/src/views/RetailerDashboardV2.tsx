@@ -13,6 +13,7 @@ import RetailerAIInsights from "@/components/RetailerAIInsights";
 import RetailerActivityFeed from "@/components/RetailerActivityFeed";
 import SmartReorderPanel from "@/components/SmartReorderPanel";
 import VoiceOrderModal from "@/components/VoiceOrderModal";
+import IntelExecSummaryCard from "@/components/IntelExecSummaryCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -149,6 +150,11 @@ export default function RetailerDashboardV2() {
           {online ? "Showing cached data" : "Offline — reorders will sync when back online"}
         </div>
       )}
+
+      {/* AI Executive Brief */}
+      <div className="mb-4">
+        <IntelExecSummaryCard />
+      </div>
 
       {/* Hero greeting + sales today */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-4 mb-4">

@@ -14,6 +14,7 @@ from routes import (
     entities,
     geo,
     hierarchy,
+    intel,
     inventory,
     notifications,
     reports,
@@ -23,8 +24,9 @@ from routes import (
     shipments,
     stock_requests,
 )
-from services.seed import seed_from_csv
+from services.intel.scheduler import run_initial_pass, start_scheduler, stop_scheduler
 from services.migrations import ensure_indexes
+from services.seed import seed_from_csv
 
 app = FastAPI(title="TradeKonekt API")
 api_router = APIRouter(prefix="/api")
@@ -44,6 +46,7 @@ for r in (
     retailer_os.router,
     assistant.router,
     sales.router,
+    intel.router,
     seed_route.router,
 ):
     api_router.include_router(r)
@@ -81,7 +84,20 @@ async def auto_seed_if_needed():
         except Exception:
             logger.exception("Auto-seed failed — run `python seed.py --force` manually.")
 
+    # Start the proactive intelligence layer. Do an initial pass in the
+    # background so the first API call has data; then APScheduler keeps it fresh.
+    try:
+        start_scheduler()
+        import asyncio
+        asyncio.create_task(run_initial_pass())
+    except Exception:
+        logger.exception("Intel scheduler failed to start")
+
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
+    try:
+        stop_scheduler()
+    except Exception:
+        pass
     client.close()

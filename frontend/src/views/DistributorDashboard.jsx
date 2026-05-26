@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "@/context/SessionContext";
 import { Api } from "@/lib/api";
 import { KPICard, PageHeader } from "@/components/Common";
+import IntelExecSummaryCard from "@/components/IntelExecSummaryCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Truck, Clock, PackageCheck, MessageSquare, Boxes, AlertTriangle, Store } from "lucide-react";
@@ -30,6 +31,10 @@ export default function DistributorDashboard() {
         title={`Welcome, ${session.entity.name}`}
         description="Monitor outbound shipments, retailer requests, and inventory health."
       />
+
+      <div className="mb-6">
+        <IntelExecSummaryCard />
+      </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <KPICard label="Pending" value={k.pending ?? "—"} Icon={Clock} tone="slate" testId="kpi-pending" />
