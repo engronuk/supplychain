@@ -1,25 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useSession } from "@/context/SessionContext";
-import { AuthApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowRight, Loader2, Eye, EyeOff, ShieldCheck, AlertCircle, Network, Building2, Warehouse, Store } from "lucide-react";
-
-const ROLE_ICON = {
-  super_admin: ShieldCheck,
-  manufacturer: Building2,
-  distributor: Warehouse,
-  retailer: Store,
-};
-
-const ROLE_LABEL = {
-  super_admin: "Super Admin",
-  manufacturer: "Manufacturer",
-  distributor: "Distributor",
-  retailer: "Retailer",
-};
+import { ArrowRight, Loader2, Eye, EyeOff, AlertCircle, Sparkles } from "lucide-react";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -30,16 +15,11 @@ export default function LoginPage() {
   const [showPwd, setShowPwd] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [demoAccounts, setDemoAccounts] = useState([]);
   const expired = search.get("expired") === "1";
 
   useEffect(() => {
     if (!bootstrapping && user) navigate("/dashboard", { replace: true });
   }, [user, bootstrapping, navigate]);
-
-  useEffect(() => {
-    AuthApi.demoAccounts().then(setDemoAccounts).catch(() => {});
-  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -57,14 +37,8 @@ export default function LoginPage() {
     }
   };
 
-  const fillDemo = (acc) => {
-    setEmail(acc.email);
-    setPassword("TradeKonekt2026!");
-    setError("");
-  };
-
   return (
-    <div className="min-h-screen bg-[#FAFAF7] text-ink flex" data-testid="login-page">
+    <div className="min-h-screen bg-paper text-ink flex" data-testid="login-page">
       {/* Left rail — brand canvas */}
       <aside className="hidden lg:flex lg:w-[44%] xl:w-[40%] bg-ink text-paper relative overflow-hidden flex-col p-12">
         <Link to="/" className="inline-flex items-center gap-2.5 group">
@@ -191,42 +165,18 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          {/* Demo accounts */}
-          {demoAccounts.length > 0 && (
-            <div className="mt-10 border-t border-stone-200 pt-6" data-testid="demo-accounts-section">
-              <div className="flex items-baseline justify-between mb-3">
-                <div className="text-[11px] uppercase tracking-[0.18em] text-graphite font-medium">Demo workspace · POC</div>
-                <div className="text-xs text-graphite">Tap to autofill</div>
-              </div>
-              <div className="space-y-1.5 max-h-[280px] overflow-y-auto pr-1">
-                {demoAccounts.map((acc) => {
-                  const Icon = ROLE_ICON[acc.role] || Network;
-                  return (
-                    <button
-                      key={acc.email}
-                      type="button"
-                      onClick={() => fillDemo(acc)}
-                      className="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-md border border-stone-200 bg-white hover:bg-stone-50 hover:border-stone-300 transition-colors group"
-                      data-testid={`demo-account-${acc.email}`}
-                    >
-                      <div className="h-8 w-8 rounded-md bg-stone-100 text-graphite group-hover:text-ink group-hover:bg-stone-200 flex items-center justify-center transition-colors">
-                        <Icon className="h-4 w-4" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm text-ink font-medium truncate">{acc.email}</div>
-                        <div className="text-xs text-graphite truncate">
-                          {ROLE_LABEL[acc.role]}{acc.entity_name ? ` · ${acc.entity_name}` : ""}
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="mt-3 text-xs text-graphite">
-                All demo accounts share password <span className="font-mono bg-stone-100 px-1.5 py-0.5 rounded text-ink">TradeKonekt2026!</span>
-              </p>
-            </div>
-          )}
+          {/* Subtle pointer to demo roster — kept off the login form on purpose */}
+          <Link
+            to="/demo"
+            className="mt-8 inline-flex items-center gap-2 text-sm text-graphite hover:text-ink group"
+            data-testid="view-demo-accounts-link"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-amber" />
+            <span>
+              Evaluating TradeKonekt?{" "}
+              <span className="underline underline-offset-2 group-hover:text-ink">Try a demo workspace →</span>
+            </span>
+          </Link>
 
           <div className="mt-8 text-xs text-graphite">
             By signing in you agree to TradeKonekt's commercial terms.{" "}

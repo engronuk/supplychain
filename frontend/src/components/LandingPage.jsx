@@ -65,9 +65,9 @@ function Topnav() {
           <Link to="/login" data-testid="signin-link">
             <Button variant="ghost" className="h-9 text-ink hover:bg-stone-100">Sign in</Button>
           </Link>
-          <Link to="/login" data-testid="request-demo-cta">
+          <Link to="/demo" data-testid="request-demo-cta">
             <Button className="h-9 bg-ink hover:bg-ink/90 text-paper">
-              Request demo <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+              Try the demo <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
             </Button>
           </Link>
         </div>
@@ -246,7 +246,7 @@ function Sparkline() {
 // ---------------------------------------------------------------------------
 function TrustStrip() {
   const items = [
-    "Unilever Nigeria", "Lagos Distribution", "Abuja Hub",
+    "FMCG Networks", "Lagos Distribution", "Abuja Hub",
     "Port Harcourt Lane", "500-retailer POC", "AI-Native",
   ];
   return (
@@ -651,9 +651,9 @@ function FinalCTA() {
               </p>
             </div>
             <div className="flex flex-col gap-3 lg:items-end">
-              <Link to="/login" data-testid="footer-cta-enter">
+              <Link to="/demo" data-testid="footer-cta-enter">
                 <Button className="h-12 px-6 bg-amber hover:bg-amber/90 text-ink text-base font-semibold">
-                  Enter the workspace <ArrowUpRight className="ml-2 h-4 w-4" />
+                  Try the demo workspace <ArrowUpRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
               <Link to="/login" data-testid="footer-cta-signin" className="text-sm text-paper/70 hover:text-paper">
