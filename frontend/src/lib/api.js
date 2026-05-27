@@ -3,7 +3,70 @@ import axios from "axios";
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 export const API_BASE = `${BACKEND_URL}/api`;
 
-const api = axios.create({ baseURL: API_BASE });
+const api = axios.create({ baseURL: API_BASE, withCredentials: true });
+
+// ---- token store (in-memory copy maintained by SessionContext) ----
+let _accessToken = null;
+export function setAccessToken(token) { _accessToken = token || null; }
+export function getAccessToken() { return _accessToken; }
+
+api.interceptors.request.use((config) => {
+  if (_accessToken) {
+    config.headers = config.headers || {};
+    config.headers.Authorization = `Bearer ${_accessToken}`;
+  }
+  return config;
+});
+
+// Auto-redirect on 401 (except for auth endpoints themselves)
+api.interceptors.response.use(
+  (r) => r,
+  (err) => {
+    const status = err?.response?.status;
+    const url = err?.config?.url || "";
+    const isAuthCall = url.includes("/auth/login") || url.includes("/auth/me");
+    if (status === 401 && !isAuthCall) {
+      // Surface as a normal axios error; ProtectedRoute will handle redirect.
+      _accessToken = null;
+      try { localStorage.removeItem("tk.access_token"); } catch {}
+      if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+        window.location.replace("/login?expired=1");
+      }
+    }
+    return Promise.reject(err);
+  }
+);
+
+// ============================================================================
+// Auth API
+// ============================================================================
+export const AuthApi = {
+  login: ({ email, password }) =>
+    api.post("/auth/login", { email, password }).then((r) => r.data),
+  logout: () => api.post("/auth/logout").then((r) => r.data),
+  me: () => api.get("/auth/me").then((r) => r.data),
+  refresh: () => api.post("/auth/refresh").then((r) => r.data),
+  demoAccounts: () => api.get("/auth/demo-accounts").then((r) => r.data),
+  impersonate: (userId) =>
+    api.post(`/auth/impersonate/${userId}`).then((r) => r.data),
+  // Hydrate the manufacturer/distributor/retailer record after login.
+  fetchEntity: async (role, entityId) => {
+    if (!role || !entityId) return null;
+    if (role === "manufacturer") {
+      const list = await api.get("/manufacturers").then((r) => r.data);
+      return list.find((m) => m.id === entityId) || null;
+    }
+    if (role === "distributor") {
+      const list = await api.get("/distributors").then((r) => r.data);
+      return list.find((d) => d.id === entityId) || null;
+    }
+    if (role === "retailer") {
+      const list = await api.get("/retailers").then((r) => r.data);
+      return list.find((x) => x.id === entityId) || null;
+    }
+    return null;
+  },
+};
 
 export const Api = {
   // entities

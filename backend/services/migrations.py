@@ -73,6 +73,15 @@ INDEX_SPECS: List[Tuple[str, list, dict]] = [
     ("intel_delivery_eta", [("tenant_id", ASCENDING), ("risk", ASCENDING)], {"name": "by_tenant_risk"}),
     ("intel_executive_summaries", [("tenant_id", ASCENDING), ("scope_role", ASCENDING), ("scope_id", ASCENDING)], {"unique": True, "name": "uniq_tenant_scope"}),
     ("intel_external_signals", [("tenant_id", ASCENDING)], {"unique": True, "name": "uniq_tenant"}),
+
+    # Auth
+    ("users", [("id", ASCENDING)], {"unique": True, "name": "uniq_id"}),
+    ("users", [("email", ASCENDING)], {"unique": True, "name": "uniq_email"}),
+    ("users", [("role", ASCENDING), ("status", ASCENDING)], {"name": "by_role_status"}),
+    ("users", [("manufacturer_id", ASCENDING)], {"name": "by_manufacturer"}),
+    ("users", [("invitation_token", ASCENDING)],
+     {"name": "by_invitation_token", "sparse": True}),
+    ("users", [("reset_token", ASCENDING)], {"name": "by_reset_token", "sparse": True}),
 ]
 
 

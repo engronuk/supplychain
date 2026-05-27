@@ -26,12 +26,18 @@ import {
 } from "lucide-react";
 
 const ROLE_ICON = {
+  super_admin: Factory,
   manufacturer: Factory,
   distributor: Warehouse,
   retailer: Store,
 };
 
 function navForRole(role) {
+  if (role === "super_admin") {
+    return [
+      { to: "/dashboard", label: "Console", icon: LayoutDashboard },
+    ];
+  }
   const base = [
     { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { to: "/inventory", label: "Inventory", icon: Boxes },
@@ -58,7 +64,7 @@ function navForRole(role) {
 const COLLAPSE_KEY = "tk:sidebar:collapsed";
 
 export default function Layout() {
-  const { session, signOut } = useSession();
+  const { session, signOut, impersonator, stopImpersonating } = useSession();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -79,6 +85,9 @@ export default function Layout() {
   const { role, entity } = session;
   const RoleIcon = ROLE_ICON[role] || Store;
   const nav = navForRole(role);
+  const entityName = entity?.name || (role === "super_admin" ? "Super Admin Console" : "Workspace");
+  const entityRegion = entity?.region || "";
+  const entityCity = entity?.city || "";
 
   const handleAssistantUiAction = (a) => {
     if (a.action === "open_smart_reorder" || a.action === "show_low_stock") {
@@ -151,7 +160,7 @@ export default function Layout() {
             <div className={`min-w-0 ${collapsed ? "md:hidden" : ""}`}>
               <div className="text-[11px] uppercase tracking-wider text-slate-400">{role}</div>
               <div className="text-sm font-medium truncate text-white" data-testid="active-entity-name">
-                {entity.name}
+                {entityName}
               </div>
             </div>
           </div>
@@ -244,11 +253,24 @@ export default function Layout() {
             <div className="min-w-0">
               <div className="text-[10px] md:text-xs text-slate-500 uppercase tracking-wider">{role} workspace</div>
               <div className="text-sm font-medium text-slate-900 truncate">
-                {entity.name}{entity.region ? ` · ${entity.region}` : ""}{entity.city ? `, ${entity.city}` : ""}
+                {entityName}{entityRegion ? ` · ${entityRegion}` : ""}{entityCity ? `, ${entityCity}` : ""}
               </div>
             </div>
           </div>
-          <NotificationsPopover role={role} entityId={entity.id} />
+          <div className="flex items-center gap-2">
+            {impersonator?.active && (
+              <button
+                onClick={stopImpersonating}
+                className="hidden sm:inline-flex items-center gap-1.5 h-8 px-3 rounded-md bg-amber-100 text-amber-800 hover:bg-amber-200 text-xs font-medium transition-colors"
+                data-testid="stop-impersonating-btn"
+              >
+                <LogOut className="h-3.5 w-3.5" /> Return to admin
+              </button>
+            )}
+            {role !== "super_admin" && (
+              <NotificationsPopover role={role} entityId={entity?.id || ""} />
+            )}
+          </div>
         </header>
 
         <main className="flex-1 min-w-0 overflow-x-hidden">

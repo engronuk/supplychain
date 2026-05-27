@@ -355,3 +355,67 @@ async def list_users(request: Request,
         q["manufacturer_id"] = manufacturer_id
     rows = await db.users.find(q, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
     return [public_user(r) for r in rows]
+
+
+# ============================================================================
+# Impersonation (super_admin can act as any user)
+# ============================================================================
+@router.post("/auth/impersonate/{user_id}")
+async def impersonate(user_id: str, request: Request, response: Response):
+    """Super-admin can mint a fresh access token for any active user.
+
+    Returns the impersonated user's access token + the user object. The
+    caller is responsible for stashing the super-admin's own token client
+    side so it can "exit impersonation" later.
+    """
+    admin = await require_role("super_admin")(request)
+    target = await db.users.find_one({"id": user_id}, {"_id": 0})
+    if not target:
+        raise HTTPException(404, "User not found")
+    if target.get("status") != "active":
+        raise HTTPException(400, "Target user is not active")
+    if target["id"] == admin["id"]:
+        raise HTTPException(400, "You cannot impersonate yourself")
+
+    # Stamp the token so we can detect impersonation server-side if needed.
+    access = create_access_token({**target, "impersonated_by": admin["id"]})
+    refresh = create_refresh_token(target["id"])
+    _set_auth_cookies(response, access, refresh)
+    return {
+        "access_token": access,
+        "refresh_token": refresh,
+        "token_type": "bearer",
+        "user": public_user(target),
+        "impersonated_by": {"id": admin["id"], "email": admin["email"], "name": admin.get("name", "")},
+    }
+
+
+@router.get("/auth/demo-accounts")
+async def list_demo_accounts():
+    """Public read-only endpoint — returns the demo email roster so the
+    landing/login page can offer one-tap demo sign-in. No passwords leak;
+    the user still has to type the shared demo password."""
+    rows = await db.users.find(
+        {"is_demo": True, "status": "active"},
+        {"_id": 0, "email": 1, "role": 1, "name": 1, "entity_id": 1, "manufacturer_id": 1},
+    ).to_list(50)
+    # Hydrate entity name for each so the UI can show "Lagos Distributor · Region"
+    out = []
+    for r in rows:
+        entity_name = ""
+        if r["role"] == "manufacturer":
+            m = await db.manufacturers.find_one({"id": r["entity_id"]}, {"_id": 0, "name": 1})
+            entity_name = (m or {}).get("name", "")
+        elif r["role"] == "distributor":
+            d = await db.distributors.find_one({"id": r["entity_id"]},
+                                                 {"_id": 0, "name": 1, "region": 1})
+            entity_name = f"{(d or {}).get('name','')} · {(d or {}).get('region','')}".strip(" ·")
+        elif r["role"] == "retailer":
+            x = await db.retailers.find_one({"id": r["entity_id"]},
+                                              {"_id": 0, "name": 1, "city": 1})
+            entity_name = f"{(x or {}).get('name','')} · {(x or {}).get('city','')}".strip(" ·")
+        out.append({**r, "entity_name": entity_name})
+    # Stable order: super_admin first, then mfg, dist, retailer
+    role_order = {"super_admin": 0, "manufacturer": 1, "distributor": 2, "retailer": 3}
+    out.sort(key=lambda x: (role_order.get(x.get("role"), 9), x.get("email", "")))
+    return out

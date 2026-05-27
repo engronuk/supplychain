@@ -10,6 +10,7 @@ from core import client, db, logger
 from routes import (
     analytics,
     assistant,
+    auth,
     distributor,
     entities,
     geo,
@@ -27,12 +28,14 @@ from routes import (
 from services.intel.scheduler import run_initial_pass, start_scheduler, stop_scheduler
 from services.migrations import ensure_indexes
 from services.seed import seed_from_csv
+from services.seed_demo_users import seed_demo_users
 
 app = FastAPI(title="TradeKonekt API")
 api_router = APIRouter(prefix="/api")
 
 # All domain routers share the /api prefix
 for r in (
+    auth.router,
     entities.router,
     inventory.router,
     shipments.router,
@@ -83,6 +86,15 @@ async def auto_seed_if_needed():
             logger.info("Auto-seed complete: %s", result)
         except Exception:
             logger.exception("Auto-seed failed — run `python seed.py --force` manually.")
+
+    # Idempotent demo-user seed — creates super-admin + 1:1 demo accounts on
+    # first boot. Safe to call every boot: existing users are left untouched.
+    try:
+        result = await seed_demo_users()
+        if result.get("created"):
+            logger.info("Demo users seeded: %s", result)
+    except Exception:
+        logger.exception("Demo user seed failed (continuing)")
 
     # Start the proactive intelligence layer. Do an initial pass in the
     # background so the first API call has data; then APScheduler keeps it fresh.
