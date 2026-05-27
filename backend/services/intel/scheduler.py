@@ -56,7 +56,11 @@ async def job_hourly():
             await score_retailers(tid)
             await compute_delivery_risk(tid)
             await generate_recommendations(tid)
-            await generate_feed(tid, ttl_seconds=300)
+            # Pre-warm only the manufacturer narration. Distributor / retailer
+            # narrations are lazy-generated on first read (cheap LLM call,
+            # 30-min cache). With many distributors this prevents a huge
+            # scheduler-driven LLM fan-out.
+            await generate_feed(tid, role="manufacturer", entity_id=tid, ttl_seconds=300)
         except Exception:
             logger.exception("hourly job failed for %s", tid)
 
@@ -79,7 +83,7 @@ async def job_daily():
             logger.exception("retention cleanup failed on %s", coll)
     for tid in await _tenants():
         try:
-            await generate_exec_summary(tid, ttl_seconds=60)
+            await generate_exec_summary(tid, role="manufacturer", entity_id=tid, ttl_seconds=60)
         except Exception:
             logger.exception("exec summary failed for %s", tid)
 
@@ -117,7 +121,9 @@ async def run_initial_pass():
             await score_retailers(tid)
             await compute_delivery_risk(tid)
             await generate_recommendations(tid)
-            await generate_feed(tid, ttl_seconds=300)
-            await generate_exec_summary(tid, ttl_seconds=1800)
+            # Pre-generate the manufacturer narration only; distributor/retailer
+            # views are lazy-generated on first hit of /intel/feed.
+            await generate_feed(tid, role="manufacturer", entity_id=tid, ttl_seconds=300)
+            await generate_exec_summary(tid, role="manufacturer", entity_id=tid, ttl_seconds=1800)
         except Exception:
             logger.exception("initial intel pass failed for %s", tid)

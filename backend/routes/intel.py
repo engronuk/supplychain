@@ -39,14 +39,16 @@ async def _tenant_or_404(role: str, entity_id: str) -> str:
 @router.get("/intel/feed")
 async def intel_feed(role: str, entity_id: str, limit: int = Query(20, ge=1, le=80)):
     tid = await _tenant_or_404(role, entity_id)
-    # Try cached/computed first
-    flt = await tenant_filter(tid, role, entity_id)
-    items = await db.intel_insights.find(flt, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
+    # Look up the scope-specific feed first; fall back to on-demand generation
+    items = await db.intel_insights.find(
+        {"tenant_id": tid, "scope_role": role, "scope_id": entity_id},
+        {"_id": 0},
+    ).sort("created_at", -1).limit(limit).to_list(limit)
     if not items:
-        # Generate on-demand if nothing yet (eg fresh install)
-        items = await generate_feed(tid)
+        items = await generate_feed(tid, role, entity_id)
         items = items[:limit]
-    return {"items": items, "tenant_id": tid, "as_of": now_iso()}
+    return {"items": items, "tenant_id": tid, "scope_role": role,
+            "scope_id": entity_id, "as_of": now_iso()}
 
 
 # ============================================================================
@@ -55,16 +57,18 @@ async def intel_feed(role: str, entity_id: str, limit: int = Query(20, ge=1, le=
 @router.get("/intel/exec-summary")
 async def intel_exec_summary(role: str, entity_id: str):
     tid = await _tenant_or_404(role, entity_id)
-    cached = await db.intel_executive_summaries.find_one({"tenant_id": tid}, {"_id": 0})
+    cached = await db.intel_executive_summaries.find_one(
+        {"tenant_id": tid, "scope_role": role, "scope_id": entity_id}, {"_id": 0},
+    )
     if cached:
         return cached
-    return await generate_exec_summary(tid)
+    return await generate_exec_summary(tid, role, entity_id)
 
 
 @router.post("/intel/exec-summary/regenerate")
 async def intel_exec_summary_regen(role: str, entity_id: str):
     tid = await _tenant_or_404(role, entity_id)
-    return await generate_exec_summary(tid, ttl_seconds=10)
+    return await generate_exec_summary(tid, role, entity_id, ttl_seconds=10)
 
 
 # ============================================================================
@@ -232,9 +236,9 @@ async def intel_recompute(role: str = "manufacturer", entity_id: Optional[str] =
         await score_retailers(tid)
         await compute_delivery_risk(tid)
         await generate_recommendations(tid)
-        await generate_feed(tid, ttl_seconds=60)
-        await generate_exec_summary(tid, ttl_seconds=60)
-        return {"ok": True, "tenant_id": tid}
+        await generate_feed(tid, role, entity_id, ttl_seconds=60)
+        await generate_exec_summary(tid, role, entity_id, ttl_seconds=60)
+        return {"ok": True, "tenant_id": tid, "scope_role": role, "scope_id": entity_id}
     await run_initial_pass()
     return {"ok": True, "scope": "all tenants"}
 
