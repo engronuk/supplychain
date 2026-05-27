@@ -87,7 +87,75 @@ Manufacturer can see all 91 distributors; Distributor sees all its retailers.
 - Child fan width clamped to parent's angular slot (`a1 - a0 * 0.92`)
   with orbit auto-expanded to preserve tangential spacing
 
-## Updates (2026-05-26 — Proactive Intelligence Layer · Phases A+B+C)
+## Updates (2026-05-27 — Premium Auth Gateway + Light-Theme Landing)
+### JWT Authentication (bcrypt + HS256, no public registration)
+- **`/api/auth/*` routes**: login, logout, refresh, me, forgot/reset password,
+  invitation create/get/claim, list-users (super_admin + manufacturer admin),
+  impersonate (super_admin only), demo-accounts (public).
+- **Services** (`services/auth.py`): bcrypt password hashing, JWT access (30 min)
+  + refresh (30 day) tokens with HS256, get_current_user reads
+  `Authorization: Bearer` first then `access_token` cookie, `require_role()`
+  factory for RBAC, 5-attempt lockout with 15-min auto-clear window,
+  `resolve_user_tenant()` derives `manufacturer_id` for any role.
+- **HttpOnly cookies + Bearer tokens**: backend sets cookies on login but
+  frontend prefers Bearer header (stored in `localStorage.tk.access_token`)
+  so multi-domain rollouts work without CORS cookie pain.
+- **Idempotent demo seed** (`services/seed_demo_users.py`, runs on every boot):
+  creates 1 super-admin + 1 manufacturer admin + 3 distributor admins
+  (Lagos / Abuja / Port Harcourt) + 5 retailer admins under primary
+  distributor. All share password from `DEMO_PASSWORD` env (`TradeKonekt2026!`).
+  Skips accounts that already exist.
+- **Super-admin impersonation** (`/api/auth/impersonate/{user_id}`):
+  super_admin only, returns access token for any active user. Frontend stashes
+  the admin's own token in `localStorage.tk.original_token` and shows a
+  "Return to admin" button in the Layout topbar.
+- **5 new user indexes** (uniq id, uniq email, by_role_status, by_manufacturer,
+  sparse invitation_token + reset_token).
+- **22 new pytest tests** in `test_auth.py`: 93/93 total green.
+
+### Frontend auth integration
+- **`SessionContext.jsx`** rewritten as a real auth context: bootstraps from
+  `localStorage.tk.access_token` -> calls `/auth/me` -> hydrates entity from
+  /manufacturers|/distributors|/retailers. Exposes `signIn`, `signOut`,
+  `impersonate`, `stopImpersonating`, `refreshMe`, `bootstrapping`.
+- **`api.js`** Bearer interceptor: attaches `Authorization: Bearer` from the
+  in-memory token, on 401 → `window.location.replace("/login?expired=1")`.
+- **`LoginPage.jsx`** (`/login`): split-screen, ink-on-paper. Left rail =
+  dark brand canvas with display serif + live stats. Right = email/password
+  form, demo-account roster with one-tap autofill, password show/hide,
+  session-expired banner.
+- **`SuperAdminConsole.jsx`** (`/dashboard` for super_admin): roster of demo
+  accounts grouped by role with "Sign in as" impersonate buttons.
+- **`Layout.jsx`** updates: handles super_admin (minimal nav), shows
+  "Return to admin" button when impersonating, NotificationsPopover guarded
+  for super_admin.
+- **Routing** (`App.js`): `/` public landing, `/login`, protected `/dashboard/*`
+  family. `<BootGate>` shows a connecting splash while `/auth/me` resolves.
+
+### Premium Light-Theme Landing Page (`/`)
+- **Generic TradeKonekt brand** (not Unilever-specific) per user choice.
+- **Design system** (`tailwind.config.js` + `index.css`):
+  - Warm paper background `#FAFAF7`, ink `#0A0A0A`, graphite `#525252`.
+  - Accents: burnt amber `#D97706`, moss `#0F766E`, deep indigo `#1E1B4B`.
+  - Display: Instrument Serif (italic-accent treatment).
+  - Body: Inter. Mono: JetBrains Mono.
+  - Custom keyframes: ticker-up, pulse-dot, fade-rise, marquee.
+- **Sections** (`components/LandingPage.jsx`):
+  - Sticky topnav with Sign-in / Request-demo CTAs.
+  - Asymmetric hero: serif headline "Orchestrate national distribution
+    with intelligence built in." + live signal feed card (rotating ticker:
+    stockout risk · velocity spike · weather pressure · lane delay) + sparkline
+    + floating Sabi chip ("3 recommendations awaiting review").
+  - Trust strip with marquee animation.
+  - 3 platform pillars (Intelligence · Orchestration · Retail Workflows).
+  - Dark "Intelligence Center" dashboard preview with hand-rolled multi-series
+    SVG velocity chart + mocked KPI cards + Sabi executive narration block.
+  - "Sense. Predict. Recommend. Act." 4-step loop with arrow connectors.
+  - 12-module capability matrix grid.
+  - Final CTA card in ink panel with amber button.
+
+### Pytest
+- 71 → **93 passing** (+22 auth tests).
 ### Predictive, real-time intelligence overlay (additive, no rewrites)
 - **12 new `/api/intel/*` endpoints** (`routes/intel.py`):
   exec-summary (+regenerate), feed, forecasts/stockout, alerts,
