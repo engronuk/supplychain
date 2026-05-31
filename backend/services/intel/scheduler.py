@@ -9,9 +9,18 @@ Runs four tiers:
 
 Tenant fan-out: each tier iterates over all manufacturer_ids so when new
 tenants onboard, they're picked up automatically.
+
+Production safety:
+  * INTEL_SCHEDULER_ENABLED env var (default "true") — set to "false" as an
+    emergency kill switch if the intel layer is OOM'ing the pod.
+  * INTEL_INITIAL_PASS_DELAY_SEC (default 90) — defers the first heavy pass
+    so the pod passes its readiness probe and serves traffic before the
+    scheduler workload kicks in.
 """
 from __future__ import annotations
 
+import asyncio
+import os
 from datetime import datetime, timedelta, timezone
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -28,6 +37,17 @@ from services.intel.recommendations import generate_recommendations
 from services.intel.retailer_health import score_retailers
 
 scheduler = AsyncIOScheduler(timezone="UTC")
+
+
+def _intel_enabled() -> bool:
+    return os.environ.get("INTEL_SCHEDULER_ENABLED", "true").lower() not in {"false", "0", "no"}
+
+
+def _initial_pass_delay() -> int:
+    try:
+        return max(0, int(os.environ.get("INTEL_INITIAL_PASS_DELAY_SEC", "90")))
+    except ValueError:
+        return 90
 
 
 async def _tenants() -> list[str]:
@@ -91,14 +111,20 @@ async def job_daily():
 def start_scheduler():
     if scheduler.running:
         return
+    if not _intel_enabled():
+        logger.warning("Intel scheduler disabled via INTEL_SCHEDULER_ENABLED=false")
+        return
     scheduler.add_job(job_anomalies, IntervalTrigger(minutes=5), id="intel_anomalies",
                       max_instances=1, coalesce=True)
     scheduler.add_job(job_forecasts, IntervalTrigger(minutes=15), id="intel_forecasts",
                       max_instances=1, coalesce=True)
     scheduler.add_job(job_hourly, IntervalTrigger(minutes=60), id="intel_hourly",
                       max_instances=1, coalesce=True)
+    # External signals run on a clean 6h interval. We DON'T pre-fire here —
+    # run_initial_pass() handles the cold-start case so we don't double-load
+    # the pod right at startup.
     scheduler.add_job(job_external, IntervalTrigger(hours=6), id="intel_external",
-                      max_instances=1, coalesce=True, next_run_time=datetime.now(timezone.utc) + timedelta(seconds=10))
+                      max_instances=1, coalesce=True)
     scheduler.add_job(job_daily, CronTrigger(hour=6, minute=0), id="intel_daily",
                       max_instances=1, coalesce=True)
     scheduler.start()
@@ -112,18 +138,64 @@ def stop_scheduler():
 
 
 async def run_initial_pass():
-    """Force a first computation on startup so the dashboard isn't empty."""
+    """Force a first computation on startup so the dashboard isn't empty.
+
+    Defers actual work by INTEL_INITIAL_PASS_DELAY_SEC (default 90s) so the
+    pod can pass its readiness probe and start serving real traffic BEFORE
+    the heavy intel computation hits the event loop. Without this delay,
+    cold-start CPU/memory spikes on large tenants (3k+ retailers) can
+    trigger a Kubernetes OOM kill -> crash loop.
+    """
+    if not _intel_enabled():
+        return
+    delay = _initial_pass_delay()
+    if delay > 0:
+        logger.info("Deferring intel initial pass by %ss", delay)
+        try:
+            await asyncio.sleep(delay)
+        except asyncio.CancelledError:
+            return
+
     for tid in await _tenants():
         try:
             await refresh_external_signals(tid)
+        except Exception:
+            logger.exception("initial external signals failed for %s", tid)
+        # Yield between heavy steps so liveness/healthcheck probes keep working
+        await asyncio.sleep(0)
+        try:
             await compute_stock_exhaustion(tid)
+        except Exception:
+            logger.exception("initial forecasts failed for %s", tid)
+        await asyncio.sleep(0)
+        try:
             await detect_anomalies(tid)
+        except Exception:
+            logger.exception("initial anomalies failed for %s", tid)
+        await asyncio.sleep(0)
+        try:
             await score_retailers(tid)
+        except Exception:
+            logger.exception("initial retailer health failed for %s", tid)
+        await asyncio.sleep(0)
+        try:
             await compute_delivery_risk(tid)
+        except Exception:
+            logger.exception("initial delivery risk failed for %s", tid)
+        await asyncio.sleep(0)
+        try:
             await generate_recommendations(tid)
+        except Exception:
+            logger.exception("initial recommendations failed for %s", tid)
+        await asyncio.sleep(0)
+        try:
             # Pre-generate the manufacturer narration only; distributor/retailer
             # views are lazy-generated on first hit of /intel/feed.
             await generate_feed(tid, role="manufacturer", entity_id=tid, ttl_seconds=300)
+        except Exception:
+            logger.exception("initial feed narration failed for %s", tid)
+        await asyncio.sleep(0)
+        try:
             await generate_exec_summary(tid, role="manufacturer", entity_id=tid, ttl_seconds=1800)
         except Exception:
-            logger.exception("initial intel pass failed for %s", tid)
+            logger.exception("initial exec summary failed for %s", tid)

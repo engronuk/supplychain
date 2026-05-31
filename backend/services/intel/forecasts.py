@@ -13,6 +13,7 @@ Also rolled up to distributor and manufacturer levels for higher-tier views.
 """
 from __future__ import annotations
 
+import asyncio
 import math
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List
@@ -21,6 +22,9 @@ from core import db, logger, new_id, now_iso
 
 EWMA_ALPHA = 0.35
 DOW_WEIGHT = [0.85, 0.95, 1.0, 1.05, 1.2, 1.35, 1.15]  # Mon..Sun
+
+# Chunk size when iterating large retailer fleets (memory-bounded production runs)
+RETAILER_BATCH = 200
 
 
 def _ewma_velocity(series: List[float]) -> tuple[float, float]:
@@ -80,7 +84,13 @@ def _urgency(days_remaining: float, confidence: float) -> str:
 
 
 async def compute_stock_exhaustion(tenant_id: str) -> dict:
-    """Recompute forecasts for the tenant. Idempotent — replaces prior forecasts."""
+    """Recompute forecasts for the tenant. Idempotent — replaces prior forecasts.
+
+    Memory-bounded: retailers are processed in chunks of RETAILER_BATCH so the
+    worker stays well under the typical 512 MB-1 GB production container limit
+    even with 3k+ retailers and 30-day sales windows. Each chunk yields control
+    to the event loop so healthchecks keep responding.
+    """
     distributors = await db.distributors.find(
         {"manufacturer_id": tenant_id}, {"_id": 0, "id": 1, "region": 1, "city": 1, "name": 1},
     ).to_list(5000)
@@ -95,101 +105,112 @@ async def compute_stock_exhaustion(tenant_id: str) -> dict:
     ).to_list(20000)
     if not retailers:
         return {"forecasts": 0}
-    retailer_ids = [r["id"] for r in retailers]
     retailer_by_id = {r["id"]: r for r in retailers}
 
     products = {p["id"]: p for p in await db.products.find(
         {"manufacturer_id": tenant_id}, {"_id": 0},
     ).to_list(5000)}
     product_ids = list(products.keys())
+    if not product_ids:
+        return {"forecasts": 0}
 
     today = datetime.now(timezone.utc).date()
     start = (today - timedelta(days=29)).isoformat()
-    sales = await db.daily_sales.find(
-        {"retailer_id": {"$in": retailer_ids}, "product_id": {"$in": product_ids},
-         "date": {"$gte": start}}, {"_id": 0},
-    ).to_list(500_000)
-
-    # Index sales as { (rid, pid): [series chronological] }
-    series_map: Dict[tuple, Dict[str, float]] = {}
-    for s in sales:
-        key = (s["retailer_id"], s["product_id"])
-        m = series_map.setdefault(key, {})
-        m[s["date"]] = m.get(s["date"], 0.0) + float(s.get("units", 0))
 
     # Latest external signals (cached upstream)
     signals_doc = await db.intel_external_signals.find_one({"tenant_id": tenant_id}, {"_id": 0})
     signals = (signals_doc or {}).get("payload") or {}
 
-    inv = await db.inventory.find(
-        {"owner_type": "retailer", "owner_id": {"$in": retailer_ids},
-         "product_id": {"$in": product_ids}}, {"_id": 0},
-    ).to_list(500_000)
-
     # Wipe prior forecasts for this tenant (idempotent replace)
     await db.intel_forecasts.delete_many({"tenant_id": tenant_id})
 
-    forecasts: List[dict] = []
+    total_forecasts = 0
     now = now_iso()
-    for it in inv:
-        qty = int(it.get("quantity", 0))
-        rid = it["owner_id"]
-        pid = it["product_id"]
-        r = retailer_by_id.get(rid)
-        p = products.get(pid)
-        if not r or not p:
-            continue
-        m = series_map.get((rid, pid), {})
-        series = [m.get((today - timedelta(days=i)).isoformat(), 0.0) for i in range(29, -1, -1)]
-        ewma, std = _ewma_velocity(series)
-        dow_idx = today.weekday()
-        velocity = max(0.0, ewma * DOW_WEIGHT[dow_idx])
-        external_mult = _external_multiplier(p.get("category", ""), signals)
-        adjusted_velocity = round(velocity * external_mult, 3)
-        if adjusted_velocity <= 0:
-            # Fallback to inventory's stored velocity if no recent sales
-            adjusted_velocity = max(float(it.get("velocity", 0)) * external_mult, 0.0)
-        if adjusted_velocity <= 0:
-            continue  # no signal at all — skip
-        days = qty / adjusted_velocity if adjusted_velocity > 0 else 999
-        stockout_date = (today + timedelta(days=int(days))).isoformat() if days < 365 else None
-        conf = _confidence(std, ewma if ewma > 0 else adjusted_velocity)
-        urg = _urgency(days, conf)
-        d = dist_by_id.get(r["distributor_id"], {})
-        forecasts.append({
-            "id": new_id(),
-            "tenant_id": tenant_id,
-            "scope_role": "retailer",
-            "scope_id": rid,
-            "distributor_id": r["distributor_id"],
-            "retailer_id": rid,
-            "retailer_name": r.get("name", ""),
-            "product_id": pid,
-            "product_name": p["name"],
-            "category": p.get("category", ""),
-            "region": r.get("region", ""),
-            "city": r.get("city", ""),
-            "distributor_name": d.get("name", ""),
-            "current_qty": qty,
-            "velocity": round(velocity, 3),
-            "adjusted_velocity": adjusted_velocity,
-            "external_multiplier": external_mult,
-            "days_remaining": round(days, 1),
-            "stockout_date": stockout_date,
-            "confidence": conf,
-            "urgency": urg,
-            "computed_at": now,
-        })
 
-    if forecasts:
-        # Batch insert
-        for i in range(0, len(forecasts), 5000):
+    # Process retailers in memory-bounded chunks
+    retailer_ids_all = list(retailer_by_id.keys())
+    for chunk_start in range(0, len(retailer_ids_all), RETAILER_BATCH):
+        chunk_ids = retailer_ids_all[chunk_start:chunk_start + RETAILER_BATCH]
+
+        # Sales for this chunk only
+        sales = await db.daily_sales.find(
+            {"retailer_id": {"$in": chunk_ids}, "product_id": {"$in": product_ids},
+             "date": {"$gte": start}}, {"_id": 0, "retailer_id": 1, "product_id": 1, "date": 1, "units": 1},
+        ).to_list(50_000)
+        series_map: Dict[tuple, Dict[str, float]] = {}
+        for s in sales:
+            key = (s["retailer_id"], s["product_id"])
+            m = series_map.setdefault(key, {})
+            m[s["date"]] = m.get(s["date"], 0.0) + float(s.get("units", 0))
+
+        # Inventory for this chunk only
+        inv = await db.inventory.find(
+            {"owner_type": "retailer", "owner_id": {"$in": chunk_ids},
+             "product_id": {"$in": product_ids}},
+            {"_id": 0, "owner_id": 1, "product_id": 1, "quantity": 1, "velocity": 1},
+        ).to_list(50_000)
+
+        forecasts: List[dict] = []
+        for it in inv:
+            qty = int(it.get("quantity", 0))
+            rid = it["owner_id"]
+            pid = it["product_id"]
+            r = retailer_by_id.get(rid)
+            p = products.get(pid)
+            if not r or not p:
+                continue
+            m = series_map.get((rid, pid), {})
+            series = [m.get((today - timedelta(days=i)).isoformat(), 0.0) for i in range(29, -1, -1)]
+            ewma, std = _ewma_velocity(series)
+            dow_idx = today.weekday()
+            velocity = max(0.0, ewma * DOW_WEIGHT[dow_idx])
+            external_mult = _external_multiplier(p.get("category", ""), signals)
+            adjusted_velocity = round(velocity * external_mult, 3)
+            if adjusted_velocity <= 0:
+                adjusted_velocity = max(float(it.get("velocity", 0)) * external_mult, 0.0)
+            if adjusted_velocity <= 0:
+                continue
+            days = qty / adjusted_velocity if adjusted_velocity > 0 else 999
+            stockout_date = (today + timedelta(days=int(days))).isoformat() if days < 365 else None
+            conf = _confidence(std, ewma if ewma > 0 else adjusted_velocity)
+            urg = _urgency(days, conf)
+            d = dist_by_id.get(r["distributor_id"], {})
+            forecasts.append({
+                "id": new_id(),
+                "tenant_id": tenant_id,
+                "scope_role": "retailer",
+                "scope_id": rid,
+                "distributor_id": r["distributor_id"],
+                "retailer_id": rid,
+                "retailer_name": r.get("name", ""),
+                "product_id": pid,
+                "product_name": p["name"],
+                "category": p.get("category", ""),
+                "region": r.get("region", ""),
+                "city": r.get("city", ""),
+                "distributor_name": d.get("name", ""),
+                "current_qty": qty,
+                "velocity": round(velocity, 3),
+                "adjusted_velocity": adjusted_velocity,
+                "external_multiplier": external_mult,
+                "days_remaining": round(days, 1),
+                "stockout_date": stockout_date,
+                "confidence": conf,
+                "urgency": urg,
+                "computed_at": now,
+            })
+
+        if forecasts:
             try:
-                await db.intel_forecasts.insert_many(forecasts[i:i + 5000], ordered=False)
+                await db.intel_forecasts.insert_many(forecasts, ordered=False)
+                total_forecasts += len(forecasts)
             except Exception:
-                logger.exception("forecasts batch insert failed")
+                logger.exception("forecasts batch insert failed (chunk %s)", chunk_start)
 
-    return {"forecasts": len(forecasts)}
+        # Yield to event loop so healthchecks + other requests stay responsive
+        await asyncio.sleep(0)
+
+    return {"forecasts": total_forecasts}
 
 
 async def rollup_distributor(tenant_id: str) -> List[dict]:
