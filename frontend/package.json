@@ -69,7 +69,9 @@
   },
   "scripts": {
     "start": "craco start",
-    "build": "craco build",
+    "build": "craco build && node scripts/check-tailwind-purge.js",
+    "build:nocheck": "craco build",
+    "check-tailwind": "node scripts/check-tailwind-purge.js",
     "test": "craco test"
   },
   "browserslist": {

@@ -138,7 +138,7 @@ function Hero() {
 
           {/* Right — Live signal card */}
           <div className="relative animate-fade-rise" style={{ animationDelay: "150ms" }}>
-            <div className="absolute -inset-4 bg-gradient-to-br from-amber/8 via-transparent to-moss/8 rounded-3xl blur-xl -z-10" />
+            <div className="absolute -inset-4 bg-gradient-to-br from-amber/8 via-transparent to-[#0F766E]/8 rounded-3xl blur-xl -z-10" />
             <div className="rounded-2xl border border-stone-200 bg-white shadow-[0_28px_80px_-30px_rgba(10,10,10,0.18)] overflow-hidden">
               <div className="px-5 py-4 border-b border-stone-200/80 flex items-center justify-between">
                 <div className="flex items-center gap-2">
