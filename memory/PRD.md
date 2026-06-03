@@ -235,5 +235,38 @@ Manufacturer can see all 91 distributors; Distributor sees all its retailers.
 - P3 — Email/SMS notifications integration
 - P3 — Real ServiceWorker offline support for Retailer OS
 
+## Updates (2026-06-03 — Premium Executive Command Center)
+### Manufacturer dashboard visual upgrade (Stripe / HubSpot / Linear class)
+- **Executive Hero** (gradient, glassmorphism, AI orb illustration with
+  orbiting rings, animated confidence chip + AI Executive Brief badge,
+  4 recommendation bullets in 2x2 with severity icons, three quick-action
+  CTAs: Investigate Distributors / View Intelligence / Open Forecast).
+- **KPI cards**: 34px tabular numerals, animated sparklines (smooth cardinal
+  splines), trend chips, hover-lift shadows (`-translate-y-0.5`), comparison
+  period footer.
+- **Coverage strip**: 4 secondary KPIs in a separate row.
+- **Revenue Trend**: smooth bezier curves, gradient fill, dashed forecast
+  continuation clamped to chart bounds, hover guideline + tooltip,
+  export/expand buttons, legend with forecast line.
+- **Regional Performance**: Nigeria 6-zone SVG with hover glow + cross-
+  highlight to the per-zone revenue/growth table, zone labels rendered
+  directly on the map. Backend now normalises `Lagos → South West` so
+  the geopolitical zones light up properly.
+- **Product Intelligence**: rich rows with rank, gradient icon tile,
+  product name + category, deterministic 12-bar mini gradient sparkline
+  (green for growth, rose for decline), revenue, growth chip.
+- **Distributor Intelligence**: 8-row table with sparklines per row,
+  health-score progress bars, risk chips, and animated chevrons.
+- **Supply Chain Pipeline**: horizontal animated flow
+  (Manufacturer → Distributor → Retailer) with 4 stages, animated
+  shipment-flow dots between bubbles, efficiency progress bar + SLA
+  badges and direction tags.
+- **Network Alerts**: severity-edge intelligence cards (impact / owner /
+  due date / Take action button) in a responsive 2-column grid.
+- New tailwind keyframes: `shipment-flow`, `shimmer-slow`, `float-y`,
+  `orbit-spin`, `rise-in`.
+- Cleanup: removed duplicated dashboard header (Layout topbar already
+  shows workspace context).
+
 ## Next tasks
 - Address any feedback from user

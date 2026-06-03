@@ -63,6 +63,20 @@ async def manufacturer_overview(manufacturer_id: str):
     ).to_list(2_000_000)
 
     # Bucket by month for the trend chart, and by region for the map
+    # Normalise city names → Nigerian geopolitical zones so the map
+    # actually lights up (CSV regions include "Lagos" which is South West).
+    REGION_MAP = {
+        "Lagos": "South West",
+        "Ogun": "South West", "Oyo": "South West", "Osun": "South West",
+        "Ondo": "South West", "Ekiti": "South West",
+        "FCT": "North Central", "Abuja": "North Central",
+        "Kaduna": "North West", "Kano": "North West",
+        "Rivers": "South South", "Bayelsa": "South South", "Akwa Ibom": "South South",
+        "Cross River": "South South", "Delta": "South South", "Edo": "South South",
+    }
+    def _zone(region: str) -> str:
+        return REGION_MAP.get(region, region or "—")
+
     month_revenue: Dict[str, float] = {}
     month_units: Dict[str, int] = {}
     region_revenue: Dict[str, float] = {}
@@ -89,7 +103,7 @@ async def manufacturer_overview(manufacturer_id: str):
         month_revenue[month] = month_revenue.get(month, 0) + rev
         month_units[month] = month_units.get(month, 0) + units
         r = retailer_by_id.get(s["retailer_id"])
-        region = (r or {}).get("region") or "—"
+        region = _zone((r or {}).get("region") or "—")
         if d >= start_30:
             network_30 += rev
             region_revenue[region] = region_revenue.get(region, 0) + rev
