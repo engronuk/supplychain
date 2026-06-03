@@ -72,15 +72,15 @@ export default function ManufacturerDashboard() {
         {/* 2 — REVENUE PERFORMANCE (KPI strip on top) */}
         <KPIStripWide kpis={data.kpis} coverage={data.coverage_kpis} />
 
-        {/* 3 — REVENUE TREND */}
-        <RevenueTrendCard
-          data={data.revenue_trend}
-          trendWindow={trendWindow}
-          setTrendWindow={setTrendWindow}
-        />
-
-        {/* 4 — REGIONAL PERFORMANCE — full-width choropleth + leaderboard */}
-        <RegionalPerformanceCard regional={data.regional} summary={data.regional_summary} />
+        {/* 3 + 4 — REVENUE TREND × REGIONAL PERFORMANCE (side by side) */}
+        <div className="grid grid-cols-12 gap-6">
+          <RevenueTrendCard
+            data={data.revenue_trend}
+            trendWindow={trendWindow}
+            setTrendWindow={setTrendWindow}
+          />
+          <RegionalPerformanceCard regional={data.regional} summary={data.regional_summary} />
+        </div>
 
         {/* 5 — PRODUCT INTELLIGENCE (rich cards) + categories + forecast */}
         <div className="grid grid-cols-12 gap-6">
@@ -509,7 +509,7 @@ function RevenueTrendCard({ data, trendWindow, setTrendWindow }) {
   const step = sliced.length > 1 ? cw / (sliced.length - 1) : cw;
 
   return (
-    <div className="bg-white rounded-[22px] p-6 shadow-[0_2px_8px_rgba(15,23,42,0.04)] border border-slate-100/70 hover:shadow-[0_18px_40px_-12px_rgba(15,23,42,0.10)] transition-shadow" data-testid="revenue-trend-card">
+    <div className="col-span-12 lg:col-span-6 bg-white rounded-[22px] p-6 shadow-[0_2px_8px_rgba(15,23,42,0.04)] border border-slate-100/70 hover:shadow-[0_18px_40px_-12px_rgba(15,23,42,0.10)] transition-shadow" data-testid="revenue-trend-card">
       <div className="flex items-start justify-between mb-5">
         <div>
           <h3 className="text-[17px] font-semibold text-slate-900 flex items-center gap-2">
@@ -669,30 +669,20 @@ function RegionalPerformanceCard({ regional, summary }) {
 
   return (
     <div
-      className="bg-white rounded-[22px] p-6 shadow-[0_2px_8px_rgba(15,23,42,0.04)] border border-slate-100/70 hover:shadow-[0_18px_40px_-12px_rgba(15,23,42,0.10)] transition-shadow"
+      className="col-span-12 lg:col-span-6 bg-white rounded-[22px] p-6 shadow-[0_2px_8px_rgba(15,23,42,0.04)] border border-slate-100/70 hover:shadow-[0_18px_40px_-12px_rgba(15,23,42,0.10)] transition-shadow"
       data-testid="regional-performance-card"
     >
-      {/* Header with title + inline legend */}
+      {/* Header — title only (legend moved left of the map) */}
       <div className="flex items-start justify-between mb-1 gap-3">
         <div className="flex items-center gap-2">
           <div className="h-8 w-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
             <BarChart3 className="h-4 w-4" />
           </div>
-          <div>
-            <h3 className="text-[17px] font-semibold text-slate-900 flex items-center gap-1.5">
-              Regional Performance
-              <span className="text-slate-400 font-normal">(Revenue)</span>
-              <Info className="h-3.5 w-3.5 text-slate-300" />
-            </h3>
-          </div>
-        </div>
-        <div className="hidden md:flex items-center gap-3 text-[10.5px] text-slate-600" data-testid="region-legend">
-          {Object.entries(ZONE_HEALTH).map(([k, v]) => (
-            <div key={k} className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-sm" style={{ background: v.fill }} />
-              <span className="font-medium">{v.label}</span>
-            </div>
-          ))}
+          <h3 className="text-[17px] font-semibold text-slate-900 flex items-center gap-1.5">
+            Regional Performance
+            <span className="text-slate-400 font-normal">(Revenue)</span>
+            <Info className="h-3.5 w-3.5 text-slate-300" />
+          </h3>
         </div>
       </div>
 
@@ -702,10 +692,20 @@ function RegionalPerformanceCard({ regional, summary }) {
         </p>
       )}
 
-      {/* Layout: left 70% map · right 30% rankings */}
-      <div className="grid grid-cols-10 gap-4">
-        {/* MAP — 70% */}
-        <div className="col-span-10 lg:col-span-7 relative">
+      {/* Layout: vertical legend (12%) · map (55%) · leaderboard (33%) */}
+      <div className="grid grid-cols-12 gap-3">
+        {/* LEGEND — vertical stack */}
+        <div className="col-span-12 lg:col-span-2 flex lg:flex-col flex-wrap gap-3 lg:gap-4 lg:pt-12" data-testid="region-legend">
+          {Object.entries(ZONE_HEALTH).map(([k, v]) => (
+            <div key={k} className="flex items-center gap-2 text-[11px] text-slate-600">
+              <span className="h-2.5 w-2.5 rounded-sm flex-shrink-0" style={{ background: v.fill }} />
+              <span className="font-medium">{v.label}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* MAP */}
+        <div className="col-span-12 lg:col-span-6 relative">
           <NigeriaChoropleth
             byZone={byZone}
             hoverZone={hoverZone}
@@ -713,10 +713,10 @@ function RegionalPerformanceCard({ regional, summary }) {
             zoneCentroids={zoneCentroids}
           />
 
-          {/* Floating hover tooltip — Revenue / Retailers / Inventory / Health */}
+          {/* Floating hover tooltip */}
           {hoverData && (
             <div
-              className="absolute top-2 left-2 px-3.5 py-2.5 rounded-xl bg-slate-900/95 backdrop-blur text-white text-xs shadow-2xl pointer-events-none animate-fade-rise"
+              className="absolute top-2 left-2 px-3.5 py-2.5 rounded-xl bg-slate-900/95 backdrop-blur text-white text-xs shadow-2xl pointer-events-none animate-fade-rise z-10"
               data-testid="region-hover-tooltip"
             >
               <div className="flex items-center gap-2 mb-1.5">
@@ -746,12 +746,9 @@ function RegionalPerformanceCard({ regional, summary }) {
           )}
         </div>
 
-        {/* RANKINGS — 30% */}
-        <div className="col-span-10 lg:col-span-3 flex flex-col" data-testid="region-leaderboard">
-          <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-2">
-            Zone Ranking
-          </div>
-          <div className="flex-1 divide-y divide-slate-100">
+        {/* LEADERBOARD */}
+        <div className="col-span-12 lg:col-span-4 flex flex-col" data-testid="region-leaderboard">
+          <div className="divide-y divide-slate-100 -mt-1">
             {ranked.map(r => {
               const cfg = ZONE_HEALTH[r.health] || ZONE_HEALTH.no_data;
               const isHover = hoverZone === r.zone;
@@ -771,7 +768,7 @@ function RegionalPerformanceCard({ regional, summary }) {
                     <span className="h-2.5 w-2.5 rounded-sm flex-shrink-0" style={{ background: cfg.fill }} />
                     <span className="text-[12.5px] font-medium text-slate-700 truncate">{r.zone}</span>
                   </div>
-                  <div className="flex items-baseline justify-between mt-1 pl-4.5 ml-[18px]">
+                  <div className="flex items-baseline justify-between mt-1 ml-[18px]">
                     <span className="text-[14px] font-bold text-slate-900 tabular-nums">{fmtMoney(r.revenue)}</span>
                     <span className={`text-[11px] font-semibold tabular-nums flex items-center gap-0.5 ${up ? "text-emerald-600" : "text-rose-600"}`}>
                       {r.growth_pct != null
