@@ -126,6 +126,22 @@ export const Api = {
 
   seed: () => api.post("/seed").then((r) => r.data),
 
+  // Manufacturer drill-down
+  manufacturerProducts: (manufacturer_id) =>
+    api.get(`/manufacturer/${manufacturer_id}/products`).then((r) => r.data),
+  manufacturerProductDetail: (manufacturer_id, product_id) =>
+    api.get(`/manufacturer/${manufacturer_id}/product/${product_id}`).then((r) => r.data),
+  manufacturerDistributorDetail: (manufacturer_id, distributor_id) =>
+    api.get(`/manufacturer/${manufacturer_id}/distributor/${distributor_id}`).then((r) => r.data),
+
+  // Mutations
+  updateProduct: (product_id, payload) =>
+    api.patch(`/products/${product_id}`, payload).then((r) => r.data),
+  updateDistributor: (distributor_id, payload) =>
+    api.patch(`/distributors/${distributor_id}`, payload).then((r) => r.data),
+  adjustInventory: (payload) =>
+    api.post(`/inventory/adjust`, payload).then((r) => r.data),
+
   // Sales Book (retailer)
   salesSummary: (retailer_id) =>
     api.get(`/retailer/${retailer_id}/sales/summary`).then((r) => r.data),

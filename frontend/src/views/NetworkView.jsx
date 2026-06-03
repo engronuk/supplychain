@@ -14,6 +14,7 @@ import {
   Search, Warehouse, Store, ChevronUp, ChevronDown, ChevronsUpDown,
   Eye, Boxes, Receipt, Send, Phone, Mail, ArrowUpRight, Download,
 } from "lucide-react";
+import { DistributorDrawer } from "@/components/EntityDrawer";
 
 // --- helpers
 const toneFor = (s) =>
@@ -36,12 +37,15 @@ export default function NetworkView() {
 }
 
 // ============================================================================
-// MANUFACTURER (distributors directory) — kept simple, prior behaviour
+// MANUFACTURER (distributors directory) — clickable rows open a drawer
 // ============================================================================
 function ManufacturerNetwork({ session }) {
   const [items, setItems] = useState([]);
   const [search, setSearch] = useState("");
-  useEffect(() => { Api.distributors(session.entity.id).then(setItems); }, [session.entity.id]);
+  const [selectedDistributorId, setSelectedDistributorId] = useState(null);
+
+  const load = () => { Api.distributors(session.entity.id).then(setItems); };
+  useEffect(() => { load(); /* eslint-disable-next-line */ }, [session.entity.id]);
 
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
@@ -54,7 +58,7 @@ function ManufacturerNetwork({ session }) {
 
   return (
     <div className="p-8 max-w-7xl mx-auto" data-testid="network-view">
-      <PageHeader title="Distributors" description="All distributors carrying your products."
+      <PageHeader title="Distributors" description="All distributors carrying your products — click a row to drill down."
         actions={
           <div className="relative">
             <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -72,9 +76,26 @@ function ManufacturerNetwork({ session }) {
             <TableHead>Name</TableHead><TableHead>Region</TableHead><TableHead>City</TableHead>
           </TableRow></TableHeader>
           <TableBody>
+            {filtered.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={3} className="text-center text-graphite py-12">
+                  No distributors match your search.
+                </TableCell>
+              </TableRow>
+            )}
             {filtered.map((x) => (
-              <TableRow key={x.id} data-testid={`network-row-${x.id}`}>
-                <TableCell className="font-medium text-slate-900">{x.name}</TableCell>
+              <TableRow
+                key={x.id}
+                onClick={() => setSelectedDistributorId(x.id)}
+                className="hover:bg-stone-50/80 cursor-pointer transition-colors group"
+                data-testid={`network-row-${x.id}`}
+              >
+                <TableCell className="font-medium text-slate-900">
+                  <span className="inline-flex items-center gap-1.5 group-hover:text-amber">
+                    {x.name}
+                    <ArrowUpRight className="h-3 w-3 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                  </span>
+                </TableCell>
                 <TableCell><Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200">{x.region || "—"}</Badge></TableCell>
                 <TableCell className="text-slate-600">{x.city || "—"}</TableCell>
               </TableRow>
@@ -82,6 +103,14 @@ function ManufacturerNetwork({ session }) {
           </TableBody>
         </Table>
       </CardContent></Card>
+
+      <DistributorDrawer
+        open={!!selectedDistributorId}
+        onOpenChange={(o) => { if (!o) setSelectedDistributorId(null); }}
+        manufacturerId={session.entity.id}
+        distributorId={selectedDistributorId}
+        onUpdated={load}
+      />
     </div>
   );
 }

@@ -20,6 +20,8 @@ import SalesBookView from "@/views/SalesBookView";
 import IntelligenceCenter from "@/views/IntelligenceCenter";
 import SuperAdminConsole from "@/views/SuperAdminConsole";
 import DemoAccountsPage from "@/views/DemoAccountsPage";
+import ManufacturerProductDetail from "@/views/ManufacturerProductDetail";
+import ManufacturerDistributorDetail from "@/views/ManufacturerDistributorDetail";
 import { Toaster } from "@/components/ui/sonner";
 import { Loader2 } from "lucide-react";
 
@@ -78,6 +80,8 @@ function App() {
               <Route path="/network" element={<NetworkView />} />
               <Route path="/network/retailer/:retailerId" element={<DistributorRetailerDetail />} />
               <Route path="/inventory/product/:productId" element={<DistributorProductDetail />} />
+              <Route path="/products/:productId" element={<ManufacturerProductDetail />} />
+              <Route path="/distributors/:distributorId" element={<ManufacturerDistributorDetail />} />
               <Route path="/network-map" element={<ManufacturerNetworkView />} />
               <Route path="/analytics" element={<AnalyticsView />} />
               <Route path="/sales" element={<SalesBookView />} />
