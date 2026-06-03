@@ -18,13 +18,16 @@ module.exports = {
         sm: 'calc(var(--radius) - 4px)'
       },
       colors: {
-        // Brand palette (light enterprise — Palantir/Stripe vibes, warm paper)
+        // Brand palette — uses DEFAULT keys so they MERGE with Tailwind's
+        // built-in color scales (e.g. `text-amber` → brand DEFAULT, but
+        // `text-amber-500`, `bg-indigo-50`, etc. still resolve to Tailwind's
+        // default scale and don't get purged).
         paper: '#FAFAF7',
         ink: '#0A0A0A',
         graphite: '#525252',
-        amber: '#D97706',
-        moss: '#0F766E',
-        indigo: '#1E1B4B',
+        amber: { DEFAULT: '#D97706' },
+        moss: { DEFAULT: '#0F766E' },
+        indigo: { DEFAULT: '#1E1B4B' },
         // Shadcn semantic tokens
         background: 'hsl(var(--background))',
         foreground: 'hsl(var(--foreground))',

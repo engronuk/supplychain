@@ -232,7 +232,7 @@ export default function RetailerDashboardV2() {
       <div className="grid grid-cols-3 gap-3 mb-5" data-testid="quick-actions">
         <ActionTile
           onClick={() => setOpenReorder(true)}
-          gradient="from-indigo-500 to-violet-600"
+          variant="indigo"
           Icon={Sparkles}
           label="Restock my store"
           sub="AI suggestions"
@@ -240,7 +240,7 @@ export default function RetailerDashboardV2() {
         />
         <ActionTile
           onClick={() => setOpenVoice(true)}
-          gradient="from-rose-500 to-orange-500"
+          variant="rose"
           Icon={Mic}
           label="Voice order"
           sub="Just speak it"
@@ -248,7 +248,7 @@ export default function RetailerDashboardV2() {
         />
         <ActionTile
           onClick={() => navigate("/shipments")}
-          gradient="from-emerald-500 to-teal-600"
+          variant="emerald"
           Icon={ShoppingCart}
           label="Reorder previous"
           sub="One-tap clone"
@@ -415,26 +415,34 @@ function KPI({
 
 function ActionTile({
   onClick,
-  gradient,
+  variant,
   Icon,
   label,
   sub,
   testId,
 }: {
   onClick: () => void;
-  gradient: string;
+  variant: "indigo" | "rose" | "emerald";
   Icon: any;
   label: string;
   sub: string;
   testId?: string;
 }) {
+  // Static, statically-detectable gradient class strings. Tailwind's JIT
+  // compiler scans source for literals; runtime-built class names (e.g.
+  // `${prefix}-500`) get purged in production. Keep these literal.
+  const GRADIENTS: Record<"indigo" | "rose" | "emerald", string> = {
+    indigo: "bg-gradient-to-br from-indigo-500 to-violet-600",
+    rose: "bg-gradient-to-br from-rose-500 to-orange-500",
+    emerald: "bg-gradient-to-br from-emerald-500 to-teal-600",
+  };
   return (
     <button
       onClick={onClick}
       data-testid={testId}
       className="group relative rounded-2xl p-4 text-left text-white shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all overflow-hidden min-h-[96px]"
     >
-      <div className={`absolute inset-0 bg-gradient-to-br ${gradient}`} />
+      <div className={`absolute inset-0 ${GRADIENTS[variant]}`} />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.25),transparent_60%)]" />
       <div className="relative">
         <div className="h-9 w-9 rounded-xl bg-white/20 backdrop-blur flex items-center justify-center mb-2">
