@@ -127,6 +127,8 @@ export const Api = {
   seed: () => api.post("/seed").then((r) => r.data),
 
   // Manufacturer drill-down
+  manufacturerOverview: (manufacturer_id) =>
+    api.get(`/manufacturer/${manufacturer_id}/overview`).then((r) => r.data),
   manufacturerProducts: (manufacturer_id) =>
     api.get(`/manufacturer/${manufacturer_id}/products`).then((r) => r.data),
   manufacturerProductDetail: (manufacturer_id, product_id) =>
