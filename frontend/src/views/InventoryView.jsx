@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/Common";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Search, AlertTriangle, ArrowUpRight, Boxes } from "lucide-react";
+import { Search, AlertTriangle, ArrowUpRight, Boxes, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -82,13 +82,14 @@ function ManufacturerInventory({ session }) {
                 <TableHead className="text-right">Units in network</TableHead>
                 <TableHead className="text-right">Distributors</TableHead>
                 <TableHead className="text-right">Revenue · 90d</TableHead>
+                <TableHead className="w-[130px]">Velocity · 30d</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {!loading && filtered.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center text-graphite py-12">
+                  <TableCell colSpan={8} className="text-center text-graphite py-12">
                     No products match your search.
                   </TableCell>
                 </TableRow>
@@ -111,6 +112,9 @@ function ManufacturerInventory({ session }) {
                   <TableCell className="text-right font-mono">{p.units_in_network.toLocaleString()}</TableCell>
                   <TableCell className="text-right text-graphite">{p.distributor_count}</TableCell>
                   <TableCell className="text-right font-mono text-moss">{fmtMoney(p.revenue_90d)}</TableCell>
+                  <TableCell data-testid={`velocity-cell-${p.sku}`}>
+                    <VelocityCell points={p.sparkline_30d || []} trendPct={p.trend_pct_7d} />
+                  </TableCell>
                   <TableCell>
                     <Badge variant="outline" className={p.status === "active"
                       ? "bg-emerald-50 text-emerald-700 border-emerald-200"
@@ -142,6 +146,56 @@ function SummaryStat({ label, value, tone = "default" }) {
     <div className="rounded-lg border border-stone-200 bg-white px-4 py-3">
       <div className="text-[10px] uppercase tracking-wider text-graphite">{label}</div>
       <div className={`font-display text-2xl tracking-tight mt-1 ${toneClass}`}>{value}</div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Inline 30-day velocity sparkline + 7d-vs-prior-7d trend chip
+// ---------------------------------------------------------------------------
+function VelocityCell({ points, trendPct }) {
+  const isEmpty = !points || points.length === 0 || points.every((v) => v === 0);
+  if (isEmpty) {
+    return (
+      <div className="flex items-center gap-2 text-[11px] text-graphite/70">
+        <Minus className="h-3 w-3" /> no sales
+      </div>
+    );
+  }
+  const w = 96, h = 26;
+  const max = Math.max(...points, 1);
+  const step = w / Math.max(points.length - 1, 1);
+  const path = points
+    .map((p, i) => `${i === 0 ? "M" : "L"} ${(i * step).toFixed(1)} ${(h - (p / max) * (h - 2) - 1).toFixed(1)}`)
+    .join(" ");
+  const area = `${path} L ${w} ${h} L 0 ${h} Z`;
+  const up = (trendPct ?? 0) >= 0;
+  const stroke = up ? "#0F766E" : "#D97706";
+  const fill = up ? "rgba(15,118,110,0.18)" : "rgba(217,119,6,0.18)";
+  const TrendIcon = trendPct === null || trendPct === 0 ? Minus : up ? TrendingUp : TrendingDown;
+  const trendLabel = trendPct === null
+    ? "—"
+    : `${up ? "+" : ""}${trendPct.toFixed(0)}%`;
+  return (
+    <div className="flex items-center gap-2">
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-[96px] h-[26px] flex-shrink-0" preserveAspectRatio="none">
+        <path d={area} fill={fill} />
+        <path d={path} fill="none" stroke={stroke} strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
+        <circle
+          cx={(points.length - 1) * step}
+          cy={h - (points[points.length - 1] / max) * (h - 2) - 1}
+          r="1.5" fill={stroke}
+        />
+      </svg>
+      <span
+        className={`inline-flex items-center gap-0.5 text-[10px] font-mono ${
+          trendPct === null || trendPct === 0 ? "text-graphite" : up ? "text-moss" : "text-amber"
+        }`}
+        title="7-day vs prior 7-day units sold"
+      >
+        <TrendIcon className="h-2.5 w-2.5" />
+        {trendLabel}
+      </span>
     </div>
   );
 }

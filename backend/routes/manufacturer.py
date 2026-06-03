@@ -67,23 +67,42 @@ async def manufacturer_products(manufacturer_id: str):
 
     # Revenue (90d) by product
     start_90 = (datetime.now(timezone.utc).date() - timedelta(days=89)).isoformat()
+    # 30-day sparkline (units sold per day across the whole network)
+    today = datetime.now(timezone.utc).date()
+    start_30 = (today - timedelta(days=29)).isoformat()
+    spark_by_product: Dict[str, Dict[str, int]] = {pid: {} for pid in product_ids}
+
     rev_by_product: Dict[str, dict] = {pid: {"revenue": 0.0, "units": 0} for pid in product_ids}
     async for s in db.daily_sales.find(
         {"product_id": {"$in": product_ids}, "retailer_id": {"$in": retailer_ids},
          "date": {"$gte": start_90}},
-        {"_id": 0, "product_id": 1, "revenue": 1, "quantity_sold": 1},
+        {"_id": 0, "product_id": 1, "revenue": 1, "quantity_sold": 1, "date": 1},
     ):
         pid = s["product_id"]
         if pid in rev_by_product:
             rev_by_product[pid]["revenue"] += float(s.get("revenue", 0))
             rev_by_product[pid]["units"] += int(s.get("quantity_sold", 0))
+            if s["date"] >= start_30:
+                spark_by_product[pid][s["date"]] = (
+                    spark_by_product[pid].get(s["date"], 0) + int(s.get("quantity_sold", 0))
+                )
 
     out: List[dict] = []
+    # 30 chronological day buckets for the sparkline
+    day_keys = [(today - timedelta(days=i)).isoformat() for i in range(29, -1, -1)]
     for p in products:
         roll = inv_rollup.get(p["id"], {})
         rev = rev_by_product.get(p["id"], {})
         units_in_network = roll.get("dist_units", 0) + roll.get("retail_units", 0)
         status = "active" if (units_in_network > 0 or roll.get("dist_count", 0) > 0) else "inactive"
+        daily = spark_by_product.get(p["id"], {})
+        spark = [daily.get(d, 0) for d in day_keys]
+        # Trend = sum(last 7d) vs sum(prior 7d), as % delta. None when no signal.
+        recent_7 = sum(spark[-7:])
+        prior_7 = sum(spark[-14:-7])
+        trend_pct = None if prior_7 == 0 and recent_7 == 0 else (
+            round((recent_7 - prior_7) / max(prior_7, 1) * 100, 1) if prior_7 > 0 else 100.0
+        )
         out.append({
             "id": p["id"], "sku": p.get("sku", ""), "name": p["name"],
             "category": p.get("category", ""), "unit_price": float(p.get("unit_price", 0)),
@@ -94,6 +113,8 @@ async def manufacturer_products(manufacturer_id: str):
             "revenue_90d": round(rev.get("revenue", 0.0), 2),
             "units_sold_90d": rev.get("units", 0),
             "status": status,
+            "sparkline_30d": spark,
+            "trend_pct_7d": trend_pct,
         })
     return out
 

@@ -202,13 +202,15 @@ export function DistributorDrawer({ open, onOpenChange, manufacturerId, distribu
                     <SheetTitle className="font-display text-2xl tracking-tight mt-1">
                       {data.distributor.name}
                     </SheetTitle>
-                    <SheetDescription className="text-xs text-graphite mt-1 flex items-center gap-3 flex-wrap">
-                      <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />
-                        {data.distributor.region}{data.distributor.city ? ` · ${data.distributor.city}` : ""}
-                      </span>
-                      <Badge variant="outline" className="text-[10px] uppercase tracking-wider">
-                        {data.distributor.status || "active"}
-                      </Badge>
+                    <SheetDescription className="text-xs text-graphite mt-1 flex items-center gap-3 flex-wrap" asChild>
+                      <div>
+                        <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />
+                          {data.distributor.region}{data.distributor.city ? ` · ${data.distributor.city}` : ""}
+                        </span>
+                        <Badge variant="outline" className="text-[10px] uppercase tracking-wider">
+                          {data.distributor.status || "active"}
+                        </Badge>
+                      </div>
                     </SheetDescription>
                   </div>
                   <Button
