@@ -290,6 +290,25 @@ async def manufacturer_overview(manufacturer_id: str):
     # Map regions → fixed Nigerian geopolitical zones
     NIGERIAN_ZONES = ["North West", "North East", "North Central",
                        "South West", "South East", "South South"]
+
+    # Per-zone retailer and inventory counts
+    region_retailers: Dict[str, int] = {}
+    for r in retailers:
+        z = _zone(r.get("region") or "")
+        region_retailers[z] = region_retailers.get(z, 0) + 1
+
+    region_inventory: Dict[str, int] = {}
+    if retailer_ids:
+        retailer_zone = {r["id"]: _zone(r.get("region") or "") for r in retailers}
+        async for inv in db.inventory.find(
+            {"owner_type": "retailer", "owner_id": {"$in": retailer_ids}},
+            {"_id": 0, "owner_id": 1, "quantity": 1},
+        ):
+            z = retailer_zone.get(inv["owner_id"], "—")
+            region_inventory[z] = region_inventory.get(z, 0) + int(inv.get("quantity", 0))
+
+    total_region_revenue = sum(region_revenue.values()) or 0.0
+
     regional_table = []
     for zone in NIGERIAN_ZONES:
         rev = region_revenue.get(zone, 0.0)
@@ -297,16 +316,46 @@ async def manufacturer_overview(manufacturer_id: str):
         growth = _delta_pct(rev, prev)
         if rev == 0 and prev == 0:
             health = "no_data"
+            score = 0
         elif (growth or 0) >= 5:
             health = "healthy"
+            score = min(100, 75 + int(growth or 0))
         elif (growth or 0) >= -5:
             health = "watch"
+            score = max(40, 65 + int(growth or 0))
         else:
             health = "at_risk"
+            score = max(0, 45 + int(growth or 0))
         regional_table.append({
             "zone": zone, "revenue": round(rev, 2),
             "growth_pct": growth, "health": health,
+            "health_score": score,
+            "retailers": region_retailers.get(zone, 0),
+            "inventory_units": region_inventory.get(zone, 0),
+            "revenue_share_pct": round((rev / total_region_revenue * 100), 1) if total_region_revenue else 0.0,
         })
+
+    # Identify the healthiest zone with revenue to power the headline summary
+    contributors = [r for r in regional_table if r["revenue"] > 0]
+    top_zone = max(contributors, key=lambda r: r["revenue"], default=None)
+    healthiest_zone = max(contributors, key=lambda r: (r["health_score"], r["revenue"]), default=None)
+    regional_summary = None
+    if top_zone:
+        share = top_zone["revenue_share_pct"]
+        if healthiest_zone and healthiest_zone["zone"] == top_zone["zone"]:
+            regional_summary = (
+                f"{top_zone['zone']} contributes {share}% of national revenue "
+                f"and is the healthiest zone."
+            )
+        elif healthiest_zone:
+            regional_summary = (
+                f"{top_zone['zone']} contributes {share}% of national revenue; "
+                f"{healthiest_zone['zone']} leads on health."
+            )
+        else:
+            regional_summary = (
+                f"{top_zone['zone']} contributes {share}% of national revenue."
+            )
 
     return {
         "as_of": now_iso(),
@@ -333,6 +382,7 @@ async def manufacturer_overview(manufacturer_id: str):
         "ai_summary": ai_bullets,
         "revenue_trend": revenue_trend,
         "regional": regional_table,
+        "regional_summary": regional_summary,
         "coverage_kpis": {
             "retail_coverage": len(retailers),
             "distributor_performance": {

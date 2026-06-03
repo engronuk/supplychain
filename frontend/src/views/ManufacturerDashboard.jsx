@@ -11,13 +11,14 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useSession } from "@/context/SessionContext";
 import { Api } from "@/lib/api";
+import { STATE_PATHS, STATE_ZONE, VIEWBOX as NG_VIEWBOX } from "@/lib/nigeriaStates";
 import {
   TrendingUp, TrendingDown, Sparkles, Bell,
   Store, Warehouse, Activity, Truck, Package, AlertTriangle,
   ArrowRight, Loader2, CheckCircle2, Clock, XCircle,
   ChevronRight, PackageCheck, Factory, Building2,
   Download, Maximize2, Target, Zap, Compass, BrainCircuit,
-  ShieldCheck, Flame, ArrowUpRight, BarChart3,
+  ShieldCheck, Flame, ArrowUpRight, BarChart3, Info,
 } from "lucide-react";
 
 const fmtMoney = (v) => {
@@ -71,15 +72,15 @@ export default function ManufacturerDashboard() {
         {/* 2 — REVENUE PERFORMANCE (KPI strip on top) */}
         <KPIStripWide kpis={data.kpis} coverage={data.coverage_kpis} />
 
-        {/* 3 — REVENUE TREND + 4 — REGIONAL PERFORMANCE */}
-        <div className="grid grid-cols-12 gap-6">
-          <RevenueTrendCard
-            data={data.revenue_trend}
-            trendWindow={trendWindow}
-            setTrendWindow={setTrendWindow}
-          />
-          <RegionalPerformanceCard regional={data.regional} />
-        </div>
+        {/* 3 — REVENUE TREND */}
+        <RevenueTrendCard
+          data={data.revenue_trend}
+          trendWindow={trendWindow}
+          setTrendWindow={setTrendWindow}
+        />
+
+        {/* 4 — REGIONAL PERFORMANCE — full-width choropleth + leaderboard */}
+        <RegionalPerformanceCard regional={data.regional} summary={data.regional_summary} />
 
         {/* 5 — PRODUCT INTELLIGENCE (rich cards) + categories + forecast */}
         <div className="grid grid-cols-12 gap-6">
@@ -508,7 +509,7 @@ function RevenueTrendCard({ data, trendWindow, setTrendWindow }) {
   const step = sliced.length > 1 ? cw / (sliced.length - 1) : cw;
 
   return (
-    <div className="col-span-12 lg:col-span-8 bg-white rounded-[22px] p-6 shadow-[0_2px_8px_rgba(15,23,42,0.04)] border border-slate-100/70 hover:shadow-[0_18px_40px_-12px_rgba(15,23,42,0.10)] transition-shadow" data-testid="revenue-trend-card">
+    <div className="bg-white rounded-[22px] p-6 shadow-[0_2px_8px_rgba(15,23,42,0.04)] border border-slate-100/70 hover:shadow-[0_18px_40px_-12px_rgba(15,23,42,0.10)] transition-shadow" data-testid="revenue-trend-card">
       <div className="flex items-start justify-between mb-5">
         <div>
           <h3 className="text-[17px] font-semibold text-slate-900 flex items-center gap-2">
@@ -616,118 +617,269 @@ function RevenueTrendCard({ data, trendWindow, setTrendWindow }) {
 }
 
 // ============================================================================
-// 4 — REGIONAL PERFORMANCE — Nigeria 6-zone visual + revenue table
+// 4 — REGIONAL PERFORMANCE — Real Nigeria choropleth (state-level shapes)
+//     grouped by geopolitical zone, with ranked leaderboard on the right.
 // ============================================================================
-const ZONE_PATHS = {
-  "North West":    "M 30 38 L 110 28 L 145 60 L 130 95 L 65 95 L 30 70 Z",
-  "North East":    "M 145 60 L 210 50 L 230 95 L 175 110 L 145 95 Z",
-  "North Central": "M 130 95 L 175 110 L 175 145 L 110 150 L 90 130 Z",
-  "South West":    "M 65 95 L 110 150 L 105 195 L 50 195 L 35 155 Z",
-  "South East":    "M 110 150 L 165 145 L 160 195 L 120 200 L 105 195 Z",
-  "South South":   "M 50 195 L 160 195 L 175 220 L 80 230 L 40 215 Z",
-};
-const ZONE_CENTERS = {
-  "North West":    [78, 65],
-  "North East":    [188, 80],
-  "North Central": [140, 122],
-  "South West":    [68, 152],
-  "South East":    [134, 170],
-  "South South":   [105, 215],
-};
-const HEALTH_FILL = {
-  healthy: "#10B981", watch: "#F59E0B", at_risk: "#EF4444", no_data: "#CBD5E1",
-};
-const HEALTH_LABEL = {
-  healthy: "Healthy", watch: "Watch", at_risk: "Critical", no_data: "No Data",
+const ZONE_HEALTH = {
+  healthy: { fill: "#10B981", chip: "bg-emerald-100 text-emerald-700", label: "Healthy", dot: "#10B981" },
+  watch:   { fill: "#F59E0B", chip: "bg-amber-100 text-amber-700",   label: "Watch",   dot: "#F59E0B" },
+  at_risk: { fill: "#EF4444", chip: "bg-rose-100 text-rose-700",     label: "At Risk", dot: "#EF4444" },
+  no_data: { fill: "#CBD5E1", chip: "bg-slate-100 text-slate-600",   label: "No Data", dot: "#CBD5E1" },
 };
 
-function RegionalPerformanceCard({ regional }) {
+// Display order requested by spec
+const LEADERBOARD_ORDER = [
+  "South West", "North West", "South East",
+  "North Central", "North East", "South South",
+];
+
+function RegionalPerformanceCard({ regional, summary }) {
   const [hoverZone, setHoverZone] = useState(null);
-  const totalRev = regional.reduce((s, r) => s + r.revenue, 0);
+
+  const byZone = useMemo(() => {
+    const m = {};
+    for (const r of regional) m[r.zone] = r;
+    return m;
+  }, [regional]);
+
+  // Reorder leaderboard exactly as requested
+  const ranked = LEADERBOARD_ORDER.map(z => byZone[z]).filter(Boolean);
+
+  // Zone label centroids — computed once for label placement on the map
+  const zoneCentroids = useMemo(() => {
+    const acc = {};
+    for (const s of STATE_PATHS) {
+      // Parse first M coord from path for a rough state centroid
+      const m = s.d.match(/M\s+([\d.]+)\s+([\d.]+)/);
+      if (!m) continue;
+      const x = parseFloat(m[1]); const y = parseFloat(m[2]);
+      (acc[s.zone] ||= []).push([x, y]);
+    }
+    const out = {};
+    for (const z of Object.keys(acc)) {
+      const pts = acc[z];
+      const cx = pts.reduce((a, p) => a + p[0], 0) / pts.length;
+      const cy = pts.reduce((a, p) => a + p[1], 0) / pts.length;
+      out[z] = [cx, cy];
+    }
+    return out;
+  }, []);
+
+  const hoverData = hoverZone ? byZone[hoverZone] : null;
 
   return (
-    <div className="col-span-12 lg:col-span-4 bg-white rounded-[22px] p-6 shadow-[0_2px_8px_rgba(15,23,42,0.04)] border border-slate-100/70 hover:shadow-[0_18px_40px_-12px_rgba(15,23,42,0.10)] transition-shadow" data-testid="regional-performance-card">
-      <div className="flex items-center justify-between mb-1">
-        <h3 className="text-[17px] font-semibold text-slate-900">Regional Performance</h3>
-        <span className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold">Live</span>
-      </div>
-      <p className="text-xs text-slate-500 mb-4">Revenue × health by Nigerian geopolitical zone</p>
-
-      <div className="relative">
-        <svg viewBox="0 0 270 250" className="w-full h-[250px]" data-testid="nigeria-svg">
-          <defs>
-            <filter id="zone-glow" x="-20%" y="-20%" width="140%" height="140%">
-              <feGaussianBlur stdDeviation="3" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-          </defs>
-          {regional.map(r => {
-            const isHover = hoverZone === r.zone;
-            return (
-              <path key={r.zone}
-                d={ZONE_PATHS[r.zone]}
-                fill={HEALTH_FILL[r.health]}
-                stroke={isHover ? "#0F172A" : "white"}
-                strokeWidth={isHover ? "2.5" : "1.8"}
-                className="transition-all cursor-pointer"
-                opacity={hoverZone && !isHover ? "0.45" : "1"}
-                filter={isHover ? "url(#zone-glow)" : ""}
-                onMouseEnter={() => setHoverZone(r.zone)}
-                onMouseLeave={() => setHoverZone(null)}
-              >
-                <title>{r.zone}: {fmtMoney(r.revenue)} ({fmtPct(r.growth_pct)})</title>
-              </path>
-            );
-          })}
-          {/* zone labels */}
-          {regional.map(r => (
-            <text key={r.zone} x={ZONE_CENTERS[r.zone][0]} y={ZONE_CENTERS[r.zone][1]}
-              fontSize="7" fill="white" fontWeight="700" textAnchor="middle" pointerEvents="none"
-              style={{ filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.4))' }}>
-              {r.zone.split(' ').map((w, i) => (
-                <tspan key={i} x={ZONE_CENTERS[r.zone][0]} dy={i === 0 ? '0' : '8'}>{w}</tspan>
-              ))}
-            </text>
-          ))}
-        </svg>
-
-        {/* Legend pill row */}
-        <div className="flex items-center justify-center gap-3 mt-2 mb-3">
-          {Object.entries(HEALTH_LABEL).map(([k, lbl]) => (
-            <div key={k} className="flex items-center gap-1.5 text-[10px] text-slate-600">
-              <span className="h-2 w-2 rounded-full" style={{ background: HEALTH_FILL[k] }} />
-              <span>{lbl}</span>
+    <div
+      className="bg-white rounded-[22px] p-6 shadow-[0_2px_8px_rgba(15,23,42,0.04)] border border-slate-100/70 hover:shadow-[0_18px_40px_-12px_rgba(15,23,42,0.10)] transition-shadow"
+      data-testid="regional-performance-card"
+    >
+      {/* Header with title + inline legend */}
+      <div className="flex items-start justify-between mb-1 gap-3">
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+            <BarChart3 className="h-4 w-4" />
+          </div>
+          <div>
+            <h3 className="text-[17px] font-semibold text-slate-900 flex items-center gap-1.5">
+              Regional Performance
+              <span className="text-slate-400 font-normal">(Revenue)</span>
+              <Info className="h-3.5 w-3.5 text-slate-300" />
+            </h3>
+          </div>
+        </div>
+        <div className="hidden md:flex items-center gap-3 text-[10.5px] text-slate-600" data-testid="region-legend">
+          {Object.entries(ZONE_HEALTH).map(([k, v]) => (
+            <div key={k} className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-sm" style={{ background: v.fill }} />
+              <span className="font-medium">{v.label}</span>
             </div>
           ))}
         </div>
       </div>
 
-      <div className="space-y-2 pt-3 border-t border-slate-100">
-        {regional.map(r => {
-          const pct = totalRev > 0 ? (r.revenue / totalRev) * 100 : 0;
-          return (
-            <div key={r.zone} className={`flex items-center justify-between py-1 px-1.5 rounded-lg transition-colors ${hoverZone === r.zone ? 'bg-slate-50' : ''}`}
-                 onMouseEnter={() => setHoverZone(r.zone)} onMouseLeave={() => setHoverZone(null)}
-                 data-testid={`region-${r.zone.replace(/\s+/g,'-')}`}>
-              <div className="flex items-center gap-2 min-w-0 flex-1">
-                <span className="h-2 w-2 rounded-full flex-shrink-0" style={{ background: HEALTH_FILL[r.health] }} />
-                <span className="text-xs font-medium text-slate-700 truncate">{r.zone}</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-semibold text-slate-900 tabular-nums">{fmtMoney(r.revenue)}</span>
-                <span className={`text-[11px] font-semibold tabular-nums w-12 text-right ${(r.growth_pct ?? 0) >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
-                  {r.growth_pct != null ? fmtPct(r.growth_pct) : "—"}
+      {summary && (
+        <p className="text-[12.5px] text-slate-600 mt-1 mb-4 leading-relaxed" data-testid="region-summary">
+          {summary}
+        </p>
+      )}
+
+      {/* Layout: left 70% map · right 30% rankings */}
+      <div className="grid grid-cols-10 gap-4">
+        {/* MAP — 70% */}
+        <div className="col-span-10 lg:col-span-7 relative">
+          <NigeriaChoropleth
+            byZone={byZone}
+            hoverZone={hoverZone}
+            setHoverZone={setHoverZone}
+            zoneCentroids={zoneCentroids}
+          />
+
+          {/* Floating hover tooltip — Revenue / Retailers / Inventory / Health */}
+          {hoverData && (
+            <div
+              className="absolute top-2 left-2 px-3.5 py-2.5 rounded-xl bg-slate-900/95 backdrop-blur text-white text-xs shadow-2xl pointer-events-none animate-fade-rise"
+              data-testid="region-hover-tooltip"
+            >
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="h-2 w-2 rounded-full" style={{ background: (ZONE_HEALTH[hoverData.health] || ZONE_HEALTH.no_data).fill }} />
+                <div className="font-semibold text-[13px]">{hoverData.zone}</div>
+                <span className={`ml-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${(ZONE_HEALTH[hoverData.health] || ZONE_HEALTH.no_data).chip} text-slate-900`}>
+                  {(ZONE_HEALTH[hoverData.health] || ZONE_HEALTH.no_data).label}
                 </span>
               </div>
+              <div className="grid grid-cols-2 gap-x-5 gap-y-1 text-[11px] tabular-nums">
+                <div className="text-white/60">Revenue</div>
+                <div className="text-right font-semibold">{fmtMoney(hoverData.revenue)}</div>
+                <div className="text-white/60">Retailers</div>
+                <div className="text-right font-semibold">{fmtInt(hoverData.retailers)}</div>
+                <div className="text-white/60">Inventory</div>
+                <div className="text-right font-semibold">{fmtInt(hoverData.inventory_units)} u</div>
+                <div className="text-white/60">Health Score</div>
+                <div className="text-right font-semibold">{hoverData.health_score}/100</div>
+              </div>
+              {hoverData.growth_pct != null && (
+                <div className={`mt-1.5 text-[11px] font-semibold flex items-center gap-1 ${hoverData.growth_pct >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
+                  {hoverData.growth_pct >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                  {fmtPct(hoverData.growth_pct)} vs prior period
+                </div>
+              )}
             </div>
-          );
-        })}
+          )}
+        </div>
+
+        {/* RANKINGS — 30% */}
+        <div className="col-span-10 lg:col-span-3 flex flex-col" data-testid="region-leaderboard">
+          <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-2">
+            Zone Ranking
+          </div>
+          <div className="flex-1 divide-y divide-slate-100">
+            {ranked.map(r => {
+              const cfg = ZONE_HEALTH[r.health] || ZONE_HEALTH.no_data;
+              const isHover = hoverZone === r.zone;
+              const up = (r.growth_pct ?? 0) >= 0;
+              return (
+                <button
+                  key={r.zone}
+                  type="button"
+                  onMouseEnter={() => setHoverZone(r.zone)}
+                  onMouseLeave={() => setHoverZone(null)}
+                  className={`w-full text-left py-2.5 px-2 -mx-2 rounded-lg transition-colors ${
+                    isHover ? "bg-slate-50" : "hover:bg-slate-50/60"
+                  }`}
+                  data-testid={`region-${r.zone.replace(/\s+/g,'-')}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-sm flex-shrink-0" style={{ background: cfg.fill }} />
+                    <span className="text-[12.5px] font-medium text-slate-700 truncate">{r.zone}</span>
+                  </div>
+                  <div className="flex items-baseline justify-between mt-1 pl-4.5 ml-[18px]">
+                    <span className="text-[14px] font-bold text-slate-900 tabular-nums">{fmtMoney(r.revenue)}</span>
+                    <span className={`text-[11px] font-semibold tabular-nums flex items-center gap-0.5 ${up ? "text-emerald-600" : "text-rose-600"}`}>
+                      {r.growth_pct != null
+                        ? <>
+                            {up ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                            {fmtPct(r.growth_pct)}
+                          </>
+                        : <span className="text-slate-400">—</span>}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );
+}
+
+// ----------------------------------------------------------------------------
+// Nigeria choropleth — 36 states + FCT, coloured by their parent zone's health.
+// ----------------------------------------------------------------------------
+function NigeriaChoropleth({ byZone, hoverZone, setHoverZone, zoneCentroids }) {
+  return (
+    <svg
+      viewBox={`0 0 ${NG_VIEWBOX.w} ${NG_VIEWBOX.h}`}
+      className="w-full h-auto"
+      style={{ maxHeight: 360 }}
+      data-testid="nigeria-svg"
+    >
+      <defs>
+        <filter id="region-shadow" x="-10%" y="-10%" width="120%" height="120%">
+          <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#0F172A" floodOpacity="0.10" />
+        </filter>
+      </defs>
+
+      {/* States — coloured by parent zone's health */}
+      <g filter="url(#region-shadow)">
+        {STATE_PATHS.map(state => {
+          const zone = state.zone;
+          const data = byZone[zone];
+          const health = data?.health || "no_data";
+          const cfg = ZONE_HEALTH[health];
+          const isHover = hoverZone === zone;
+          const isDimmed = hoverZone && !isHover;
+          // Subtle per-state lightening so adjacent states are distinguishable
+          // within a zone (mimics the variegated reference image).
+          const seed = hashStr(state.name);
+          const variance = ((seed % 12) - 6) * 1.4; // -8.4 .. +8.4
+          return (
+            <path
+              key={state.name}
+              d={state.d}
+              fill={cfg.fill}
+              fillOpacity={isDimmed ? 0.35 : isHover ? 1 : (0.78 + (variance / 100))}
+              stroke="#FFFFFF"
+              strokeWidth={isHover ? 1.6 : 0.9}
+              strokeLinejoin="round"
+              className="transition-all duration-150 cursor-pointer"
+              onMouseEnter={() => setHoverZone(zone)}
+              onMouseLeave={() => setHoverZone(null)}
+            >
+              <title>{state.name} · {zone}</title>
+            </path>
+          );
+        })}
+      </g>
+
+      {/* Zone labels — centered roughly per zone, only show when not dimmed */}
+      {Object.entries(zoneCentroids).map(([zone, [cx, cy]]) => {
+        const isHover = hoverZone === zone;
+        const data = byZone[zone];
+        const health = data?.health || "no_data";
+        // Use dark ink on no-data (light grey) zones so the label remains legible;
+        // white with a soft shadow on coloured zones.
+        const isLight = health === "no_data";
+        const labelFill = isLight ? "#334155" : "#FFFFFF";
+        const labelShadow = isLight
+          ? 'drop-shadow(0 1px 0 rgba(255,255,255,0.7))'
+          : 'drop-shadow(0 1px 2px rgba(0,0,0,0.4))';
+        return (
+          <g key={zone} pointerEvents="none"
+             style={{ opacity: hoverZone && !isHover ? 0.25 : 0.95 }}>
+            <text
+              x={cx} y={cy} textAnchor="middle"
+              fontSize="11" fontWeight="700"
+              fill={labelFill}
+              style={{ filter: labelShadow, letterSpacing: '0.02em' }}
+            >
+              {zone.split(' ').map((w, i) => (
+                <tspan key={i} x={cx} dy={i === 0 ? 0 : 12}>{w}</tspan>
+              ))}
+            </text>
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+function hashStr(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) - h) + s.charCodeAt(i);
+    h |= 0;
+  }
+  return Math.abs(h);
 }
 
 // ============================================================================

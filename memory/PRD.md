@@ -248,10 +248,18 @@ Manufacturer can see all 91 distributors; Distributor sees all its retailers.
 - **Revenue Trend**: smooth bezier curves, gradient fill, dashed forecast
   continuation clamped to chart bounds, hover guideline + tooltip,
   export/expand buttons, legend with forecast line.
-- **Regional Performance**: Nigeria 6-zone SVG with hover glow + cross-
-  highlight to the per-zone revenue/growth table, zone labels rendered
-  directly on the map. Backend now normalises `Lagos → South West` so
-  the geopolitical zones light up properly.
+- **Regional Performance (v2 — true choropleth)**:
+  37 state polygons (Nigeria GADM-derived LGAs unioned per state, simplified
+  to 0.025°, projected into a 600x540 viewBox) generated once into
+  `src/lib/nigeriaStates.js`. States coloured by their parent geopolitical
+  zone's health (Healthy / Watch / At Risk / No Data) with subtle per-state
+  opacity variance for visual interest. Legend moved to header, AI summary
+  line ("X contributes Y% of national revenue and is the healthiest zone")
+  rendered from a new `regional_summary` field on the backend overview.
+  Card now spans full width — 70% map / 30% zone leaderboard ordered
+  exactly: SW, NW, SE, NC, NE, SS. Hover tooltip shows Revenue / Retailers /
+  Inventory / Health Score per zone with bidirectional cross-highlight
+  between map and leaderboard.
 - **Product Intelligence**: rich rows with rank, gradient icon tile,
   product name + category, deterministic 12-bar mini gradient sparkline
   (green for growth, rose for decline), revenue, growth chip.
@@ -267,6 +275,9 @@ Manufacturer can see all 91 distributors; Distributor sees all its retailers.
   `orbit-spin`, `rise-in`.
 - Cleanup: removed duplicated dashboard header (Layout topbar already
   shows workspace context).
+- Backend: `_zone()` city→zone normaliser (Lagos→SW etc.), per-zone
+  retailer/inventory rollups, health_score & revenue_share_pct in
+  `regional`, new top-level `regional_summary` headline.
 
 ## Next tasks
 - Address any feedback from user
