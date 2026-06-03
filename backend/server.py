@@ -25,7 +25,7 @@ from routes import (
     shipments,
     stock_requests,
 )
-from services.intel.scheduler import run_initial_pass, start_scheduler, stop_scheduler
+from services.intel.scheduler import start_scheduler, stop_scheduler
 from services.migrations import ensure_indexes
 from services.seed import seed_from_csv
 from services.seed_demo_users import seed_demo_users
@@ -96,12 +96,13 @@ async def auto_seed_if_needed():
     except Exception:
         logger.exception("Demo user seed failed (continuing)")
 
-    # Start the proactive intelligence layer. Do an initial pass in the
-    # background so the first API call has data; then APScheduler keeps it fresh.
+    # Start the proactive intelligence layer. Each job has its own staggered
+    # first-run time so the heavy ones don't all kick off at once on boot.
+    # No initial pass is launched at startup — the scheduler's staggered
+    # first runs handle the cold-start case, and /api/intel/recompute is
+    # available for on-demand kicks.
     try:
         start_scheduler()
-        import asyncio
-        asyncio.create_task(run_initial_pass())
     except Exception:
         logger.exception("Intel scheduler failed to start")
 

@@ -1,21 +1,24 @@
 """APScheduler — in-process scheduler that recomputes intel periodically.
 
-Runs four tiers:
-  * every 5 min: anomaly detection
-  * every 15 min: stock-exhaustion forecast
-  * every 60 min: retailer health + delivery risk + recommendations + ecosystem feed
-  * every 6 hours: external signals (weather + holidays)
-  * daily at 06:00 UTC: executive summary + 30-day retention cleanup
+Runs five tiers with **staggered first runs** so they don't all fire on boot:
+
+  +0:30s   job_external    — external signals (weather + holidays), then every 6h
+  +2 min   job_anomalies   — anomaly detection, then every 5 min
+  +5 min   job_hourly      — retailer health + delivery risk + recs + feed, then every 60 min
+  +10 min  job_forecasts   — stock-exhaustion forecast, then every 15 min
+  06:00 UTC daily          — executive summary + 30-day retention cleanup
+
+`run_initial_pass()` is **not** invoked at startup — the staggered scheduler
+covers the cold-start case. It remains available for `POST /api/intel/recompute`.
 
 Tenant fan-out: each tier iterates over all manufacturer_ids so when new
 tenants onboard, they're picked up automatically.
 
 Production safety:
-  * INTEL_SCHEDULER_ENABLED env var (default "true") — set to "false" as an
-    emergency kill switch if the intel layer is OOM'ing the pod.
-  * INTEL_INITIAL_PASS_DELAY_SEC (default 90) — defers the first heavy pass
-    so the pod passes its readiness probe and serves traffic before the
-    scheduler workload kicks in.
+  * INTEL_SCHEDULER_ENABLED env var (default "true") — emergency kill switch
+    if the intel layer is OOM'ing the pod, set to "false".
+  * INTEL_INITIAL_PASS_DELAY_SEC (default 90) — delay applied inside
+    run_initial_pass() when invoked manually (e.g. /api/intel/recompute).
 """
 from __future__ import annotations
 
@@ -114,21 +117,47 @@ def start_scheduler():
     if not _intel_enabled():
         logger.warning("Intel scheduler disabled via INTEL_SCHEDULER_ENABLED=false")
         return
-    scheduler.add_job(job_anomalies, IntervalTrigger(minutes=5), id="intel_anomalies",
-                      max_instances=1, coalesce=True)
-    scheduler.add_job(job_forecasts, IntervalTrigger(minutes=15), id="intel_forecasts",
-                      max_instances=1, coalesce=True)
-    scheduler.add_job(job_hourly, IntervalTrigger(minutes=60), id="intel_hourly",
-                      max_instances=1, coalesce=True)
-    # External signals run on a clean 6h interval. We DON'T pre-fire here —
-    # run_initial_pass() handles the cold-start case so we don't double-load
-    # the pod right at startup.
-    scheduler.add_job(job_external, IntervalTrigger(hours=6), id="intel_external",
-                      max_instances=1, coalesce=True)
-    scheduler.add_job(job_daily, CronTrigger(hour=6, minute=0), id="intel_daily",
-                      max_instances=1, coalesce=True)
+
+    # Staggered first-run times — heavy jobs start later so the pod's startup
+    # CPU/memory budget isn't blown by everything firing at once. Subsequent
+    # runs follow the regular interval cadence.
+    now = datetime.now(timezone.utc)
+
+    # Lightweight job — fires first, ~30s after boot
+    scheduler.add_job(
+        job_external, IntervalTrigger(hours=6), id="intel_external",
+        max_instances=1, coalesce=True,
+        next_run_time=now + timedelta(seconds=30),
+    )
+    # Anomalies (medium weight) — every 5 min, first run T+2 min
+    scheduler.add_job(
+        job_anomalies, IntervalTrigger(minutes=5), id="intel_anomalies",
+        max_instances=1, coalesce=True,
+        next_run_time=now + timedelta(minutes=2),
+    )
+    # Hourly bundle (heaviest LLM work) — every 60 min, first run T+5 min
+    scheduler.add_job(
+        job_hourly, IntervalTrigger(minutes=60), id="intel_hourly",
+        max_instances=1, coalesce=True,
+        next_run_time=now + timedelta(minutes=5),
+    )
+    # Forecasts (heaviest DB scan) — every 15 min, first run T+10 min
+    scheduler.add_job(
+        job_forecasts, IntervalTrigger(minutes=15), id="intel_forecasts",
+        max_instances=1, coalesce=True,
+        next_run_time=now + timedelta(minutes=10),
+    )
+    # Daily exec summary + retention cleanup — fixed 06:00 UTC
+    scheduler.add_job(
+        job_daily, CronTrigger(hour=6, minute=0), id="intel_daily",
+        max_instances=1, coalesce=True,
+    )
+
     scheduler.start()
-    logger.info("Intel scheduler started.")
+    logger.info(
+        "Intel scheduler started. First runs: external=+30s, anomalies=+2m, "
+        "hourly=+5m, forecasts=+10m, daily=06:00 UTC"
+    )
 
 
 def stop_scheduler():
