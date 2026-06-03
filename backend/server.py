@@ -56,13 +56,25 @@ for r in (
 
 app.include_router(api_router)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=os.environ.get("CORS_ORIGINS", "*").split(","),
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# CORS: when CORS_ORIGINS is unset (or "*"), use a regex that matches any
+# origin AND echoes it back per-request. The CORS spec forbids responding
+# with `Access-Control-Allow-Origin: *` when `Allow-Credentials: true`, which
+# is what was breaking the browser /demo fetch on production. Setting an
+# explicit list via CORS_ORIGINS still works.
+_cors_origins_env = os.environ.get("CORS_ORIGINS", "").strip()
+_cors_kwargs: dict = {
+    "allow_credentials": True,
+    "allow_methods": ["*"],
+    "allow_headers": ["*"],
+}
+if _cors_origins_env and _cors_origins_env != "*":
+    _cors_kwargs["allow_origins"] = [o.strip() for o in _cors_origins_env.split(",") if o.strip()]
+else:
+    # Match every https origin (and localhost for dev). Browsers will get the
+    # exact origin echoed back so withCredentials works.
+    _cors_kwargs["allow_origin_regex"] = r"https?://.*"
+
+app.add_middleware(CORSMiddleware, **_cors_kwargs)
 
 
 @app.on_event("startup")
