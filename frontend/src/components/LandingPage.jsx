@@ -129,8 +129,8 @@ function Hero() {
 
             {/* mini metric strip */}
             <div className="mt-12 grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-5 max-w-2xl">
-              <MetricChip label="Connected retailers" value="3,080" />
-              <MetricChip label="Distributor depots" value="91" />
+              <MetricChip label="Connected retailers" value="270K+" />
+              <MetricChip label="Distributor depots" value="3,000+" />
               <MetricChip label="Daily signals" value="1.2k" />
               <MetricChip label="Anomaly latency" value="5 min" />
             </div>
@@ -286,7 +286,7 @@ function Pillars() {
       tag: "Orchestration",
       title: "One workspace, every node in the chain.",
       body: "Manufacturer, distributor and retailer act in the same data plane. Shipments, stock requests and inventory move through a single state machine — Pending → In Transit → Received.",
-      points: ["91 distributors + 3,080 retailers", "Atomic inventory & shipment lifecycle", "Role-scoped multi-tenancy"],
+      points: ["3,000+ distributors + 270,000+ retailers", "Atomic inventory & shipment lifecycle", "Role-scoped multi-tenancy"],
       tone: "moss",
     },
     {
@@ -423,7 +423,7 @@ function DashboardPreview() {
               <div className="p-5 grid grid-cols-12 gap-4">
                 {/* KPI ROW */}
                 {[
-                  { l: "Active distributors", v: "91", d: "↑ +3 vs last wk", tone: "moss" },
+                  { l: "Active distributors", v: "3K+", d: "↑ +120 vs last wk", tone: "moss" },
                   { l: "Retailers at risk",   v: "27", d: "↓ 8 cleared",     tone: "amber" },
                   { l: "ETA confidence",      v: "94%", d: "lane health",    tone: "indigo" },
                 ].map((k) => (

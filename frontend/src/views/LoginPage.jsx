@@ -55,11 +55,11 @@ export default function LoginPage() {
           </h2>
           <div className="mt-10 grid grid-cols-2 gap-x-6 gap-y-5 text-sm">
             <div>
-              <div className="text-amber font-display text-3xl">3,080</div>
+              <div className="text-amber font-display text-3xl">270K+</div>
               <div className="text-paper/70 mt-1">connected retailers</div>
             </div>
             <div>
-              <div className="text-amber font-display text-3xl">91</div>
+              <div className="text-amber font-display text-3xl">3,000+</div>
               <div className="text-paper/70 mt-1">distributor depots</div>
             </div>
             <div>
