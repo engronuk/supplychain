@@ -141,6 +141,8 @@ export const Api = {
     api.get(`/manufacturer/${manufacturer_id}/product/${product_id}`).then((r) => r.data),
   manufacturerDistributorDetail: (manufacturer_id, distributor_id) =>
     api.get(`/manufacturer/${manufacturer_id}/distributor/${distributor_id}`).then((r) => r.data),
+  manufacturerDistributorIntelligence: (manufacturer_id, distributor_id) =>
+    api.get(`/manufacturer/${manufacturer_id}/distributor-intelligence/${distributor_id}`).then((r) => r.data),
 
   // Mutations
   updateProduct: (product_id, payload) =>
