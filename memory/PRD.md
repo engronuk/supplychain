@@ -328,3 +328,8 @@ Manufacturer can see all 91 distributors; Distributor sees all its retailers.
 
 ## Next tasks
 - Address any feedback from user
+
+## Updates (2026-06-04 — Distributor Intelligence Center)
+- **Backend fat endpoint** `GET /api/manufacturer/{id}/distributor-intelligence/{distributor_id}` (new file `routes/distributor_intelligence.py`, ~430 lines): returns distributor, 6 KPIs (retail_revenue_90d · active_retailers · network_health_score · stockout_risk_retailers · avg_sell_through · retail_order_frequency), AI brief, BCG-style retail_performance_matrix, retail_coverage by city, top_retailers (top 5), attention_retailers (4), product_penetration, full retailer_table with composite health scores. Patched to use canonical `units` field on daily_sales with fallback to legacy `quantity_sold`.
+- **Frontend rewrite** `views/ManufacturerDistributorDetail.jsx` (~1055 lines): Fortune-500 SaaS layout — breadcrumb, header (status chip · region · onboarded date · View Retailers / Retail Heatmap / Contact / Edit Distributor CTAs), 6 hero KPI cards with sparklines, gradient AI Executive Summary + semi-circle Network Health gauge, Retail Performance Matrix (BCG-style scatter, dots-only, hover tooltip, quadrant tints + count chips), Retail Coverage bubble map (sized by retailer count, colored by revenue band, sort by Revenue/Retailers), Top Retailers / Product Penetration / Attention triplet, full Retailer Intelligence table (search · health filter · CSV export · sortable columns).
+- **Tested**: backend pytest 14/14, frontend e2e 26/26 testids, 100% critical paths. Report: `/app/test_reports/iteration_8.json`.
