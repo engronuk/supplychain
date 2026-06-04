@@ -95,6 +95,7 @@ export default function ProductIntelligenceCenter() {
           {/* LEFT (70%) */}
           <div className="col-span-12 xl:col-span-8 space-y-6">
             <PortfolioTable rows={data.portfolio} />
+            <PerformanceMatrix items={data.performance_matrix} portfolio={data.portfolio} />
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <BatchHealthDonut data={data.batch_health} />
               <ExpiryRiskDonut data={data.expiry_risk} />
@@ -104,7 +105,6 @@ export default function ProductIntelligenceCenter() {
 
           {/* RIGHT (30%) */}
           <div className="col-span-12 xl:col-span-4 space-y-6">
-            <PerformanceMatrix items={data.performance_matrix} />
             <GeographicHeatmap rows={data.geographic_heatmap} />
             <StockRiskCenter items={data.stock_risk} />
           </div>
@@ -725,109 +725,308 @@ function CategoryBars({ data }) {
 }
 
 // ============================================================================
-// PERFORMANCE MATRIX — 2x2 strategic plot
+// PERFORMANCE MATRIX — BCG-style strategic plot
+// Clean scatter with circle-size encoding revenue, colour encoding inventory
+// health, hover-only tooltip, side leaderboard and quadrant counts footer.
 // ============================================================================
-function PerformanceMatrix({ items }) {
-  // Plot area
-  const W = 320, H = 320, PAD = 28;
-  const xs = items.map(i => i.revenue_90d);
+function PerformanceMatrix({ items, portfolio }) {
+  // Merge portfolio fields (health + units) onto each matrix item
+  const healthById = useMemo(() => {
+    const m = {};
+    for (const p of portfolio) m[p.id] = p;
+    return m;
+  }, [portfolio]);
+  const enriched = items.map(p => ({
+    ...p,
+    inventory_health: healthById[p.id]?.inventory_health || "healthy",
+    units_in_network: healthById[p.id]?.units_in_network || 0,
+  }));
+
+  // Plot dimensions (SVG viewBox space)
+  const W = 360, H = 280, PADX = 14, PADY = 14;
+  const xs = enriched.map(i => i.revenue_90d);
   const xMax = Math.max(...xs, 1);
-  // Use a sqrt scale on the x-axis so a few huge SKUs don't stack the rest
-  // on top of one another at x≈xMax.
+  // sqrt scale so a few large SKUs don't bunch the small ones near zero
   const xScale = (v) => Math.sqrt(Math.max(v, 0) / xMax);
-  // Spread by quadrant when many SKUs share similar (revenue, growth):
-  // bucket by quadrant and stagger ys slightly.
-  const points = items.map((p, idx) => {
-    const xn = xScale(p.revenue_90d);
-    const x = PAD + xn * (W - 2 * PAD);
-    const yClamped = Math.max(Math.min(p.growth_pct, 200), -50);
-    const yNorm = (yClamped + 50) / 250;
-    const y = H - PAD - yNorm * (H - 2 * PAD);
-    return { ...p, x, y, idx };
+  // Y axis: growth clamped to [-50, +200]
+  const yClamp = (g) => Math.max(Math.min(g ?? 0, 200), -50);
+  const yNorm = (g) => (yClamp(g) + 50) / 250;
+
+  // When growth values are clustered (very common in demo data where every
+  // product trends at +100% because prior-period sales are sparse), spread
+  // dots vertically by *revenue rank* inside their growth band so the chart
+  // doesn't degenerate into a single horizontal line.
+  const growthSpread = (() => {
+    const gs = enriched.map(p => yClamp(p.growth_pct));
+    const range = Math.max(...gs) - Math.min(...gs);
+    return range;
+  })();
+  const useRankFallback = growthSpread < 10;
+  const rankByRevenue = (() => {
+    const sorted = [...enriched].sort((a, b) => b.revenue_90d - a.revenue_90d);
+    const m = {};
+    sorted.forEach((p, i) => { m[p.id] = i; });
+    return m;
+  })();
+
+  // Circle radius bound to revenue (visual encoding), 5px..14px
+  const rxs = enriched.map(i => i.revenue_90d);
+  const rxMax = Math.max(...rxs, 1);
+  const rxMin = Math.min(...rxs, 0);
+  const rScale = (v) => 5 + Math.sqrt((v - rxMin) / (rxMax - rxMin || 1)) * 9;
+
+  // Anti-collision: simple force-style nudge so circles never overlap.
+  const raw = enriched.map(p => {
+    let cy;
+    if (useRankFallback) {
+      // Spread vertically based on revenue rank inside the upper-half band
+      // (since all dots share roughly the same growth, treat the y-axis as
+      // a "relative scale" of revenue concentration).
+      const rank = rankByRevenue[p.id];
+      const norm = enriched.length > 1 ? rank / (enriched.length - 1) : 0.5;
+      // Map rank 0 (highest revenue) to upper region (40-60% of plot height),
+      // rank N-1 (lowest revenue) to mid-region — keeps everything in
+      // the upper-half (growth >= 0) which the actual data implies.
+      cy = PADY + 30 + norm * (H * 0.40);
+    } else {
+      cy = H - PADY - yNorm(p.growth_pct) * (H - 2 * PADY);
+    }
+    return {
+      ...p,
+      cx: PADX + xScale(p.revenue_90d) * (W - 2 * PADX),
+      cy,
+      r: rScale(p.revenue_90d),
+    };
   });
-  // Anti-collision: when many points cluster near the same x, spread them
-  // vertically with leader lines so labels stay readable.
-  // Group by quadrant and stagger
-  const QUAD_DOT = { stars: "#7C3AED", emerging: "#10B981", cash_cows: "#3B82F6", underperformers: "#EF4444" };
-  const labels = [];
-  const byQuad = { stars: [], emerging: [], cash_cows: [], underperformers: [] };
-  for (const p of points) byQuad[p.quadrant]?.push(p);
-  // Position labels in a tidy column for each quadrant
-  for (const q of Object.keys(byQuad)) {
-    const arr = byQuad[q].sort((a, b) => a.y - b.y);
-    arr.forEach((p, i) => {
-      // Stack labels in a column to the right of the centroid
-      const centroidX = arr.reduce((s, x) => s + x.x, 0) / arr.length;
-      const onRight = centroidX < W / 2; // if cluster on left half, label to right; vice versa
-      const labelX = onRight ? Math.min(W - PAD - 4, centroidX + 70) : Math.max(PAD + 4, centroidX - 70);
-      const ySpacing = 13;
-      const labelYStart = (q === "stars" || q === "emerging" ? PAD + 26 : H / 2 + 8);
-      const labelY = labelYStart + i * ySpacing;
-      labels.push({ ...p, labelX, labelY, onRight });
-    });
+  for (let iter = 0; iter < 60; iter++) {
+    let moved = 0;
+    for (let i = 0; i < raw.length; i++) {
+      for (let j = i + 1; j < raw.length; j++) {
+        const a = raw[i], b = raw[j];
+        const dx = b.cx - a.cx, dy = b.cy - a.cy;
+        const dist = Math.hypot(dx, dy) || 0.01;
+        const target = a.r + b.r + 2;
+        if (dist < target) {
+          const push = (target - dist) / 2;
+          const ux = dx / dist, uy = dy / dist;
+          a.cx -= ux * push; a.cy -= uy * push;
+          b.cx += ux * push; b.cy += uy * push;
+          moved++;
+        }
+      }
+      // Clamp inside plot area
+      raw[i].cx = Math.max(PADX + raw[i].r, Math.min(W - PADX - raw[i].r, raw[i].cx));
+      raw[i].cy = Math.max(PADY + raw[i].r, Math.min(H - PADY - raw[i].r, raw[i].cy));
+    }
+    if (moved === 0) break;
   }
+
+  const HEALTH_FILL = {
+    healthy: "#10B981",
+    watch:   "#F59E0B",
+    risk:    "#EF4444",
+  };
+  const HEALTH_LABEL = {
+    healthy: "Healthy",
+    watch:   "Watch",
+    risk:    "Risk",
+  };
+
+  // Quadrant counts
+  const quadCounts = {
+    stars: enriched.filter(p => p.quadrant === "stars").length,
+    emerging: enriched.filter(p => p.quadrant === "emerging").length,
+    cash_cows: enriched.filter(p => p.quadrant === "cash_cows").length,
+    underperformers: enriched.filter(p => p.quadrant === "underperformers").length,
+  };
+
+  // Top 5 performers by revenue
+  const topPerformers = [...enriched]
+    .sort((a, b) => b.revenue_90d - a.revenue_90d)
+    .slice(0, 5);
+
+  const [hover, setHover] = useState(null);
 
   return (
     <div className="bg-white rounded-2xl p-5 shadow-[0_2px_8px_rgba(15,23,42,0.04)] border border-slate-100/70" data-testid="pi-performance-matrix">
-      <div className="flex items-center justify-between mb-3">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
         <h3 className="text-[14px] font-semibold text-slate-900 flex items-center gap-1.5">
-          Product Performance Matrix <Info className="h-3 w-3 text-slate-300" />
+          Product Performance Matrix
+          <Info className="h-3 w-3 text-slate-300" />
         </h3>
-        <div className="text-[10.5px] text-slate-500 font-medium border border-slate-200 rounded-lg px-2 py-1 flex items-center gap-1.5">
-          Revenue vs Growth <ChevronRight className="h-2.5 w-2.5 rotate-90" />
+        <div className="flex items-center gap-2.5">
+          <div className="hidden md:flex items-center gap-2.5 text-[10px] text-slate-600">
+            {["healthy", "watch", "risk"].map(k => (
+              <div key={k} className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded-full" style={{ background: HEALTH_FILL[k] }} />
+                <span>{HEALTH_LABEL[k]}</span>
+              </div>
+            ))}
+          </div>
+          <div className="text-[10.5px] text-slate-500 font-medium border border-slate-200 rounded-lg px-2 py-1">
+            Revenue vs Growth
+          </div>
         </div>
       </div>
 
-      <div className="relative">
-        {/* y-axis label */}
-        <div className="absolute left-0 top-1/2 -translate-y-1/2 -rotate-90 text-[9px] font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">
-          Revenue Growth (90D)
-        </div>
-        {/* y-axis high/low markers */}
-        <div className="absolute left-4 top-4 text-[10px] font-semibold text-slate-400">High</div>
-        <div className="absolute left-4 bottom-12 text-[10px] font-semibold text-slate-400">Low</div>
+      {/* CHART + LEADERBOARD */}
+      <div className="grid grid-cols-12 gap-4">
+        {/* CHART — 8 cols */}
+        <div className="col-span-12 lg:col-span-8">
+          <div className="relative">
+            {/* y axis ticks */}
+            <div className="absolute left-0 top-0 h-full w-7 flex flex-col items-end justify-between text-[9px] font-semibold text-slate-400 uppercase tracking-wider py-2 pr-1">
+              <span>High</span>
+              <span className="-rotate-90 whitespace-nowrap py-2">Growth (90D)</span>
+              <span>Low</span>
+            </div>
 
-        <div className="ml-9">
-          <div className="relative grid grid-cols-2 grid-rows-2 gap-0 rounded-xl overflow-hidden border border-slate-100" style={{ aspectRatio: "1/1" }}>
-            {[
-              ["emerging", "Emerging", "High Growth", "Low Revenue", "text-emerald-700", "bg-emerald-50/40"],
-              ["stars", "Stars", "High Growth", "High Revenue", "text-violet-700", "bg-violet-50/40"],
-              ["underperformers", "Underperformers", "Low Growth", "Low Revenue", "text-rose-700", "bg-rose-50/40"],
-              ["cash_cows", "Cash Cows", "Low Growth", "High Revenue", "text-blue-700", "bg-blue-50/40"],
-            ].map(([key, name, s1, s2, color, bg], i) => (
-              <div key={key} className={`relative p-2.5 ${bg} ${i % 2 === 0 ? "border-r" : ""} ${i < 2 ? "border-b" : ""} border-slate-100`}>
-                <div className={`text-[11px] font-bold ${color}`}>{name}</div>
-                <div className="text-[9px] text-slate-500 leading-tight mt-0.5">{s1}</div>
-                <div className="text-[9px] text-slate-500 leading-tight">{s2}</div>
+            <div className="ml-7">
+              <div className="relative rounded-xl overflow-hidden border border-slate-100"
+                   style={{ aspectRatio: `${W}/${H}` }}>
+                {/* quadrant tints */}
+                <div className="absolute inset-0 grid grid-cols-2 grid-rows-2">
+                  <div className="bg-emerald-50/40 border-r border-b border-slate-100 relative">
+                    <div className="absolute top-2 left-2.5">
+                      <div className="text-[10.5px] font-bold text-emerald-700">Emerging</div>
+                      <div className="text-[8.5px] text-slate-500 leading-tight">Low Rev · High Growth</div>
+                    </div>
+                  </div>
+                  <div className="bg-violet-50/40 border-b border-slate-100 relative">
+                    <div className="absolute top-2 right-2.5 text-right">
+                      <div className="text-[10.5px] font-bold text-violet-700">Stars</div>
+                      <div className="text-[8.5px] text-slate-500 leading-tight">High Rev · High Growth</div>
+                    </div>
+                  </div>
+                  <div className="bg-rose-50/40 border-r border-slate-100 relative">
+                    <div className="absolute bottom-2 left-2.5">
+                      <div className="text-[10.5px] font-bold text-rose-700">Underperformers</div>
+                      <div className="text-[8.5px] text-slate-500 leading-tight">Low Rev · Low Growth</div>
+                    </div>
+                  </div>
+                  <div className="bg-blue-50/40 relative">
+                    <div className="absolute bottom-2 right-2.5 text-right">
+                      <div className="text-[10.5px] font-bold text-blue-700">Cash Cows</div>
+                      <div className="text-[8.5px] text-slate-500 leading-tight">High Rev · Low Growth</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* dots — SVG sits on top */}
+                <svg viewBox={`0 0 ${W} ${H}`} className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
+                  {/* axis crosshairs */}
+                  <line x1={W / 2} y1={PADY} x2={W / 2} y2={H - PADY}
+                        stroke="#CBD5E1" strokeWidth="0.8" strokeDasharray="3 3" />
+                  <line x1={PADX} y1={H / 2} x2={W - PADX} y2={H / 2}
+                        stroke="#CBD5E1" strokeWidth="0.8" strokeDasharray="3 3" />
+                  {raw.map(p => {
+                    const isHover = hover?.id === p.id;
+                    const fill = HEALTH_FILL[p.inventory_health] || HEALTH_FILL.healthy;
+                    return (
+                      <g key={p.id} style={{ cursor: "pointer" }}
+                         onMouseEnter={() => setHover(p)}
+                         onMouseLeave={() => setHover(null)}
+                      >
+                        {/* outer ring on hover */}
+                        {isHover && <circle cx={p.cx} cy={p.cy} r={p.r + 4} fill="none" stroke={fill} strokeWidth="1.3" opacity="0.45" />}
+                        <circle cx={p.cx} cy={p.cy} r={p.r}
+                          fill={fill} fillOpacity="0.85"
+                          stroke="white" strokeWidth="1.6"
+                          className="transition-all" />
+                      </g>
+                    );
+                  })}
+                </svg>
+
+                {/* TOOLTIP — appears on hover; flips side to avoid overflow */}
+                {hover && (
+                  <div
+                    className="absolute z-30 pointer-events-none animate-fade-rise"
+                    style={{
+                      left: `${(hover.cx / W) * 100}%`,
+                      top: `${(hover.cy / H) * 100}%`,
+                      transform: `translate(${hover.cx > W / 2 ? "calc(-100% - 16px)" : "16px"}, -50%)`,
+                    }}
+                  >
+                    <div className="rounded-xl bg-slate-900/95 backdrop-blur text-white px-4 py-3 shadow-2xl text-[11px] tabular-nums w-[210px]">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="h-2 w-2 rounded-full" style={{ background: HEALTH_FILL[hover.inventory_health] }} />
+                        <div className="font-semibold text-[12.5px] leading-tight">{hover.name}</div>
+                      </div>
+                      <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+                        <div className="text-white/60">Revenue</div>
+                        <div className="text-right font-semibold">{fmtMoneyFull(hover.revenue_90d)}</div>
+                        <div className="text-white/60">Growth</div>
+                        <div className={`text-right font-semibold ${(hover.growth_pct ?? 0) >= 0 ? "text-emerald-300" : "text-rose-300"}`}>{fmtPct(hover.growth_pct)}</div>
+                        <div className="text-white/60">Units</div>
+                        <div className="text-right font-semibold">{fmtInt(hover.units_in_network)}</div>
+                        <div className="text-white/60">Inv. Health</div>
+                        <div className="text-right font-semibold capitalize">{HEALTH_LABEL[hover.inventory_health]}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-            ))}
 
-            {/* Dot overlay — absolutely positioned over the grid */}
-            <svg viewBox={`0 0 ${W} ${H}`} className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
-              {/* center cross axis */}
-              <line x1={W / 2} y1={PAD} x2={W / 2} y2={H - PAD} stroke="#E2E8F0" strokeWidth="1" strokeDasharray="2 3" />
-              <line x1={PAD} y1={H / 2} x2={W - PAD} y2={H / 2} stroke="#E2E8F0" strokeWidth="1" strokeDasharray="2 3" />
-              {labels.map((p, i) => (
-                <g key={p.id}>
-                  {/* leader line */}
-                  <line x1={p.x} y1={p.y} x2={p.labelX + (p.onRight ? -2 : 2)} y2={p.labelY - 3}
-                        stroke="#CBD5E1" strokeWidth="0.6" />
-                  <circle cx={p.x} cy={p.y} r="5" fill={QUAD_DOT[p.quadrant]} stroke="white" strokeWidth="1.5" />
-                  <text x={p.labelX} y={p.labelY}
-                        fontSize="9" fontWeight="600" fill="#0F172A"
-                        textAnchor={p.onRight ? "start" : "end"}>
-                    {p.name.split(" ").slice(0, 2).join(" ").slice(0, 14)}
-                  </text>
-                </g>
-              ))}
-            </svg>
-          </div>
-          <div className="flex items-center justify-between text-[10px] font-semibold text-slate-400 uppercase tracking-wider mt-1.5">
-            <span>Low</span>
-            <span className="text-slate-500">Revenue (90D)</span>
-            <span>High</span>
+              {/* x axis ticks */}
+              <div className="flex items-center justify-between text-[9px] font-semibold text-slate-400 uppercase tracking-wider mt-1.5">
+                <span>Low</span>
+                <span className="text-slate-500">Revenue (90D)</span>
+                <span>High</span>
+              </div>
+            </div>
           </div>
         </div>
+
+        {/* LEADERBOARD — 4 cols */}
+        <div className="col-span-12 lg:col-span-4" data-testid="pi-matrix-leaderboard">
+          <div className="text-[10px] uppercase tracking-wider text-slate-400 font-semibold mb-2">Top Performers</div>
+          <div className="divide-y divide-slate-100">
+            {topPerformers.map((p, i) => {
+              const up = (p.growth_pct ?? 0) >= 0;
+              const fill = HEALTH_FILL[p.inventory_health];
+              return (
+                <Link to={`/products/${p.id}`} key={p.id}
+                  className="flex items-center gap-2 py-2 -mx-2 px-2 rounded-lg hover:bg-slate-50 transition-colors"
+                  onMouseEnter={() => setHover(raw.find(x => x.id === p.id))}
+                  onMouseLeave={() => setHover(null)}
+                  data-testid={`pi-top-performer-${i}`}
+                >
+                  <span className="text-[10px] font-bold text-slate-400 w-3 text-center tabular-nums">{i + 1}</span>
+                  <span className="h-2 w-2 rounded-full flex-shrink-0" style={{ background: fill }} />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[11.5px] font-semibold text-slate-900 truncate leading-tight">{p.name}</div>
+                    <div className="flex items-center gap-1.5 text-[10px] mt-0.5">
+                      <span className="text-slate-600 font-semibold tabular-nums">{fmtMoney(p.revenue_90d)}</span>
+                      <span className={`tabular-nums font-semibold ${up ? "text-emerald-600" : "text-rose-600"}`}>{fmtPct(p.growth_pct)}</span>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* QUADRANT COUNT SUMMARY */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mt-4 pt-3 border-t border-slate-100" data-testid="pi-matrix-summary">
+        {[
+          { key: "stars", label: "Stars", color: "#7C3AED", bg: "bg-violet-50" },
+          { key: "emerging", label: "Emerging", color: "#10B981", bg: "bg-emerald-50" },
+          { key: "cash_cows", label: "Cash Cows", color: "#3B82F6", bg: "bg-blue-50" },
+          { key: "underperformers", label: "Underperformers", color: "#EF4444", bg: "bg-rose-50" },
+        ].map(q => (
+          <div key={q.key} className={`flex items-center gap-2 px-2.5 py-2 rounded-lg ${q.bg}`} data-testid={`pi-quad-${q.key}`}>
+            <span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ background: q.color }} />
+            <div className="min-w-0 flex-1">
+              <div className="text-[10px] text-slate-500 leading-tight">{q.label}</div>
+              <div className="text-[12.5px] font-bold text-slate-900 tabular-nums leading-tight">
+                {quadCounts[q.key]} <span className="text-slate-500 font-medium text-[10px]">Product{quadCounts[q.key] === 1 ? "" : "s"}</span>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
 
       <Link to="/analytics" className="inline-flex items-center gap-1 text-[12px] font-semibold text-violet-600 hover:text-violet-700 mt-3">
