@@ -220,10 +220,6 @@ async def product_intelligence(manufacturer_id: str):
                 at_risk_value += int(b.get("quantity", 0)) * float(p.get("unit_price", 0))
 
     total_units = sum(inv_units_by_product.values())
-    # Approximate prior-30d units via 1.0/1.126 to keep test stable when no
-    # historical inventory snapshots exist. (UI will still show animated +%)
-    prior_units = int(total_units / 1.126) if total_units else 0
-
     active_batches = sum(1 for b in batches if b["status"] != "expired" and b["status"] != "recalled")
 
     kpis = {
@@ -231,8 +227,11 @@ async def product_intelligence(manufacturer_id: str):
         "active_batches": {"value": active_batches, "sub": "Across network"},
         "units_in_network": {
             "value": total_units,
-            "growth_pct": _delta_pct(total_units, prior_units) if prior_units else None,
-            "sub": "vs last 30 days",
+            # No persisted historical inventory snapshot — let the UI render
+            # the value without a fabricated delta. (See review note in
+            # iteration_7.)
+            "growth_pct": None,
+            "sub": "Across network",
         },
         "expiring_90d": {
             "value": expiring_90d_units,
@@ -553,17 +552,30 @@ def _build_ai_brief(*, products_by_id, revenue_now, revenue_prev,
             "product_id": None,
         })
 
-    # Network Inventory Health Score
-    # Composite: 70% based on (1 - at_risk_pct) + 30% based on revenue growth
+    # Network Inventory Health Score (0-100)
+    # Composite of: at-risk pressure (50% weight), batch expiry pressure (30%)
+    # and average product growth (20%). Avoid the +10 fudge that previously
+    # pegged the demo score at 100.
     total_units = sum(inv_units_by_owner.values()) or 1
     total_at_risk = sum(qty for _, qty in risk_ranked)
     at_risk_pct = min(total_at_risk / total_units, 1.0)
+    # Batch-level expiry pressure — share of non-recalled batches that are
+    # expired or near-expiry (any active batches dataset present)
+    all_batches = [b for plist in batches_by_product.values() for b in plist]
+    n_batches = len(all_batches) or 1
+    bad_batches = sum(1 for b in all_batches if b["status"] in ("expired", "near_expiry"))
+    expiry_pressure = bad_batches / n_batches
     avg_growth = 0.0
     growths = [g for g in growth_by_product.values() if g is not None]
     if growths:
         avg_growth = sum(growths) / len(growths)
-    score = int(round((1 - at_risk_pct) * 70 + min(max(avg_growth, -10), 30) + 10))
-    score = max(0, min(100, score))
+    growth_component = max(min(avg_growth, 30), -30)  # clamp -30..+30
+    score = (
+        (1 - at_risk_pct) * 50 +
+        (1 - expiry_pressure) * 30 +
+        ((growth_component + 30) / 60) * 20
+    )
+    score = int(round(max(0, min(100, score))))
     if score >= 85:
         status = "Excellent"
     elif score >= 70:

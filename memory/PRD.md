@@ -235,6 +235,33 @@ Manufacturer can see all 91 distributors; Distributor sees all its retailers.
 - P3 — Email/SMS notifications integration
 - P3 — Real ServiceWorker offline support for Retailer OS
 
+## Updates (2026-06-04 — Product Intelligence Center)
+- **New backend route** `GET /api/manufacturer/{id}/product-intelligence`
+  in `routes/product_intelligence.py` — single fat aggregator returning
+  KPIs, AI brief, portfolio, performance matrix, batch health, expiry
+  risk, category performance, geographic heatmap, stock risk, recent
+  alerts. All values derived from real Mongo collections (no mocks).
+- **New `batches` collection** + idempotent seeder
+  (`services/seed_batches.py`). 3 batches per SKU = 45 batches total
+  across the demo manufacturer's 15 products, distributed across healthy
+  / near-expiry / expired states with deterministic batch numbers
+  (e.g. `AX260616B`). Re-running the seed never duplicates.
+- **New page** `/product-intelligence` (manufacturer role only) at
+  `views/ProductIntelligenceCenter.jsx`. 6 KPI cards · gradient AI brief
+  hero with Network Inventory Health Score donut · Product Portfolio
+  table (tabs: All / Healthy / Watch / At Risk + search) · Product
+  Performance Matrix (2×2 with leader-line labels) · Batch Health donut
+  · Expiry Risk donut with nearest-expiry callout · Category Performance
+  bars · Geographic Inventory Heatmap (real Nigeria state polygons) ·
+  Stock Risk Center (top 5) · Recent Alerts strip.
+- **Sidebar nav**: new `Product Intelligence` entry above
+  `Intelligence` for manufacturers.
+- **Pytest suite** at `backend/tests/test_product_intelligence.py` —
+  23/23 passing including idempotency check.
+- Score weighting: 50% risk + 30% expiry pressure + 20% growth (no
+  more +10 fudge); units_in_network growth dropped to null until a real
+  historical inventory snapshot exists.
+
 ## Updates (2026-06-03 — Premium Executive Command Center)
 ### Manufacturer dashboard visual upgrade (Stripe / HubSpot / Linear class)
 - **Executive Hero** (gradient, glassmorphism, AI orb illustration with
