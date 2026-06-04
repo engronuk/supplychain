@@ -16,7 +16,8 @@ import { toast } from "sonner";
  * ownerId, product { id, name, sku }, currentQty.
  */
 export default function AdjustInventoryDialog({
-  open, onOpenChange, ownerType, ownerId, product, currentQty = 0, onSaved,
+  open, onOpenChange, ownerType, ownerId, product, currentQty = 0,
+  initialDelta = 0, initialReason = "", onSaved,
 }) {
   const [mode, setMode] = useState("delta");
   const [delta, setDelta] = useState(0);
@@ -28,12 +29,12 @@ export default function AdjustInventoryDialog({
   useEffect(() => {
     if (open) {
       setMode("delta");
-      setDelta(0);
+      setDelta(initialDelta || 0);
       setAbsolute(currentQty);
       setReorder("");
-      setReason("");
+      setReason(initialReason || "");
     }
-  }, [open, currentQty]);
+  }, [open, currentQty, initialDelta, initialReason]);
 
   const projected = mode === "delta"
     ? Math.max(0, currentQty + Number(delta || 0))

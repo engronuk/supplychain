@@ -380,11 +380,18 @@ async def product_detail(manufacturer_id: str, product_id: str):
     recs: List[dict] = []
     # 1. Increase supply to top growth zone
     if top_zone:
+        units_to_add = 2000
         recs.append({
             "kind": "increase",
             "title": f"Increase supply to {top_zone}",
             "subtitle": "High demand and low stock",
-            "detail": "+2,000 units recommended",
+            "detail": f"+{units_to_add:,} units recommended",
+            "action": {
+                "type": "adjust_inventory",
+                "units_delta": units_to_add,
+                "zone": top_zone,
+                "reason": f"AI recommendation: increase supply to {top_zone}",
+            },
         })
     # 2. Monitor lagging zone
     if zone_rev_raw:
@@ -393,7 +400,11 @@ async def product_detail(manufacturer_id: str, product_id: str):
             "kind": "monitor",
             "title": f"Monitor {slowest}",
             "subtitle": "Slower movement detected",
-            "detail": "Review 3 distributors",
+            "detail": "Review distributors",
+            "action": {
+                "type": "navigate_distribution",
+                "zone": slowest,
+            },
         })
     # 3. Promote older batches if any near expiry
     nb = next(iter(sorted(batches, key=lambda x: x["_days_left"])), None)
@@ -403,6 +414,14 @@ async def product_detail(manufacturer_id: str, product_id: str):
             "title": "Promote older batches",
             "subtitle": f"{nb['batch_number']} has {nb['_days_left']} days left",
             "detail": "Run targeted promotions",
+            "action": {
+                "type": "draft_promotion",
+                "batch_number": nb["batch_number"],
+                "batch_id": nb["id"],
+                "days_remaining": nb["_days_left"],
+                "units_available": int(nb["units_available"]),
+                "suggested_discount_pct": 15 if nb["_days_left"] < 30 else 10,
+            },
         })
     # 4. Status quo
     recs.append({
@@ -410,6 +429,7 @@ async def product_detail(manufacturer_id: str, product_id: str):
         "title": "Maintain current levels",
         "subtitle": "No stockout risk detected" if days_of_cover > 14 else "Stockout risk — restock soon",
         "detail": "Good inventory turnover" if inventory_turnover > 2 else "Slow turnover",
+        "action": {"type": "acknowledge"},
     })
 
     # ---------- Demand Forecast ----------
@@ -558,3 +578,53 @@ async def product_detail(manufacturer_id: str, product_id: str):
             "market_penetration_pct": market_penetration,
         },
     }
+
+
+# ---------------------------------------------------------------------------
+# Promotion drafts — power the "Promote older batches" AI action
+# ---------------------------------------------------------------------------
+from pydantic import BaseModel, Field  # noqa: E402
+from core import new_id  # noqa: E402
+
+
+class PromotionDraft(BaseModel):
+    manufacturer_id: str
+    product_id: str
+    batch_id: str | None = None
+    batch_number: str
+    discount_pct: float = Field(ge=0, le=80)
+    target_zone: str | None = None
+    starts_at: str
+    ends_at: str
+    notes: str | None = None
+
+
+@router.post("/manufacturer/{manufacturer_id}/promotions")
+async def create_promotion_draft(manufacturer_id: str, body: PromotionDraft):
+    if body.manufacturer_id != manufacturer_id:
+        raise HTTPException(400, "manufacturer_id mismatch")
+    doc = {
+        "id": new_id(),
+        "manufacturer_id": manufacturer_id,
+        "product_id": body.product_id,
+        "batch_id": body.batch_id,
+        "batch_number": body.batch_number,
+        "discount_pct": body.discount_pct,
+        "target_zone": body.target_zone,
+        "starts_at": body.starts_at,
+        "ends_at": body.ends_at,
+        "notes": body.notes,
+        "status": "draft",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.promotions.insert_one(doc)
+    return {k: v for k, v in doc.items() if k != "_id"}
+
+
+@router.get("/manufacturer/{manufacturer_id}/promotions")
+async def list_promotion_drafts(manufacturer_id: str, product_id: str | None = None):
+    q = {"manufacturer_id": manufacturer_id}
+    if product_id:
+        q["product_id"] = product_id
+    items = await db.promotions.find(q, {"_id": 0}).sort("created_at", -1).to_list(200)
+    return {"items": items}

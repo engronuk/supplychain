@@ -22,6 +22,7 @@ import { Api } from "@/lib/api";
 import { STATE_PATHS, VIEWBOX as NG_VIEWBOX } from "@/lib/nigeriaStates";
 import EditProductDialog from "@/components/EditProductDialog";
 import AdjustInventoryDialog from "@/components/AdjustInventoryDialog";
+import DraftPromotionDialog from "@/components/DraftPromotionDialog";
 import {
   ArrowLeft, ChevronRight, Sparkles, Boxes, Edit2, MoreHorizontal,
   Tag, Copy, Download, QrCode, Package, TrendingUp, TrendingDown,
@@ -72,7 +73,28 @@ export default function ProductCommandCenter() {
   const [loading, setLoading] = useState(true);
   const [editOpen, setEditOpen] = useState(false);
   const [adjustOpen, setAdjustOpen] = useState(false);
+  const [promoOpen, setPromoOpen] = useState(false);
+  const [activeRecAction, setActiveRecAction] = useState(null);
   const [activeTab, setActiveTab] = useState("overview");
+
+  const handleRecAction = (rec) => {
+    const a = rec.action || {};
+    setActiveRecAction(a);
+    if (a.type === "adjust_inventory") {
+      setAdjustOpen(true);
+    } else if (a.type === "navigate_distribution") {
+      setActiveTab("distribution");
+      // Scroll to the heatmap so the user can see the focused zone
+      setTimeout(() => {
+        const el = document.querySelector('[data-testid="pcc-tab-distribution"]');
+        el && el.scrollIntoView({ behavior: "smooth" });
+      }, 50);
+    } else if (a.type === "draft_promotion") {
+      setPromoOpen(true);
+    } else {
+      // acknowledge — no-op, surface a toast handled in the child
+    }
+  };
 
   const load = () => {
     if (!session?.entity?.id) return;
@@ -166,7 +188,7 @@ export default function ProductCommandCenter() {
         <TabsBar activeTab={activeTab} onChange={setActiveTab} />
 
         {/* Tab panels */}
-        {activeTab === "overview" && <OverviewTab data={data} />}
+        {activeTab === "overview" && <OverviewTab data={data} onRecClick={handleRecAction} />}
         {activeTab === "batches" && <BatchesTab batches={data.batches} />}
         {activeTab === "expiry" && <ExpiryTab data={data} />}
         {activeTab === "distribution" && <DistributionTab data={data} />}
@@ -180,10 +202,21 @@ export default function ProductCommandCenter() {
         onSaved={() => { setEditOpen(false); load(); }}
       />
       <AdjustInventoryDialog
-        open={adjustOpen} onOpenChange={setAdjustOpen}
+        open={adjustOpen} onOpenChange={(o) => { setAdjustOpen(o); if (!o) setActiveRecAction(null); }}
         ownerType="manufacturer" ownerId={session.entity.id}
-        product={data.product} currentQty={data.inventory.distributor_stock}
-        onSaved={() => { setAdjustOpen(false); load(); }}
+        product={data.product}
+        currentQty={data.inventory.distributor_stock}
+        initialDelta={activeRecAction?.type === "adjust_inventory" ? activeRecAction.units_delta : 0}
+        initialReason={activeRecAction?.type === "adjust_inventory" ? activeRecAction.reason : ""}
+        onSaved={() => { setAdjustOpen(false); setActiveRecAction(null); load(); }}
+      />
+      <DraftPromotionDialog
+        open={promoOpen}
+        onOpenChange={(o) => { setPromoOpen(o); if (!o) setActiveRecAction(null); }}
+        manufacturerId={session.entity.id}
+        product={data.product}
+        batchAction={activeRecAction?.type === "draft_promotion" ? activeRecAction : null}
+        onSaved={() => { setPromoOpen(false); setActiveRecAction(null); }}
       />
     </div>
   );
@@ -459,7 +492,7 @@ function TabsBar({ activeTab, onChange }) {
 // ============================================================================
 // OVERVIEW TAB
 // ============================================================================
-function OverviewTab({ data }) {
+function OverviewTab({ data, onRecClick }) {
   return (
     <div className="space-y-6" data-testid="pcc-tab-overview">
       <div className="grid grid-cols-12 gap-6">
@@ -472,7 +505,7 @@ function OverviewTab({ data }) {
         <ExpiryRiskCard data={data.expiry_risk} unitPrice={data.product.unit_price} />
         <TopDistributorsTable rows={data.top_distributors} />
       </div>
-      <AIRecsBar recs={data.ai_recommendations} forecast={data.demand_forecast} />
+      <AIRecsBar recs={data.ai_recommendations} forecast={data.demand_forecast} onRecClick={onRecClick} />
     </div>
   );
 }
@@ -896,12 +929,12 @@ function TopDistributorsTable({ rows }) {
 }
 
 // --- AI Recommendations + Projected Growth gradient card ---
-function AIRecsBar({ recs, forecast }) {
+function AIRecsBar({ recs, forecast, onRecClick }) {
   const REC_ICONS = {
-    increase: { Icon: ArrowUp,         bg: "bg-emerald-50",  fg: "text-emerald-600" },
-    monitor:  { Icon: AlertTriangle,   bg: "bg-amber-50",    fg: "text-amber-600" },
-    promote:  { Icon: Megaphone,       bg: "bg-blue-50",     fg: "text-blue-600" },
-    maintain: { Icon: CheckCircle2,    bg: "bg-emerald-50",  fg: "text-emerald-600" },
+    increase: { Icon: ArrowUp,         bg: "bg-emerald-50",  fg: "text-emerald-600", cta: "Adjust inventory" },
+    monitor:  { Icon: AlertTriangle,   bg: "bg-amber-50",    fg: "text-amber-600",   cta: "Review distribution" },
+    promote:  { Icon: Megaphone,       bg: "bg-blue-50",     fg: "text-blue-600",    cta: "Draft promotion" },
+    maintain: { Icon: CheckCircle2,    bg: "bg-emerald-50",  fg: "text-emerald-600", cta: "Acknowledge" },
   };
   return (
     <div className="grid grid-cols-12 gap-6" data-testid="pcc-ai-recs">
@@ -916,13 +949,21 @@ function AIRecsBar({ recs, forecast }) {
             const cfg = REC_ICONS[r.kind] || REC_ICONS.maintain;
             const Icon = cfg.Icon;
             return (
-              <div key={i} className="rounded-xl border border-slate-100 p-3.5 hover:shadow-sm hover:border-slate-200 transition-all" data-testid={`pcc-rec-${i}`}>
+              <div key={i} className="rounded-xl border border-slate-100 p-3.5 hover:shadow-sm hover:border-slate-200 transition-all flex flex-col" data-testid={`pcc-rec-${i}`}>
                 <div className={`h-8 w-8 rounded-lg ${cfg.bg} ${cfg.fg} flex items-center justify-center mb-2.5`}>
                   <Icon className="h-3.5 w-3.5" />
                 </div>
                 <div className="text-[12.5px] font-semibold text-slate-900 leading-tight">{r.title}</div>
                 <div className="text-[10.5px] text-slate-500 leading-snug mt-1">{r.subtitle}</div>
                 <div className="text-[10.5px] text-slate-700 font-medium mt-1.5">{r.detail}</div>
+                <button
+                  type="button"
+                  onClick={() => onRecClick && onRecClick(r)}
+                  className="mt-3 inline-flex items-center justify-center gap-1 text-[10.5px] font-semibold text-violet-600 hover:text-violet-700 hover:bg-violet-50 px-2 py-1.5 rounded-md transition-colors w-full"
+                  data-testid={`pcc-rec-${i}-cta`}
+                >
+                  {cfg.cta} <ChevronRight className="h-2.5 w-2.5" />
+                </button>
               </div>
             );
           })}
