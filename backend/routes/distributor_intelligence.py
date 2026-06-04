@@ -103,12 +103,12 @@ async def distributor_intelligence(manufacturer_id: str, distributor_id: str):
     async for s in db.daily_sales.find(
         {"retailer_id": {"$in": retailer_ids}, "date": {"$gte": start_180}},
         {"_id": 0, "retailer_id": 1, "product_id": 1, "revenue": 1,
-         "quantity_sold": 1, "date": 1},
+         "quantity_sold": 1, "units": 1, "date": 1},
     ):
         rid = s["retailer_id"]
         d = s["date"]
         rev = float(s.get("revenue", 0))
-        units = int(s.get("quantity_sold", 0))
+        units = int(s.get("units", s.get("quantity_sold", 0)))
         if d >= start_90:
             rev_now_by_retailer[rid] += rev
             units_now_by_retailer[rid] += units
@@ -262,10 +262,10 @@ async def distributor_intelligence(manufacturer_id: str, distributor_id: str):
         # quick aggregation
         async for s in db.daily_sales.find(
             {"retailer_id": {"$in": list(rset)}, "product_id": pid, "date": {"$gte": start_90}},
-            {"_id": 0, "revenue": 1, "quantity_sold": 1},
+            {"_id": 0, "revenue": 1, "quantity_sold": 1, "units": 1},
         ):
             rev += float(s.get("revenue", 0))
-            units += int(s.get("quantity_sold", 0))
+            units += int(s.get("units", s.get("quantity_sold", 0)))
         if coverage_pct >= 75:
             perf = "Excellent"
         elif coverage_pct >= 50:
