@@ -86,6 +86,7 @@ function App() {
               <Route path="/products/:productId" element={<ProductCommandCenter />} />
               <Route path="/products/:productId/legacy" element={<ManufacturerProductDetail />} />
               <Route path="/distributors/:distributorId" element={<ManufacturerDistributorDetail />} />
+              <Route path="/distributors/:distributorId/retailers/:retailerId" element={<DistributorRetailerDetail />} />
               <Route path="/network-map" element={<ManufacturerNetworkView />} />
               <Route path="/analytics" element={<AnalyticsView />} />
               <Route path="/sales" element={<SalesBookView />} />

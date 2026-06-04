@@ -425,3 +425,25 @@ def _retailer_health_score(growth, days_since_order, sell_through, stockouts):
     score += min(sell_through / 4, 25)
     score -= stockouts * 5
     return int(max(0, min(100, score)))
+
+
+# =============================================================================
+# MANUFACTURER → DISTRIBUTOR → RETAILER drill-down
+# =============================================================================
+@router.get("/manufacturer/{manufacturer_id}/distributor/{distributor_id}/retailer/{retailer_id}")
+async def manufacturer_retailer_detail(
+    manufacturer_id: str, distributor_id: str, retailer_id: str,
+):
+    """Validate the manufacturer→distributor→retailer chain, then delegate to
+    the existing distributor-scoped aggregator so the manufacturer reuses the
+    same rich payload (overview, deliveries, stock requests, analytics,
+    transactions, AI insights) without duplicated logic.
+    """
+    distributor = await db.distributors.find_one(
+        {"id": distributor_id, "manufacturer_id": manufacturer_id}, {"_id": 0},
+    )
+    if not distributor:
+        raise HTTPException(404, "Distributor not found in your network")
+    # Reuse the already-tested aggregator
+    from routes.distributor import distributor_retailer_detail
+    return await distributor_retailer_detail(distributor_id, retailer_id)

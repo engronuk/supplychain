@@ -107,13 +107,13 @@ export default function ManufacturerDistributorDetail() {
 
         <div className="grid grid-cols-12 gap-6">
           <div className="col-span-12 lg:col-span-4">
-            <TopRetailers rows={data.top_retailers} />
+            <TopRetailers rows={data.top_retailers} distributorId={distributorId} />
           </div>
           <div className="col-span-12 lg:col-span-4">
             <ProductPenetration rows={data.product_penetration} />
           </div>
           <div className="col-span-12 lg:col-span-4">
-            <AttentionList rows={data.attention_retailers} />
+            <AttentionList rows={data.attention_retailers} distributorId={distributorId} />
           </div>
         </div>
 
@@ -754,7 +754,7 @@ const HEALTH_CHIP = {
   risk:    { bg: "bg-rose-50",    text: "text-rose-700",    label: "At Risk" },
 };
 
-function TopRetailers({ rows }) {
+function TopRetailers({ rows, distributorId }) {
   return (
     <div className="bg-white rounded-2xl p-5 shadow-[0_2px_8px_rgba(15,23,42,0.04)] border border-slate-100/70 h-full" data-testid="top-retailers-card">
       <div className="flex items-center justify-between mb-3">
@@ -771,7 +771,9 @@ function TopRetailers({ rows }) {
             const h = HEALTH_CHIP[r.health] || HEALTH_CHIP.healthy;
             const up = (r.growth_pct ?? 0) >= 0;
             return (
-              <div key={r.id} className="flex items-center gap-2.5 py-2.5" data-testid={`top-retailer-${i}`}>
+              <Link key={r.id} to={`/distributors/${distributorId}/retailers/${r.id}`}
+                className="flex items-center gap-2.5 py-2.5 -mx-2 px-2 rounded-lg hover:bg-slate-50 transition-colors"
+                data-testid={`top-retailer-${i}`}>
                 <span className="text-[10.5px] font-bold text-slate-400 w-4 text-center tabular-nums">{i + 1}</span>
                 <div className="min-w-0 flex-1">
                   <div className="text-[12.5px] font-semibold text-slate-900 truncate leading-tight">{titleCase(r.name)}</div>
@@ -786,7 +788,7 @@ function TopRetailers({ rows }) {
                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9.5px] font-bold ${h.bg} ${h.text}`}>
                   {h.label}
                 </span>
-              </div>
+              </Link>
             );
           })}
         </div>
@@ -849,7 +851,7 @@ function ProductPenetration({ rows }) {
 // =============================================================================
 // ATTENTION LIST
 // =============================================================================
-function AttentionList({ rows }) {
+function AttentionList({ rows, distributorId }) {
   return (
     <div className="bg-white rounded-2xl p-5 shadow-[0_2px_8px_rgba(15,23,42,0.04)] border border-slate-100/70 h-full" data-testid="attention-list-card">
       <div className="flex items-center justify-between mb-3">
@@ -869,7 +871,9 @@ function AttentionList({ rows }) {
           {rows.map((r, i) => {
             const isRisk = r.status === "At Risk";
             return (
-              <div key={r.id} className="flex items-start gap-3 py-1" data-testid={`attention-${i}`}>
+              <Link key={r.id} to={`/distributors/${distributorId}/retailers/${r.id}`}
+                className="flex items-start gap-3 py-1 -mx-2 px-2 rounded-lg hover:bg-slate-50 transition-colors"
+                data-testid={`attention-${i}`}>
                 <div className={`h-7 w-7 rounded-lg flex items-center justify-center flex-shrink-0 ${isRisk ? "bg-rose-50 text-rose-600" : "bg-amber-50 text-amber-600"}`}>
                   <AlertTriangle className="h-3.5 w-3.5" />
                 </div>
@@ -880,7 +884,7 @@ function AttentionList({ rows }) {
                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9.5px] font-bold flex-shrink-0 ${isRisk ? "bg-rose-50 text-rose-700" : "bg-amber-50 text-amber-700"}`}>
                   {r.status}
                 </span>
-              </div>
+              </Link>
             );
           })}
         </div>
@@ -991,7 +995,7 @@ function RetailerIntelligenceTable({ rows, distributorId }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
-            {filtered.map(r => <RetailerRow key={r.id} row={r} />)}
+            {filtered.map(r => <RetailerRow key={r.id} row={r} distributorId={distributorId} />)}
             {filtered.length === 0 && (
               <tr>
                 <td colSpan={10} className="text-center py-12 text-slate-400 text-xs">
@@ -1006,7 +1010,7 @@ function RetailerIntelligenceTable({ rows, distributorId }) {
   );
 }
 
-function RetailerRow({ row: r }) {
+function RetailerRow({ row: r, distributorId }) {
   const h = HEALTH_CHIP[r.health] || HEALTH_CHIP.healthy;
   const up = (r.growth_pct ?? 0) >= 0;
   const sinceOrder = (() => {
@@ -1045,9 +1049,11 @@ function RetailerRow({ row: r }) {
         </span>
       </td>
       <td className="py-2.5 pr-2 text-right">
-        <button className="inline-flex h-7 w-7 rounded-lg bg-slate-50 hover:bg-violet-50 items-center justify-center group-hover:bg-violet-100 transition-colors" data-testid={`retailer-cta-${r.id}`}>
+        <Link to={`/distributors/${distributorId}/retailers/${r.id}`}
+          className="inline-flex h-7 w-7 rounded-lg bg-slate-50 hover:bg-violet-50 items-center justify-center group-hover:bg-violet-100 transition-colors"
+          data-testid={`retailer-cta-${r.id}`}>
           <ChevronRight className="h-3.5 w-3.5 text-slate-400 group-hover:text-violet-600" />
-        </button>
+        </Link>
       </td>
     </tr>
   );

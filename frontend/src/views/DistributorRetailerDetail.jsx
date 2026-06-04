@@ -27,7 +27,7 @@ const INSIGHT_ICONS = {
 };
 
 export default function DistributorRetailerDetail() {
-  const { retailerId } = useParams();
+  const { retailerId, distributorId } = useParams();
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const initialTab = params.get("tab") || "overview";
@@ -36,14 +36,21 @@ export default function DistributorRetailerDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // Route-aware: manufacturer drill-down has /distributors/:distributorId/retailers/:retailerId.
+  // Distributor flow has /network/retailer/:retailerId (no distributorId param).
+  const isManufacturer = Boolean(distributorId) && session?.role === "manufacturer";
+
   useEffect(() => {
     if (!session?.entity?.id) return;
     setLoading(true);
-    Api.distributorRetailerDetail(session.entity.id, retailerId)
+    const fetcher = isManufacturer
+      ? Api.manufacturerRetailerDetail(session.entity.id, distributorId, retailerId)
+      : Api.distributorRetailerDetail(session.entity.id, retailerId);
+    fetcher
       .then(setData)
       .catch(() => setError("Could not load retailer detail."))
       .finally(() => setLoading(false));
-  }, [session?.entity?.id, retailerId]);
+  }, [session?.entity?.id, retailerId, distributorId, isManufacturer]);
 
   if (loading) return <div className="p-8 text-slate-500">Loading retailer workspace…</div>;
   if (error || !data) return <div className="p-8 text-rose-600">{error || "Not found."}</div>;
@@ -55,13 +62,16 @@ export default function DistributorRetailerDetail() {
     overview.stock_health_pct >= 40 ? { tone: "amber", chip: "bg-amber-50 text-amber-700 border-amber-200", dot: "#f59e0b" } :
     { tone: "rose", chip: "bg-rose-50 text-rose-700 border-rose-200", dot: "#ef4444" };
 
+  const backTarget = isManufacturer ? `/distributors/${distributorId}` : "/network";
+  const backLabel = isManufacturer ? "Back to distributor" : "Back to retailers";
+
   return (
     <div className="p-6 lg:p-8 max-w-[1500px] mx-auto" data-testid="retailer-detail">
       {/* Header */}
       <div className="flex items-start justify-between mb-6 gap-4">
         <div className="min-w-0">
-          <button onClick={() => navigate("/network")} className="inline-flex items-center gap-1 text-[12px] text-slate-500 hover:text-slate-900 mb-2 transition-colors">
-            <ChevronLeft className="h-3.5 w-3.5" /> Back to retailers
+          <button onClick={() => navigate(backTarget)} className="inline-flex items-center gap-1 text-[12px] text-slate-500 hover:text-slate-900 mb-2 transition-colors" data-testid="retailer-back-btn">
+            <ChevronLeft className="h-3.5 w-3.5" /> {backLabel}
           </button>
           <div className="flex flex-wrap items-center gap-3">
             <h1 className="text-[22px] font-bold tracking-tight text-slate-900">{retailer.name}</h1>
@@ -78,12 +88,26 @@ export default function DistributorRetailerDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
-          <Button asChild variant="outline" size="sm" data-testid="action-send-restock">
-            <Link to={`/shipments?retailer=${retailer.id}`}><Send className="h-3.5 w-3.5 mr-1.5" />Send Restock</Link>
-          </Button>
-          <Button asChild size="sm" data-testid="action-create-delivery">
-            <Link to={`/shipments?retailer=${retailer.id}&action=create`}><Truck className="h-3.5 w-3.5 mr-1.5" />Create Delivery</Link>
-          </Button>
+          {!isManufacturer && (
+            <>
+              <Button asChild variant="outline" size="sm" data-testid="action-send-restock">
+                <Link to={`/shipments?retailer=${retailer.id}`}><Send className="h-3.5 w-3.5 mr-1.5" />Send Restock</Link>
+              </Button>
+              <Button asChild size="sm" data-testid="action-create-delivery">
+                <Link to={`/shipments?retailer=${retailer.id}&action=create`}><Truck className="h-3.5 w-3.5 mr-1.5" />Create Delivery</Link>
+              </Button>
+            </>
+          )}
+          {isManufacturer && retailer.phone && (
+            <Button asChild variant="outline" size="sm" data-testid="action-call-retailer">
+              <a href={`tel:${retailer.phone}`}><Phone className="h-3.5 w-3.5 mr-1.5" />Call</a>
+            </Button>
+          )}
+          {isManufacturer && retailer.email && (
+            <Button asChild size="sm" data-testid="action-email-retailer">
+              <a href={`mailto:${retailer.email}`}><Mail className="h-3.5 w-3.5 mr-1.5" />Email</a>
+            </Button>
+          )}
         </div>
       </div>
 

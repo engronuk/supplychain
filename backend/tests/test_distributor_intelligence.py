@@ -139,3 +139,50 @@ class TestEmptyDistributor:
             body["kpis"]["retail_revenue_90d"]["value"], (int, float)
         )
         assert isinstance(body["retailer_table"], list)
+
+
+
+class TestRetailerDrilldown:
+    """Manufacturer-scoped retailer drill-down validates the
+    manufacturer→distributor→retailer chain and reuses the rich aggregator."""
+
+    DEMO_RETAILER = "29c22c05-b37e-4046-ad22-1c627fdd0395"  # Best Supermarket
+
+    def test_happy_path(self, client):
+        r = client.get(
+            f"{BASE_URL}/api/manufacturer/{MANUFACTURER_ID}/distributor/{DEMO_DIST}/retailer/{self.DEMO_RETAILER}",
+            timeout=30,
+        )
+        assert r.status_code == 200, r.text
+        body = r.json()
+        for k in ("retailer", "distributor", "overview", "deliveries",
+                  "delivery_summary", "stock_requests", "analytics",
+                  "transactions", "ai_insights"):
+            assert k in body, f"missing {k}"
+        assert body["retailer"]["id"] == self.DEMO_RETAILER
+        assert body["distributor"]["id"] == DEMO_DIST
+
+    def test_overview_block_has_kpis(self, client):
+        r = client.get(
+            f"{BASE_URL}/api/manufacturer/{MANUFACTURER_ID}/distributor/{DEMO_DIST}/retailer/{self.DEMO_RETAILER}",
+            timeout=30,
+        )
+        o = r.json()["overview"]
+        for k in ("stock_health_pct", "inventory_units", "active_orders",
+                  "pending_requests", "total_revenue",
+                  "in_stock", "low_stock", "out_of_stock"):
+            assert k in o
+
+    def test_404_wrong_manufacturer(self, client):
+        r = client.get(
+            f"{BASE_URL}/api/manufacturer/00000000-0000-0000-0000-000000000000/distributor/{DEMO_DIST}/retailer/{self.DEMO_RETAILER}",
+            timeout=15,
+        )
+        assert r.status_code == 404
+
+    def test_404_retailer_not_under_distributor(self, client):
+        r = client.get(
+            f"{BASE_URL}/api/manufacturer/{MANUFACTURER_ID}/distributor/{DEMO_DIST}/retailer/00000000-0000-0000-0000-000000000000",
+            timeout=15,
+        )
+        assert r.status_code == 404
