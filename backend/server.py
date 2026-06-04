@@ -34,6 +34,7 @@ from services.migrations import ensure_indexes
 from services.seed import seed_from_csv
 from services.seed_batches import seed_batches
 from services.seed_demo_users import seed_demo_users
+from services.refresh_demo_dates import refresh_demo_dates
 
 app = FastAPI(title="TradeKonekt API")
 api_router = APIRouter(prefix="/api")
@@ -124,6 +125,17 @@ async def auto_seed_if_needed():
             logger.info("Batches seeded: %s", result)
     except Exception:
         logger.exception("Batch seed failed (continuing)")
+
+    # Refresh seeded date fields so the demo always looks "actively used today".
+    # Idempotent — safe to run on every boot; only re-aligns timestamps.
+    try:
+        result = await refresh_demo_dates()
+        logger.info(
+            "Demo dates refreshed: %d documents updated across %d collections",
+            result.get("total_docs_updated", 0), len(result.get("operations", [])),
+        )
+    except Exception:
+        logger.exception("Demo date refresh failed (continuing)")
 
     # Start the proactive intelligence layer. Each job has its own staggered
     # first-run time so the heavy ones don't all kick off at once on boot.

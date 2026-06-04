@@ -339,3 +339,20 @@ Manufacturer can see all 91 distributors; Distributor sees all its retailers.
 - **Frontend** `DistributorRetailerDetail.jsx` is now route-aware: detects `distributorId` URL param + manufacturer role and swaps the back link to "Back to distributor" + hides Send Restock / Create Delivery CTAs (distributor-only) while exposing Call / Email shortcuts. Same component serves both `/network/retailer/:retailerId` (distributor flow) and `/distributors/:distributorId/retailers/:retailerId` (manufacturer drill-down).
 - **Wired-up entry points** inside the Distributor Intelligence Center: chevrons in the full Retailer Intelligence table, rows in Top Performing Retailers, and rows in Retailers Requiring Attention all navigate to the new drill-down route.
 - **Tested**: backend pytest 18/18 (incl. 4 new `TestRetailerDrilldown` cases). Frontend e2e 5/5 scenarios — chevron click navigates correctly, back button correct, distributor-only CTAs hidden in manufacturer mode, top-retailer / attention-list clicks navigate, and the original distributor flow (`/network/retailer/:retailerId`) regressed clean. Report: `/app/test_reports/iteration_9.json`.
+
+## Updates (2026-06-04 — Demo dates refresh)
+- **New idempotent service** `services/refresh_demo_dates.py` (+ admin endpoint `POST /api/seed/refresh-dates`) that re-aligns every seeded timestamp to "today" without touching ids, quantities, statuses or relationships. Runs automatically on every backend boot (server.py lifespan) so the demo environment always looks actively used.
+- **Touches** (all idempotent · 98k+ docs per pass):
+  - `daily_sales.date` shifted so latest = today (30-day window stays intact).
+  - `sales` (POS) shifted so latest is within last few hours.
+  - `shipments`: received → received_at in last 7d preserving created→dispatched→received gaps; in_transit → dispatched in last 1-5d; pending → created in last 1-3d.
+  - `requests`: pending in last 1-3d; resolved in last 7d preserving created→resolved gap.
+  - `notifications` spread across last 7d.
+  - `inventory.updated_at`: 16 hash-bucketed `update_many` calls spread across last 7d (avoids 47k individual writes).
+  - `inventory_audit.created_at`, `batches.created_at` in last 7d.
+  - `intel_alerts/recommendations/insights` within last 1-3d.
+  - `intel_executive_summaries.generated_at` within last 24h.
+  - `intel_forecasts.computed_at`, `intel_retailer_health.updated_at`, `intel_external_signals.updated_at`, `intel_delivery_eta.updated_at` = now (eta_date recalculated from `eta_days`).
+  - `promotions.starts_at/ends_at` shifted to start today; `created_at` in last 7d.
+  - `users.last_login_at` within last 24h.
+- **Never touches** master data (`manufacturers`, `distributors`, `retailers`, `products`, `users.created_at`, `batches.manufactured_at`, `batches.expiry_date`).

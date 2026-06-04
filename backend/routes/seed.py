@@ -13,6 +13,7 @@ from services.seed_backfill import (
     backfill_sample_requests, backfill_sample_shipments,
 )
 from services.seed_daily_sales import seed_daily_sales
+from services.refresh_demo_dates import refresh_demo_dates
 
 router = APIRouter()
 
@@ -144,3 +145,20 @@ async def seed_backfill_endpoint(retailers_limit: int = 5000):
       3) POST /api/seed/daily-sales         (analytics history)
     """
     return await backfill_all(retailers_limit=retailers_limit)
+
+
+
+@router.post("/seed/refresh-dates")
+async def seed_refresh_dates_endpoint():
+    """Refresh every seeded date field so the demo environment looks
+    actively used today. Idempotent — preserves all relative spread,
+    relationships, quantities, statuses, and ids.
+
+    Touches: daily_sales, sales, shipments, requests, notifications,
+    inventory.updated_at, inventory_audit, batches.created_at, all intel_*
+    collections, promotions, users.last_login_at.
+
+    Never touches master data (manufacturers, distributors, retailers,
+    products, users.created_at).
+    """
+    return await refresh_demo_dates()
