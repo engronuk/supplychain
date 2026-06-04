@@ -1,6 +1,7 @@
 """TradeKonekt FastAPI entry — routers are registered from /backend/routes."""
 from __future__ import annotations
 
+import asyncio
 import os
 
 from fastapi import APIRouter, FastAPI
@@ -88,12 +89,20 @@ app.add_middleware(CORSMiddleware, **_cors_kwargs)
 
 
 @app.on_event("startup")
-async def auto_seed_if_needed():
-    """On boot: ensure indexes (idempotent) and auto-seed when the DB is empty.
+async def boot_app():
+    """Open the HTTP port FAST, then bootstrap the database in the background.
 
-    This is what makes a fresh PRODUCTION deployment usable on first request
-    without a manual migration step. If the data dir is missing in the
-    deployed image, the seed will short-circuit gracefully (empty inserts).
+    On a cold deploy against Atlas, seeding 47k inventory rows + 3k retailers
+    + running the demo-date refresh (~98k updates) easily takes 60-90s. If
+    that work runs inside the startup hook, uvicorn never binds the socket
+    until it finishes — Kubernetes' readiness probe times out, kills the
+    pod, and the deploy enters a CrashLoopBackOff (visible in the logs as
+    repeated 'Indexes ensured' lines + nginx 'Connection refused' upstream
+    errors).
+
+    We keep `ensure_indexes()` blocking (idempotent, sub-second) so any
+    query that arrives the moment the port opens has the right indexes.
+    Everything else is offloaded.
     """
     try:
         idx = await ensure_indexes()
@@ -101,13 +110,26 @@ async def auto_seed_if_needed():
     except Exception:
         logger.exception("ensure_indexes failed on startup (continuing)")
 
+    # Fire-and-forget. The task keeps a reference on the app state so the
+    # garbage collector doesn't drop it mid-flight.
+    app.state.bootstrap_task = asyncio.create_task(_background_bootstrap())
+
+
+async def _background_bootstrap():
+    """Heavy, deploy-aware bootstrap that runs AFTER the port is open."""
     if await db.manufacturers.count_documents({}) == 0:
         logger.info("Empty manufacturer collection — auto-seeding from CSVs.")
         try:
             result = await seed_from_csv()
             logger.info("Auto-seed complete: %s", result)
+            # Freshly-seeded data already has current timestamps — skip the
+            # refresh pass to avoid churning 98k docs on a cold deploy.
+            fresh_seed = True
         except Exception:
             logger.exception("Auto-seed failed — run `python seed.py --force` manually.")
+            fresh_seed = False
+    else:
+        fresh_seed = False
 
     # Idempotent demo-user seed — creates super-admin + 1:1 demo accounts on
     # first boot. Safe to call every boot: existing users are left untouched.
@@ -126,26 +148,28 @@ async def auto_seed_if_needed():
     except Exception:
         logger.exception("Batch seed failed (continuing)")
 
-    # Refresh seeded date fields so the demo always looks "actively used today".
-    # Idempotent — safe to run on every boot; only re-aligns timestamps.
-    try:
-        result = await refresh_demo_dates()
-        logger.info(
-            "Demo dates refreshed: %d documents updated across %d collections",
-            result.get("total_docs_updated", 0), len(result.get("operations", [])),
-        )
-    except Exception:
-        logger.exception("Demo date refresh failed (continuing)")
+    # Refresh seeded date fields so the demo always looks "actively used
+    # today". Skipped immediately after a fresh seed (data is already
+    # current). Idempotent — safe to run on every subsequent boot.
+    if not fresh_seed:
+        try:
+            result = await refresh_demo_dates()
+            logger.info(
+                "Demo dates refreshed: %d documents updated across %d collections",
+                result.get("total_docs_updated", 0), len(result.get("operations", [])),
+            )
+        except Exception:
+            logger.exception("Demo date refresh failed (continuing)")
+    else:
+        logger.info("Demo date refresh skipped (fresh seed has current timestamps).")
 
     # Start the proactive intelligence layer. Each job has its own staggered
     # first-run time so the heavy ones don't all kick off at once on boot.
-    # No initial pass is launched at startup — the scheduler's staggered
-    # first runs handle the cold-start case, and /api/intel/recompute is
-    # available for on-demand kicks.
     try:
         start_scheduler()
+        logger.info("Background bootstrap complete.")
     except Exception:
-        logger.exception("Intel scheduler failed to start")
+        logger.exception("Failed to start intel scheduler")
 
 
 @app.on_event("shutdown")
