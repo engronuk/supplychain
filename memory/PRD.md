@@ -356,3 +356,9 @@ Manufacturer can see all 91 distributors; Distributor sees all its retailers.
   - `promotions.starts_at/ends_at` shifted to start today; `created_at` in last 7d.
   - `users.last_login_at` within last 24h.
 - **Never touches** master data (`manufacturers`, `distributors`, `retailers`, `products`, `users.created_at`, `batches.manufactured_at`, `batches.expiry_date`).
+
+## Updates (2026-06-04 — Deployment fix: non-blocking startup)
+- **Bug**: Production deploy crash-looped with nginx 502 "Connection refused" — backend logs showed `Indexes ensured` 3× in 40s before any traffic reached uvicorn.
+- **Root cause**: All heavy bootstrap (CSV seed of ~47k inventory rows + ~3k retailers, demo-user seed, batch seed, the new 98k-doc `refresh_demo_dates`, scheduler boot) ran inside `@app.on_event("startup")` *before* uvicorn bound the socket. On Atlas latencies this exceeded the K8s readiness probe window → pod killed before listening → CrashLoopBackOff.
+- **Fix**: `server.py` now keeps only `ensure_indexes()` (sub-second, idempotent) in the startup hook. Everything else is offloaded to `_background_bootstrap()` via `asyncio.create_task()` with the reference parked on `app.state.bootstrap_task`. On a fresh seed the demo-date refresh is auto-skipped (fresh data already has current timestamps), avoiding a 60-90s churn during the first cold deploy.
+- **Verified locally**: `/api/health` opens in <300ms, demo accounts available immediately, "Application startup complete." now logs *before* the background work.
