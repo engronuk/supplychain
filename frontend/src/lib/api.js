@@ -129,6 +129,8 @@ export const Api = {
   // Manufacturer drill-down
   manufacturerOverview: (manufacturer_id) =>
     api.get(`/manufacturer/${manufacturer_id}/overview`).then((r) => r.data),
+  manufacturerProductIntelligence: (manufacturer_id) =>
+    api.get(`/manufacturer/${manufacturer_id}/product-intelligence`).then((r) => r.data),
   manufacturerProducts: (manufacturer_id) =>
     api.get(`/manufacturer/${manufacturer_id}/products`).then((r) => r.data),
   manufacturerProductDetail: (manufacturer_id, product_id) =>

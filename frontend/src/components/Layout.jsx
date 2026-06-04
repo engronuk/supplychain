@@ -23,6 +23,7 @@ import {
   ChevronRight,
   Receipt,
   BrainCircuit,
+  Sparkles,
 } from "lucide-react";
 
 const ROLE_ICON = {
@@ -44,6 +45,7 @@ function navForRole(role) {
     { to: "/shipments", label: "Shipments", icon: Truck },
   ];
   if (role === "manufacturer") {
+    base.push({ to: "/product-intelligence", label: "Product Intelligence", icon: Sparkles });
     base.push({ to: "/intel", label: "Intelligence", icon: BrainCircuit });
     base.push({ to: "/network-map", label: "Network Map", icon: Radar });
     base.push({ to: "/network", label: "Distributors", icon: Network });

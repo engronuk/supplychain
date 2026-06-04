@@ -22,6 +22,7 @@ import SuperAdminConsole from "@/views/SuperAdminConsole";
 import DemoAccountsPage from "@/views/DemoAccountsPage";
 import ManufacturerProductDetail from "@/views/ManufacturerProductDetail";
 import ManufacturerDistributorDetail from "@/views/ManufacturerDistributorDetail";
+import ProductIntelligenceCenter from "@/views/ProductIntelligenceCenter";
 import { Toaster } from "@/components/ui/sonner";
 import { Loader2 } from "lucide-react";
 
@@ -74,6 +75,7 @@ function App() {
             <Route path="/demo" element={<DemoAccountsPage />} />
             <Route element={<Protected><Layout /></Protected>}>
               <Route path="/dashboard" element={<RoleDashboard />} />
+              <Route path="/product-intelligence" element={<ProductIntelligenceCenter />} />
               <Route path="/inventory" element={<InventoryView />} />
               <Route path="/shipments" element={<ShipmentTracker />} />
               <Route path="/requests" element={<RequestsView />} />

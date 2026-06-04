@@ -19,6 +19,7 @@ from routes import (
     inventory,
     manufacturer,
     notifications,
+    product_intelligence,
     reports,
     retailer_os,
     sales,
@@ -29,6 +30,7 @@ from routes import (
 from services.intel.scheduler import start_scheduler, stop_scheduler
 from services.migrations import ensure_indexes
 from services.seed import seed_from_csv
+from services.seed_batches import seed_batches
 from services.seed_demo_users import seed_demo_users
 
 app = FastAPI(title="TradeKonekt API")
@@ -48,6 +50,7 @@ for r in (
     geo.router,
     distributor.router,
     manufacturer.router,
+    product_intelligence.router,
     retailer_os.router,
     assistant.router,
     sales.router,
@@ -109,6 +112,14 @@ async def auto_seed_if_needed():
             logger.info("Demo users seeded: %s", result)
     except Exception:
         logger.exception("Demo user seed failed (continuing)")
+
+    # Idempotent batch seed — ensures every product has 3 traceable batches.
+    try:
+        result = await seed_batches()
+        if result.get("created"):
+            logger.info("Batches seeded: %s", result)
+    except Exception:
+        logger.exception("Batch seed failed (continuing)")
 
     # Start the proactive intelligence layer. Each job has its own staggered
     # first-run time so the heavy ones don't all kick off at once on boot.
