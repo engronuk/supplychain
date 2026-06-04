@@ -235,6 +235,26 @@ Manufacturer can see all 91 distributors; Distributor sees all its retailers.
 - P3 — Email/SMS notifications integration
 - P3 — Real ServiceWorker offline support for Retailer OS
 
+## Updates (2026-06-04 — Product Command Center)
+- **New backend route** `GET /api/manufacturer/{id}/product-detail/{product_id}`
+  in `routes/product_detail.py` — single fat aggregator that returns
+  product identification, health, 6 KPIs (with growth deltas), AI summary,
+  inventory health (8 metrics), 90-day daily sales series, per-state
+  geographic, batches, expiry risk buckets + nearest expiry, top
+  distributors, AI recommendations, demand forecast (30/60/90), activity
+  log, and performance rankings.
+- **New page** `/products/:productId` at `views/ProductCommandCenter.jsx`
+  — replaces the old basic product detail view. Header + 3-column
+  identification strip + 6 KPI cards + 7 tabs. Overview tab has 3 rows:
+  (1) Inventory Health · Sales Trend · Geographic Heatmap, (2) Batch
+  Intelligence · Expiry Risk · Top Distributors, (3) AI Recommendations
+  + Projected Growth gradient card. Other tabs (Batches / Expiry /
+  Distribution / Forecast / Performance / Activity) consume the same
+  payload. Old page kept at `/products/:productId/legacy`.
+- Sales Trend uses bars (units) + smooth line (revenue) with dual y-axis,
+  hover guideline + tooltip, and 30/60/90-day range selector.
+- Deterministic QR-like SVG generated client-side for each SKU.
+
 ## Updates (2026-06-04 — Product Intelligence Center)
 - **New backend route** `GET /api/manufacturer/{id}/product-intelligence`
   in `routes/product_intelligence.py` — single fat aggregator returning
