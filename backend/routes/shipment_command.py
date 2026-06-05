@@ -158,8 +158,8 @@ async def _build_shipment_command(manufacturer_id: str):
 
         enriched.append({
             **s, "value": value, "units": units, "bucket": bucket,
-            "distributor_name": d.get("name", "Unknown"),
-            "distributor_city": d.get("city", ""),
+            "distributor_name": d.get("name") or "Unknown",
+            "distributor_city": d.get("city") or "",
             "distributor_region": _resolve_region(d),
             "days_in_transit": days_in_transit,
             "products_count": len({it.get("product_id") for it in items}),
@@ -194,8 +194,8 @@ async def _build_shipment_command(manufacturer_id: str):
     dv_growth = _delta_pct(cur, prev)
     cur, prev = _count(lambda r: r["bucket"] == "delayed", "dispatched_at")
     dl_growth = _delta_pct(cur, prev)
-    cur_val = sum(r["value"] for r in enriched if r.get("created_at", "") >= cutoff_7)
-    prev_val = sum(r["value"] for r in enriched if cutoff_14 <= r.get("created_at", "") < cutoff_7)
+    cur_val = sum(r["value"] for r in enriched if (r.get("created_at") or "") >= cutoff_7)
+    prev_val = sum(r["value"] for r in enriched if cutoff_14 <= (r.get("created_at") or "") < cutoff_7)
     val_growth = _delta_pct(cur_val, prev_val)
 
     # Daily-bucket sparklines for the last 30 days — single pass over enriched
@@ -293,7 +293,7 @@ async def _build_shipment_command(manufacturer_id: str):
         fill = round(st["fulfilled"] / max(st["ordered"], 1) * 100, 1)
         score = accuracy * 0.5 + fill * 0.4 + (100 - min((avg_h or 0) / 1.5, 100)) * 0.1
         dist_perf.append({
-            "id": did, "name": d.get("name", "Unknown"),
+            "id": did, "name": d.get("name") or "Unknown",
             "received": int(st["received"]),
             "avg_confirmation_hours": round(avg_h, 1) if avg_h else None,
             "accuracy_pct": accuracy, "fill_rate_pct": fill,
@@ -305,18 +305,19 @@ async def _build_shipment_command(manufacturer_id: str):
     # ---- Exceptions panel --------------------------------------------------
     exceptions: List[dict] = []
     for r in enriched:
+        dit = r.get("days_in_transit") or 0
         if r["bucket"] == "delayed":
             exceptions.append({
-                "shipment_id": r["id"], "tracking_code": r.get("tracking_code"),
+                "shipment_id": r["id"], "tracking_code": r.get("tracking_code") or r["id"][:8].upper(),
                 "type": "delayed", "label": "Delayed",
                 "distributor": r["distributor_name"],
                 "severity": "high",
-                "detail": f"In transit {r.get('days_in_transit', 0):.1f} days",
+                "detail": f"In transit {dit:.1f} days",
                 "expected": r.get("dispatched_at"),
             })
-        elif r["bucket"] == "in_transit" and r.get("days_in_transit", 0) and r["days_in_transit"] > 3:
+        elif r["bucket"] == "in_transit" and dit > 3:
             exceptions.append({
-                "shipment_id": r["id"], "tracking_code": r.get("tracking_code"),
+                "shipment_id": r["id"], "tracking_code": r.get("tracking_code") or r["id"][:8].upper(),
                 "type": "missing_ack", "label": "Acknowledgement pending",
                 "distributor": r["distributor_name"], "severity": "medium",
                 "detail": "Arrived but not yet acknowledged",
@@ -353,7 +354,7 @@ async def _build_shipment_command(manufacturer_id: str):
 
     # ---- Table rows (cap to the 200 most recent for a snappy response) ----
     table_rows = []
-    for r in sorted(enriched, key=lambda x: x.get("created_at", ""), reverse=True)[:200]:
+    for r in sorted(enriched, key=lambda x: x.get("created_at") or "", reverse=True)[:200]:
         # Expected arrival = dispatched_at + 2 days, or created_at + 5 days for pending
         exp_arrival = None
         if r.get("dispatched_at"):
@@ -369,7 +370,7 @@ async def _build_shipment_command(manufacturer_id: str):
         )
         table_rows.append({
             "id": r["id"],
-            "tracking_code": r.get("tracking_code", r["id"][:8].upper()),
+            "tracking_code": r.get("tracking_code") or r["id"][:8].upper(),
             "distributor_id": r.get("to_id"),
             "distributor_name": r["distributor_name"],
             "distributor_city": r["distributor_city"],
@@ -441,7 +442,7 @@ async def shipment_intelligence(manufacturer_id: str, shipment_id: str):
         total_value += unit_price * qty
         manifest.append({
             "product_id": pid,
-            "product_name": prod.get("name", "Unknown"),
+            "product_name": prod.get("name") or "Unknown",
             "sku": prod.get("sku"),
             "batch_number": batch.get("batch_number"),
             "quantity": qty,
@@ -492,7 +493,7 @@ async def shipment_intelligence(manufacturer_id: str, shipment_id: str):
     return {
         "shipment": {
             "id": s["id"],
-            "tracking_code": s.get("tracking_code", s["id"][:8].upper()),
+            "tracking_code": s.get("tracking_code") or s["id"][:8].upper(),
             "status": s.get("status"),
             "created_at": s.get("created_at"),
             "dispatched_at": s.get("dispatched_at"),
@@ -503,10 +504,10 @@ async def shipment_intelligence(manufacturer_id: str, shipment_id: str):
             ),
         },
         "route": {
-            "from": {"name": manufacturer.get("name", "Manufacturer"), "city": "Lagos", "state": "Lagos State"},
-            "to": {"name": distributor.get("name", "Distributor"),
-                   "city": distributor.get("city", "—"),
-                   "state": distributor.get("state", "—")},
+            "from": {"name": manufacturer.get("name") or "Manufacturer", "city": "Lagos", "state": "Lagos State"},
+            "to": {"name": distributor.get("name") or "Distributor",
+                   "city": distributor.get("city") or "—",
+                   "state": distributor.get("state") or "—"},
         },
         "overview": {
             "shipment_value": round(total_value, 2),
