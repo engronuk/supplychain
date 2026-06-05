@@ -104,8 +104,13 @@ def _delta_pct(curr: float, prev: float) -> float | None:
 
 def _quadrant(rev: float, penetration: float,
               med_rev: float, med_pen: float) -> str:
-    hi_rev = rev >= med_rev
-    hi_pen = penetration >= med_pen
+    # `>=` against the median + positive-value gate. The gate prevents
+    # distributors with rev=0 from being miscategorized when the median is
+    # also 0 (sparse tenants); `>=` instead of `>` ensures the median itself
+    # qualifies as a leader (otherwise a 1-distributor cohort never produces
+    # a Star).
+    hi_rev = rev > 0 and rev >= med_rev
+    hi_pen = penetration > 0 and penetration >= med_pen
     if hi_rev and hi_pen:
         return "stars"
     if not hi_rev and hi_pen:
@@ -373,11 +378,14 @@ async def _build_distributor_network(manufacturer_id: str):
     }
 
     # ----- Performance Matrix (every distributor with revenue) --------------
-    if rows:
-        med_rev = sorted([r["revenue_90d"] for r in rows])[len(rows) // 2]
-        med_pen = sorted([r["penetration_pct"] for r in rows])[len(rows) // 2]
-    else:
-        med_rev = med_pen = 0
+    # Use medians of non-zero distributors as the thresholds — otherwise a
+    # sparse tenant where most distributors have 0 revenue/penetration
+    # collapses the median to 0 and every active distributor lands in
+    # "stars". This gives more meaningful quadrant splits.
+    rev_pool = [r["revenue_90d"] for r in rows if r["revenue_90d"] > 0]
+    pen_pool = [r["penetration_pct"] for r in rows if r["penetration_pct"] > 0]
+    med_rev = sorted(rev_pool)[len(rev_pool) // 2] if rev_pool else 0
+    med_pen = sorted(pen_pool)[len(pen_pool) // 2] if pen_pool else 0
 
     def _initials(name: str) -> str:
         # Take the first letter of the first two meaningful tokens.
@@ -403,7 +411,16 @@ async def _build_distributor_network(manufacturer_id: str):
             return "D"
         return "F"
 
-    matrix_pool = [r for r in rows if r["revenue_90d"] > 0]
+    # Curated set — sort by composite signal (any meaningful revenue or
+    # penetration first, then by health score) and keep the top 20 so the
+    # matrix tells a clear strategic story instead of becoming a wall of
+    # dots on a sparse tenant.
+    def _sig(r: dict) -> tuple:
+        has_signal = 1 if (r["revenue_90d"] > 0 or r["penetration_pct"] > 0) else 0
+        return (has_signal, r["revenue_90d"] + r["penetration_pct"] * 1000,
+                r["health_score"])
+
+    matrix_pool = sorted(rows, key=_sig, reverse=True)[:20]
     matrix = []
     for r in matrix_pool:
         rev = r["revenue_90d"]

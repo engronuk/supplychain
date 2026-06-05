@@ -439,11 +439,11 @@ const QUADRANT_META = {
 };
 
 const HEALTH_DOT = {
-  excellent: "#5B21B6",
-  good:      "#2563EB",
-  fair:      "#F59E0B",
-  poor:      "#F97316",
-  critical:  "#DC2626",
+  excellent: "#10B981",   // green — matches reference image legend
+  good:      "#3B82F6",   // blue
+  fair:      "#F59E0B",   // amber
+  poor:      "#F97316",   // orange
+  critical:  "#DC2626",   // red
 };
 const HEALTH_LABEL = {
   excellent: "Excellent", good: "Good", fair: "Fair", poor: "Poor", critical: "Critical",
@@ -471,10 +471,11 @@ function PerformanceMatrix({ points }) {
   const revMin = Math.min(...list.map((p) => p.revenue_90d), 0);
   const revMax = Math.max(...list.map((p) => p.revenue_90d), 1);
 
-  // Sqrt scaling tames revenue outliers without compressing small bubbles too far.
+  // Dot scaling: 5px → 14px depending on revenue (much smaller than bubbles
+  // so quadrants stay readable; full names render as labels beside them).
   const xScale = (v) => Math.sqrt(Math.max(v, 0) / xMax);
   const yScale = (v) => Math.max(v, 0) / Math.max(yMax, 1);
-  const rScale = (v) => 16 + Math.sqrt((v - revMin) / Math.max(revMax - revMin, 1)) * 22;
+  const rScale = (v) => 5 + Math.sqrt((v - revMin) / Math.max(revMax - revMin, 1)) * 9;
 
   const positioned = list.map((p) => ({
     ...p,
@@ -483,15 +484,22 @@ function PerformanceMatrix({ points }) {
     r: rScale(p.revenue_90d),
   }));
 
+  // Label placement — alternate sides so adjacent dots don't collide.
+  const labelled = positioned.map((p, idx) => {
+    const inLeftHalf = p.cx < PAD_L + PLOT_W / 2;
+    const side = inLeftHalf ? "right" : "left";
+    return { ...p, side };
+  });
+
   // Anti-overlap nudging.
   for (let it = 0; it < 120; it++) {
     let moved = 0;
-    for (let i = 0; i < positioned.length; i++) {
-      for (let j = i + 1; j < positioned.length; j++) {
-        const a = positioned[i], b = positioned[j];
+    for (let i = 0; i < labelled.length; i++) {
+      for (let j = i + 1; j < labelled.length; j++) {
+        const a = labelled[i], b = labelled[j];
         const dx = b.cx - a.cx, dy = b.cy - a.cy;
         const dist = Math.hypot(dx, dy) || 0.01;
-        const target = a.r + b.r + 4;
+        const target = a.r + b.r + 22;
         if (dist < target) {
           const push = (target - dist) / 2;
           const ux = dx / dist, uy = dy / dist;
@@ -500,11 +508,12 @@ function PerformanceMatrix({ points }) {
           moved++;
         }
       }
-      positioned[i].cx = Math.max(PAD_L + positioned[i].r, Math.min(W - PAD_R - positioned[i].r, positioned[i].cx));
-      positioned[i].cy = Math.max(PAD_T + positioned[i].r, Math.min(H - PAD_B - positioned[i].r, positioned[i].cy));
+      labelled[i].cx = Math.max(PAD_L + labelled[i].r + 4, Math.min(W - PAD_R - labelled[i].r - 4, labelled[i].cx));
+      labelled[i].cy = Math.max(PAD_T + labelled[i].r + 4, Math.min(H - PAD_B - labelled[i].r - 4, labelled[i].cy));
     }
     if (moved === 0) break;
   }
+  const positioned2 = labelled;
 
   // ---- Leader callouts ------------------------------------------------------
   const stars = list.filter((p) => p.quadrant === "stars").slice(0, 3);
@@ -628,9 +637,20 @@ function PerformanceMatrix({ points }) {
               <text x={PAD_L} y={H - 22} fontSize="9.5" fill="#94A3B8">Low</text>
               <text x={PAD_L + PLOT_W} y={H - 22} fontSize="9.5" fill="#94A3B8" textAnchor="end">High</text>
 
-              {/* Bubbles */}
-              {positioned.map((p) => {
+              {/* Dots + name labels */}
+              {positioned2.map((p) => {
                 const isHover = hovered === p.id;
+                const fill = HEALTH_DOT[p.health_band] || HEALTH_DOT.fair;
+                const labelX = p.side === "right" ? p.cx + p.r + 6 : p.cx - p.r - 6;
+                const anchor = p.side === "right" ? "start" : "end";
+                // Wrap long names into two lines for readability.
+                const words = (p.name || "").split(" ");
+                let line1 = words[0] || "";
+                let line2 = words.slice(1).join(" ");
+                if (!line2 && line1.length > 14) {
+                  line2 = line1.slice(14);
+                  line1 = line1.slice(0, 14);
+                }
                 return (
                   <g
                     key={p.id}
@@ -639,22 +659,42 @@ function PerformanceMatrix({ points }) {
                     style={{ cursor: "pointer" }}
                     data-testid={`matrix-bubble-${p.id}`}
                   >
-                    <circle cx={p.cx} cy={p.cy} r={p.r}
-                      fill={HEALTH_DOT[p.health_band] || HEALTH_DOT.fair}
-                      fillOpacity={isHover ? 0.95 : 0.82}
-                      stroke="white" strokeWidth="2.5"
-                      filter="url(#bubble-shadow)"
-                      style={{
-                        transition: "r 200ms ease, fill-opacity 200ms ease",
-                        transform: isHover ? "scale(1.06)" : "scale(1)",
-                        transformOrigin: `${p.cx}px ${p.cy}px`,
-                      }}
+                    <circle
+                      cx={p.cx} cy={p.cy} r={p.r + 4}
+                      fill={fill}
+                      fillOpacity={isHover ? 0.18 : 0}
+                      style={{ transition: "fill-opacity 180ms ease" }}
                     />
-                    <text x={p.cx} y={p.cy} textAnchor="middle" dominantBaseline="middle"
-                      fontSize={Math.max(10, p.r * 0.42)} fontWeight="800"
-                      fill="white" style={{ pointerEvents: "none", letterSpacing: 0.5 }}>
-                      {p.initials || p.name.slice(0, 2).toUpperCase()}
+                    <circle
+                      cx={p.cx} cy={p.cy} r={p.r}
+                      fill={fill}
+                      stroke="white" strokeWidth="1.2"
+                      filter="url(#bubble-shadow)"
+                    />
+                    <text
+                      x={labelX}
+                      y={p.cy - (line2 ? 2 : 4)}
+                      textAnchor={anchor}
+                      fontSize="10.5"
+                      fontWeight="600"
+                      fill="#1E293B"
+                      style={{ pointerEvents: "none" }}
+                    >
+                      {line1}
                     </text>
+                    {line2 && (
+                      <text
+                        x={labelX}
+                        y={p.cy + 10}
+                        textAnchor={anchor}
+                        fontSize="10.5"
+                        fontWeight="600"
+                        fill="#1E293B"
+                        style={{ pointerEvents: "none" }}
+                      >
+                        {line2}
+                      </text>
+                    )}
                   </g>
                 );
               })}
@@ -662,7 +702,7 @@ function PerformanceMatrix({ points }) {
 
             {/* Tooltip */}
             {hovered && (() => {
-              const p = positioned.find((q) => q.id === hovered);
+              const p = positioned2.find((q) => q.id === hovered);
               if (!p) return null;
               const pxX = (p.cx / W) * 100;
               const pxY = (p.cy / H) * 100;
@@ -692,7 +732,7 @@ function PerformanceMatrix({ points }) {
               );
             })()}
 
-            {positioned.length === 0 && (
+            {positioned2.length === 0 && (
               <div className="absolute inset-0 flex items-center justify-center text-[12px] text-slate-400">
                 No distributor sales data yet.
               </div>
