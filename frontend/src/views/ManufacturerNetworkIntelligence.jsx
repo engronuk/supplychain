@@ -663,7 +663,7 @@ function PerformanceMatrix({ points }) {
                       cx={p.cx} cy={p.cy} r={p.r + 4}
                       fill={fill}
                       fillOpacity={isHover ? 0.18 : 0}
-                      style={{ transition: "fill-opacity 180ms ease" }}
+                      style={{ transition: "all 180ms ease" }}
                     />
                     <circle
                       cx={p.cx} cy={p.cy} r={p.r}
