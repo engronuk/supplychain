@@ -273,7 +273,15 @@ function KPIStrip({ kpis }) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4" data-testid="dist-kpi-strip">
       {items.map((it) => (
-        <KPICard key={it.key} {...it} kpi={kpis?.[it.key]} testId={`kpi-${it.key}`} />
+        <KPICard
+          key={it.key}
+          label={it.label}
+          fmt={it.fmt}
+          icon={it.icon}
+          accent={it.accent}
+          kpi={kpis?.[it.key]}
+          testId={`kpi-${it.key}`}
+        />
       ))}
     </div>
   );

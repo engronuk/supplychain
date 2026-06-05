@@ -186,16 +186,7 @@ async def _build_distributor_os(distributor_id: str) -> dict:
 
     # ---- KPI: active retailers (any sales activity last 30d) ----------------
     active_30d = sum(1 for rid in retailer_ids if by_retailer_active_dates.get(rid))
-    active_prev = 0
-    # Recount previous-period active (30-60d ago)
-    async for s in db.daily_sales.find(
-        {"retailer_id": {"$in": retailer_ids},
-         "date": {"$gte": start_60, "$lt": start_30}},
-        {"_id": 0, "retailer_id": 1},
-    ):
-        active_prev = active_prev  # placeholder; will replace below
-        break
-    # Build active_prev set
+    # Build active_prev set (30-60d ago window)
     active_prev_set: set = set()
     async for s in db.daily_sales.find(
         {"retailer_id": {"$in": retailer_ids},
