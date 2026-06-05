@@ -18,6 +18,7 @@ Payload structure (see /api/manufacturer/{id}/distributor-network-intelligence):
 """
 from __future__ import annotations
 
+import re
 from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List
@@ -371,24 +372,63 @@ async def _build_distributor_network(manufacturer_id: str):
         },
     }
 
-    # ----- Performance Matrix (top 10 by interest) ---------------------------
+    # ----- Performance Matrix (every distributor with revenue) --------------
     if rows:
         med_rev = sorted([r["revenue_90d"] for r in rows])[len(rows) // 2]
         med_pen = sorted([r["penetration_pct"] for r in rows])[len(rows) // 2]
     else:
         med_rev = med_pen = 0
+
+    def _initials(name: str) -> str:
+        # Take the first letter of the first two meaningful tokens.
+        tokens = [t for t in re.split(r"[\s\.\-]+", name) if t and t.lower() not in ("global", "ventures", "resources", "limited", "ltd", "the")]
+        if not tokens:
+            tokens = [t for t in re.split(r"[\s\.\-]+", name) if t]
+        if not tokens:
+            return (name or "?")[:2].upper()
+        if len(tokens) == 1:
+            return tokens[0][:2].upper()
+        return (tokens[0][0] + tokens[1][0]).upper()
+
+    def _grade(score: float) -> str:
+        if score >= 85:
+            return "A+"
+        if score >= 75:
+            return "A"
+        if score >= 65:
+            return "B"
+        if score >= 55:
+            return "C"
+        if score >= 45:
+            return "D"
+        return "F"
+
     matrix_pool = [r for r in rows if r["revenue_90d"] > 0]
-    matrix_pool.sort(key=lambda r: r["revenue_90d"], reverse=True)
     matrix = []
-    for r in matrix_pool[:10]:
+    for r in matrix_pool:
+        rev = r["revenue_90d"]
+        orders = r.get("orders_90d") or 0
+        avg_order_value = (rev / orders) if orders else 0
+        # Approximate fill rate from sell-through (placeholder until per-order
+        # fill-rate is captured upstream).
+        fill_rate = float(r.get("sell_through_pct") or 0)
         matrix.append({
             "id": r["id"],
             "name": r["name"],
-            "revenue_90d": r["revenue_90d"],
+            "initials": _initials(r["name"]),
+            "region": r["region"],
+            "revenue_90d": rev,
             "penetration_pct": r["penetration_pct"],
+            "retailers_served": r["retailers_active"],
+            "retailers_total": r["retailers_total"],
             "inventory_units": r["inventory_units"],
             "health_band": r["health_band"],
-            "quadrant": _quadrant(r["revenue_90d"], r["penetration_pct"], med_rev, med_pen),
+            "health_score": r["health_score"],
+            "grade": _grade(r["health_score"]),
+            "avg_order_value": round(avg_order_value, 2),
+            "fill_rate_pct": round(fill_rate, 1),
+            "growth_pct": r["growth_pct"],
+            "quadrant": _quadrant(rev, r["penetration_pct"], med_rev, med_pen),
         })
 
     # ----- Regional coverage list -------------------------------------------

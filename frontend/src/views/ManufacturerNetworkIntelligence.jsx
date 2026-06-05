@@ -404,38 +404,94 @@ const HEALTH_FILL = {
   critical: "#DC2626",
 };
 
+// ============================================================================
+// DISTRIBUTOR PORTFOLIO MATRIX — executive 2x2 strategic dashboard
+// ============================================================================
+const QUADRANT_META = {
+  stars: {
+    title: "Stars",
+    bg: "#F5F3FF",
+    border: "#DDD6FE",
+    text: "#6D28D9",
+    description: "High penetration · High revenue",
+  },
+  growth_opps: {
+    title: "Growth Candidates",
+    bg: "#F0FDF4",
+    border: "#BBF7D0",
+    text: "#15803D",
+    description: "High penetration · Low revenue",
+  },
+  cash_cows: {
+    title: "Cash Cows",
+    bg: "#FFFBEB",
+    border: "#FEF3C7",
+    text: "#B45309",
+    description: "Low penetration · High revenue",
+  },
+  at_risk: {
+    title: "Underperformers",
+    bg: "#FEF2F2",
+    border: "#FECACA",
+    text: "#B91C1C",
+    description: "Low penetration · Low revenue",
+  },
+};
+
+const HEALTH_DOT = {
+  excellent: "#5B21B6",
+  good:      "#2563EB",
+  fair:      "#F59E0B",
+  poor:      "#F97316",
+  critical:  "#DC2626",
+};
+const HEALTH_LABEL = {
+  excellent: "Excellent", good: "Good", fair: "Fair", poor: "Poor", critical: "Critical",
+};
+
+function _fmtMoney(v) {
+  if (!v) return "₦0";
+  if (v >= 1_000_000_000) return `₦${(v / 1_000_000_000).toFixed(1)}B`;
+  if (v >= 1_000_000) return `₦${(v / 1_000_000).toFixed(1)}M`;
+  if (v >= 1_000) return `₦${(v / 1_000).toFixed(1)}K`;
+  return `₦${Math.round(v)}`;
+}
+
 function PerformanceMatrix({ points }) {
-  const W = 480, H = 320, PADX = 30, PADY = 20;
+  const W = 540, H = 420, PAD_L = 44, PAD_R = 18, PAD_T = 18, PAD_B = 38;
+  const PLOT_W = W - PAD_L - PAD_R;
+  const PLOT_H = H - PAD_T - PAD_B;
+  const [hovered, setHovered] = useState(null);
 
-  // Scale revenue with sqrt (large outliers are common in distributor data)
-  const xs = points.map((p) => p.revenue_90d);
-  const ys = points.map((p) => p.penetration_pct);
-  const xMax = Math.max(...xs, 1);
-  const yMax = Math.max(...ys, 1);
-  const invs = points.map((p) => p.inventory_units);
-  const invMax = Math.max(...invs, 1);
-  const invMin = Math.min(...invs, 0);
+  // Sort by revenue desc for stable z-order + lists
+  const list = [...(points || [])].sort((a, b) => b.revenue_90d - a.revenue_90d);
 
+  const xMax = Math.max(...list.map((p) => p.revenue_90d), 1);
+  const yMax = Math.max(...list.map((p) => p.penetration_pct), 1);
+  const revMin = Math.min(...list.map((p) => p.revenue_90d), 0);
+  const revMax = Math.max(...list.map((p) => p.revenue_90d), 1);
+
+  // Sqrt scaling tames revenue outliers without compressing small bubbles too far.
   const xScale = (v) => Math.sqrt(Math.max(v, 0) / xMax);
   const yScale = (v) => Math.max(v, 0) / Math.max(yMax, 1);
-  const rScale = (v) => 12 + Math.sqrt((v - invMin) / (invMax - invMin || 1)) * 18;
+  const rScale = (v) => 16 + Math.sqrt((v - revMin) / Math.max(revMax - revMin, 1)) * 22;
 
-  const positioned = points.map((p) => ({
+  const positioned = list.map((p) => ({
     ...p,
-    cx: PADX + xScale(p.revenue_90d) * (W - 2 * PADX),
-    cy: H - PADY - yScale(p.penetration_pct) * (H - 2 * PADY),
-    r: rScale(p.inventory_units),
+    cx: PAD_L + xScale(p.revenue_90d) * PLOT_W,
+    cy: PAD_T + (1 - yScale(p.penetration_pct)) * PLOT_H,
+    r: rScale(p.revenue_90d),
   }));
 
-  // Anti-overlap
-  for (let it = 0; it < 80; it++) {
+  // Anti-overlap nudging.
+  for (let it = 0; it < 120; it++) {
     let moved = 0;
     for (let i = 0; i < positioned.length; i++) {
       for (let j = i + 1; j < positioned.length; j++) {
         const a = positioned[i], b = positioned[j];
         const dx = b.cx - a.cx, dy = b.cy - a.cy;
         const dist = Math.hypot(dx, dy) || 0.01;
-        const target = a.r + b.r + 6;
+        const target = a.r + b.r + 4;
         if (dist < target) {
           const push = (target - dist) / 2;
           const ux = dx / dist, uy = dy / dist;
@@ -444,104 +500,263 @@ function PerformanceMatrix({ points }) {
           moved++;
         }
       }
-      positioned[i].cx = Math.max(PADX + positioned[i].r, Math.min(W - PADX - positioned[i].r, positioned[i].cx));
-      positioned[i].cy = Math.max(PADY + positioned[i].r, Math.min(H - PADY - positioned[i].r, positioned[i].cy));
+      positioned[i].cx = Math.max(PAD_L + positioned[i].r, Math.min(W - PAD_R - positioned[i].r, positioned[i].cx));
+      positioned[i].cy = Math.max(PAD_T + positioned[i].r, Math.min(H - PAD_B - positioned[i].r, positioned[i].cy));
     }
     if (moved === 0) break;
   }
 
+  // ---- Leader callouts ------------------------------------------------------
+  const stars = list.filter((p) => p.quadrant === "stars").slice(0, 3);
+  const growth = list.filter((p) => p.quadrant === "growth_opps").slice(0, 3);
+  const attention = list.filter(
+    (p) => p.quadrant === "at_risk" || ["poor", "critical"].includes(p.health_band),
+  ).slice(0, 3);
+
+  // ---- Executive insights ---------------------------------------------------
+  const totalRev = list.reduce((s, p) => s + p.revenue_90d, 0) || 1;
+  const insights = [];
+  if (list.length) {
+    const top = list[0];
+    insights.push(
+      `${top.name} contributes ${Math.round((top.revenue_90d / totalRev) * 100)}% of total distributor revenue.`,
+    );
+  }
+  // Region with highest penetration mean
+  const regionPen = new Map();
+  list.forEach((p) => {
+    if (!regionPen.has(p.region)) regionPen.set(p.region, []);
+    regionPen.get(p.region).push(p.penetration_pct);
+  });
+  const regionLeader = [...regionPen.entries()]
+    .map(([r, arr]) => [r, arr.reduce((a, b) => a + b, 0) / arr.length])
+    .sort((a, b) => b[1] - a[1])[0];
+  if (regionLeader) {
+    insights.push(`${regionLeader[0]} distributors show the highest penetration (${Math.round(regionLeader[1])}% avg).`);
+  }
+  const underRev = list.filter((p) => p.quadrant === "growth_opps").length;
+  if (underRev > 0) {
+    insights.push(`${underRev} high-penetration distributor${underRev > 1 ? "s are" : " is"} underperforming in revenue.`);
+  }
+  const allocBoost = list.filter((p) => p.quadrant === "cash_cows" || p.quadrant === "stars").length;
+  if (allocBoost > 0) {
+    insights.push(`${allocBoost} distributor${allocBoost > 1 ? "s" : ""} should receive increased inventory allocation.`);
+  }
+
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-[0_2px_8px_rgba(15,23,42,0.04)] border border-slate-100/70 h-full" data-testid="distributor-performance-matrix">
-      <div className="flex items-start justify-between mb-3">
+    <div
+      className="bg-white rounded-2xl p-6 shadow-[0_2px_12px_rgba(15,23,42,0.05)] border border-slate-100/70 h-full"
+      data-testid="distributor-performance-matrix"
+    >
+      {/* Header */}
+      <div className="flex items-start justify-between mb-5">
         <div>
-          <h3 className="text-[15px] font-semibold text-slate-900">Distributor Performance Matrix</h3>
-          <p className="text-[11px] text-slate-500 mt-0.5">Revenue Generated vs Retailer Penetration</p>
+          <h3 className="text-[16px] font-bold text-slate-900 leading-tight">Distributor Portfolio Matrix</h3>
+          <p className="text-[12px] text-slate-500 mt-1">Revenue Contribution vs Market Penetration</p>
+        </div>
+        <div className="flex items-center gap-3 text-[10.5px] text-slate-500">
+          <span className="font-semibold text-slate-400 uppercase tracking-wider">Health</span>
+          {Object.entries(HEALTH_LABEL).map(([k, l]) => (
+            <span key={k} className="inline-flex items-center gap-1">
+              <span className="h-2.5 w-2.5 rounded-full ring-2 ring-white" style={{ background: HEALTH_DOT[k] }} />
+              {l}
+            </span>
+          ))}
         </div>
       </div>
 
-      <div className="relative pl-7" data-testid="matrix-canvas">
-        {/* Y axis label */}
-        <div className="absolute left-0 top-0 bottom-12 flex items-center justify-center">
-          <div className="text-[9.5px] font-semibold tracking-wider text-slate-400 uppercase -rotate-90 whitespace-nowrap">
-            Retailer Penetration
-          </div>
-        </div>
+      {/* Chart + side panel */}
+      <div className="grid grid-cols-12 gap-5">
+        {/* Chart area */}
+        <div className="col-span-12 lg:col-span-9 relative">
+          <div className="relative">
+            <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" data-testid="matrix-canvas">
+              <defs>
+                <filter id="bubble-shadow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feDropShadow dx="0" dy="2" stdDeviation="2.5" floodOpacity="0.18" />
+                </filter>
+                <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                  <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#F1F5F9" strokeWidth="0.6" />
+                </pattern>
+              </defs>
 
-        <div className="relative rounded-xl overflow-hidden" style={{ aspectRatio: `${W}/${H}` }}>
-          {/* Quadrant tints */}
-          <div className="absolute inset-0 grid grid-cols-2 grid-rows-2">
-            <div className="bg-blue-50/35 relative">
-              <div className="absolute top-2 left-3 text-[10.5px] font-bold text-blue-700">Growth Candidates</div>
-            </div>
-            <div className="bg-violet-50/40 relative">
-              <div className="absolute top-2 right-3 text-[10.5px] font-bold text-violet-700">Stars</div>
-            </div>
-            <div className="bg-rose-50/35 relative">
-              <div className="absolute bottom-2 left-3 text-[10.5px] font-bold text-rose-700">Underperformers</div>
-            </div>
-            <div className="bg-amber-50/40 relative">
-              <div className="absolute bottom-2 right-3 text-[10.5px] font-bold text-amber-700">Cash Cows</div>
-            </div>
-          </div>
+              {/* Quadrant tints */}
+              <rect x={PAD_L} y={PAD_T} width={PLOT_W / 2} height={PLOT_H / 2} fill={QUADRANT_META.growth_opps.bg} />
+              <rect x={PAD_L + PLOT_W / 2} y={PAD_T} width={PLOT_W / 2} height={PLOT_H / 2} fill={QUADRANT_META.stars.bg} />
+              <rect x={PAD_L} y={PAD_T + PLOT_H / 2} width={PLOT_W / 2} height={PLOT_H / 2} fill={QUADRANT_META.at_risk.bg} />
+              <rect x={PAD_L + PLOT_W / 2} y={PAD_T + PLOT_H / 2} width={PLOT_W / 2} height={PLOT_H / 2} fill={QUADRANT_META.cash_cows.bg} />
 
-          <svg viewBox={`0 0 ${W} ${H}`} className="absolute inset-0 w-full h-full" preserveAspectRatio="none">
-            <line x1={W / 2} y1={PADY} x2={W / 2} y2={H - PADY} stroke="#CBD5E1" strokeDasharray="3 3" strokeWidth="0.7" />
-            <line x1={PADX} y1={H / 2} x2={W - PADX} y2={H / 2} stroke="#CBD5E1" strokeDasharray="3 3" strokeWidth="0.7" />
-            {positioned.map((p) => {
-              const fill = HEALTH_FILL[p.health_band] || HEALTH_FILL.fair;
-              return (
-                <g key={p.id}>
-                  <circle cx={p.cx} cy={p.cy} r={p.r} fill={fill} fillOpacity="0.85" stroke="white" strokeWidth="2" />
-                </g>
-              );
-            })}
-            {/* Labels — render after circles to ensure they sit on top */}
-            {positioned.map((p) => {
-              const tx = p.cx;
-              const ty = p.cy + p.r + 10;
-              const above = ty + 6 > H - 4;
-              return (
-                <text
-                  key={`l-${p.id}`}
-                  x={tx}
-                  y={above ? p.cy - p.r - 6 : ty}
-                  textAnchor="middle"
-                  fontSize="9"
-                  fontWeight="600"
-                  fill="#334155"
-                  style={{ pointerEvents: "none" }}
-                >
-                  {(p.name || "").length > 22 ? `${p.name.slice(0, 22)}…` : p.name}
+              {/* Grid */}
+              <rect x={PAD_L} y={PAD_T} width={PLOT_W} height={PLOT_H} fill="url(#grid)" />
+
+              {/* Midlines */}
+              <line x1={PAD_L + PLOT_W / 2} y1={PAD_T} x2={PAD_L + PLOT_W / 2} y2={PAD_T + PLOT_H}
+                stroke="#CBD5E1" strokeDasharray="4 4" strokeWidth="0.9" />
+              <line x1={PAD_L} y1={PAD_T + PLOT_H / 2} x2={PAD_L + PLOT_W} y2={PAD_T + PLOT_H / 2}
+                stroke="#CBD5E1" strokeDasharray="4 4" strokeWidth="0.9" />
+
+              {/* Outer frame */}
+              <rect x={PAD_L} y={PAD_T} width={PLOT_W} height={PLOT_H} fill="none" stroke="#E2E8F0" strokeWidth="1" />
+
+              {/* Quadrant labels (corners) */}
+              <text x={PAD_L + 10} y={PAD_T + 18} fontSize="10.5" fontWeight="700" fill={QUADRANT_META.growth_opps.text}>
+                GROWTH CANDIDATES
+              </text>
+              <text x={PAD_L + PLOT_W - 10} y={PAD_T + 18} fontSize="10.5" fontWeight="700"
+                fill={QUADRANT_META.stars.text} textAnchor="end">
+                STARS
+              </text>
+              <text x={PAD_L + 10} y={PAD_T + PLOT_H - 10} fontSize="10.5" fontWeight="700"
+                fill={QUADRANT_META.at_risk.text}>
+                UNDERPERFORMERS
+              </text>
+              <text x={PAD_L + PLOT_W - 10} y={PAD_T + PLOT_H - 10} fontSize="10.5" fontWeight="700"
+                fill={QUADRANT_META.cash_cows.text} textAnchor="end">
+                CASH COWS
+              </text>
+
+              {/* Axis labels */}
+              <text x={PAD_L + PLOT_W / 2} y={H - 8} textAnchor="middle"
+                fontSize="11" fontWeight="600" fill="#475569" letterSpacing="0.5">
+                Revenue Generated (90 Days) →
+              </text>
+              <g transform={`translate(14 ${PAD_T + PLOT_H / 2}) rotate(-90)`}>
+                <text textAnchor="middle" fontSize="11" fontWeight="600" fill="#475569" letterSpacing="0.5">
+                  Retail Penetration →
                 </text>
+              </g>
+              <text x={PAD_L} y={H - 22} fontSize="9.5" fill="#94A3B8">Low</text>
+              <text x={PAD_L + PLOT_W} y={H - 22} fontSize="9.5" fill="#94A3B8" textAnchor="end">High</text>
+
+              {/* Bubbles */}
+              {positioned.map((p) => {
+                const isHover = hovered === p.id;
+                return (
+                  <g
+                    key={p.id}
+                    onMouseEnter={() => setHovered(p.id)}
+                    onMouseLeave={() => setHovered(null)}
+                    style={{ cursor: "pointer" }}
+                    data-testid={`matrix-bubble-${p.id}`}
+                  >
+                    <circle cx={p.cx} cy={p.cy} r={p.r}
+                      fill={HEALTH_DOT[p.health_band] || HEALTH_DOT.fair}
+                      fillOpacity={isHover ? 0.95 : 0.82}
+                      stroke="white" strokeWidth="2.5"
+                      filter="url(#bubble-shadow)"
+                      style={{
+                        transition: "r 200ms ease, fill-opacity 200ms ease",
+                        transform: isHover ? "scale(1.06)" : "scale(1)",
+                        transformOrigin: `${p.cx}px ${p.cy}px`,
+                      }}
+                    />
+                    <text x={p.cx} y={p.cy} textAnchor="middle" dominantBaseline="middle"
+                      fontSize={Math.max(10, p.r * 0.42)} fontWeight="800"
+                      fill="white" style={{ pointerEvents: "none", letterSpacing: 0.5 }}>
+                      {p.initials || p.name.slice(0, 2).toUpperCase()}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+
+            {/* Tooltip */}
+            {hovered && (() => {
+              const p = positioned.find((q) => q.id === hovered);
+              if (!p) return null;
+              const pxX = (p.cx / W) * 100;
+              const pxY = (p.cy / H) * 100;
+              const above = pxY > 55;
+              return (
+                <div
+                  className="absolute z-10 pointer-events-none -translate-x-1/2"
+                  style={{
+                    left: `${pxX}%`,
+                    top: `calc(${pxY}% + ${above ? "-" : ""}${p.r * (H / 100) * (W / H) / 4 + 14}px)`,
+                  }}
+                  data-testid="matrix-tooltip"
+                >
+                  <div className="rounded-xl bg-slate-900 text-white text-[11px] shadow-xl px-3 py-2 min-w-[200px]">
+                    <div className="font-bold text-[12px] mb-1 truncate">{p.name}</div>
+                    <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-slate-300">
+                      <span>Revenue</span><span className="text-right font-semibold text-white">{_fmtMoney(p.revenue_90d)}</span>
+                      <span>Retailers</span><span className="text-right font-semibold text-white">{p.retailers_served} / {p.retailers_total}</span>
+                      <span>Penetration</span><span className="text-right font-semibold text-white">{p.penetration_pct}%</span>
+                      <span>Fill Rate</span><span className="text-right font-semibold text-white">{p.fill_rate_pct}%</span>
+                      <span>Avg Order</span><span className="text-right font-semibold text-white">{_fmtMoney(p.avg_order_value)}</span>
+                      <span>Growth</span><span className="text-right font-semibold text-white">{p.growth_pct == null ? "—" : `${p.growth_pct > 0 ? "+" : ""}${p.growth_pct.toFixed(1)}%`}</span>
+                      <span>Grade</span><span className="text-right font-bold" style={{ color: HEALTH_DOT[p.health_band] }}>{p.grade}</span>
+                    </div>
+                  </div>
+                </div>
               );
-            })}
-          </svg>
-          {positioned.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center text-[12px] text-slate-400">
-              No distributor sales data yet.
-            </div>
-          )}
+            })()}
+
+            {positioned.length === 0 && (
+              <div className="absolute inset-0 flex items-center justify-center text-[12px] text-slate-400">
+                No distributor sales data yet.
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* X axis label */}
-        <div className="text-[9.5px] font-semibold tracking-wider text-slate-400 uppercase text-center mt-1">
-          Revenue Generated (90D)
+        {/* Side leader callouts */}
+        <div className="col-span-12 lg:col-span-3 space-y-3">
+          <LeaderList title="Top Stars" tone="star" items={stars} />
+          <LeaderList title="Growth Opportunities" tone="growth" items={growth} />
+          <LeaderList title="Needs Attention" tone="attention" items={attention} />
         </div>
       </div>
 
-      <div className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-3 flex-wrap text-[10px] text-slate-600">
-        <span className="font-semibold text-slate-500 mr-1">Health Score:</span>
-        {[
-          { k: "excellent", l: "Excellent" }, { k: "good", l: "Good" },
-          { k: "fair", l: "Fair" }, { k: "poor", l: "Poor" }, { k: "critical", l: "Critical" },
-        ].map((it) => (
-          <span key={it.k} className="inline-flex items-center gap-1">
-            <span className="h-2 w-2 rounded-full" style={{ background: HEALTH_FILL[it.k] }} />
-            <span className="font-medium">{it.l}</span>
-          </span>
-        ))}
-        <span className="ml-auto text-[9.5px] italic text-slate-400">Bubble size = inventory</span>
+      {/* Executive Insights */}
+      {insights.length > 0 && (
+        <div className="mt-6 pt-5 border-t border-slate-100" data-testid="matrix-insights">
+          <div className="flex items-center gap-2 mb-2">
+            <Sparkles className="h-3.5 w-3.5 text-violet-500" />
+            <span className="text-[10.5px] font-bold text-violet-600 uppercase tracking-wider">Executive Insights</span>
+          </div>
+          <ul className="space-y-1.5">
+            {insights.map((ins, i) => (
+              <li key={i} className="text-[12.5px] text-slate-700 flex items-start gap-2">
+                <span className="text-violet-400 mt-0.5">•</span>
+                <span>{ins}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LeaderList({ title, tone, items }) {
+  const accent = {
+    star: { dot: "#7C3AED", bg: "bg-violet-50", border: "border-violet-100", text: "text-violet-700" },
+    growth: { dot: "#10B981", bg: "bg-emerald-50", border: "border-emerald-100", text: "text-emerald-700" },
+    attention: { dot: "#DC2626", bg: "bg-rose-50", border: "border-rose-100", text: "text-rose-700" },
+  }[tone];
+
+  return (
+    <div className={`rounded-xl border ${accent.border} ${accent.bg} px-3 py-3`}>
+      <div className="flex items-center gap-1.5 mb-2">
+        <span className="h-1.5 w-1.5 rounded-full" style={{ background: accent.dot }} />
+        <span className={`text-[10.5px] font-bold uppercase tracking-wider ${accent.text}`}>{title}</span>
       </div>
+      {items.length === 0 ? (
+        <div className="text-[11px] text-slate-400 italic">No distributors in this segment.</div>
+      ) : (
+        <ol className="space-y-1.5">
+          {items.map((p, idx) => (
+            <li key={p.id} className="flex items-center gap-2 text-[11.5px] text-slate-700">
+              <span className={`inline-flex h-4 w-4 rounded-full items-center justify-center text-[9px] font-bold ${accent.text}`}
+                style={{ background: "white", border: `1px solid ${accent.dot}33` }}>
+                {idx + 1}
+              </span>
+              <span className="truncate font-medium" title={p.name}>{p.name}</span>
+            </li>
+          ))}
+        </ol>
+      )}
     </div>
   );
 }
@@ -776,14 +991,6 @@ const STATUS_CHIP = {
   active: "bg-emerald-50 text-emerald-700",
   pending: "bg-amber-50 text-amber-700",
   inactive: "bg-slate-100 text-slate-600",
-};
-const HEALTH_DOT = {
-  excellent: "#10B981", good: "#3B82F6", fair: "#F59E0B",
-  poor: "#EF4444", critical: "#DC2626",
-};
-const HEALTH_LABEL = {
-  excellent: "Excellent", good: "Good", fair: "Fair",
-  poor: "Poor", critical: "Critical",
 };
 
 function SpotlightCard({ d, onOpen }) {
