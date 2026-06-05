@@ -527,7 +527,7 @@ function InventoryHealthCard({ inv }) {
     <div className="col-span-12 xl:col-span-4 bg-white rounded-2xl p-5 border border-slate-100" data-testid="pcc-inventory-health">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-[15px] font-semibold text-slate-900">Inventory Health</h3>
-        <Link to="/inventory" className="text-[11px] font-semibold text-violet-600 hover:text-violet-700">View full details</Link>
+        <Link to="/product-intelligence" className="text-[11px] font-semibold text-violet-600 hover:text-violet-700">View full details</Link>
       </div>
       <div className="grid grid-cols-2 gap-3">
         {cells.map(c => (
@@ -752,7 +752,7 @@ function BatchIntelligenceTable({ batches }) {
     <div className="col-span-12 xl:col-span-5 bg-white rounded-2xl p-5 border border-slate-100" data-testid="pcc-batches">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-[15px] font-semibold text-slate-900">Batch Intelligence</h3>
-        <Link to="/inventory" className="text-[11px] font-semibold text-violet-600 hover:text-violet-700">View all batches</Link>
+        <Link to="/product-intelligence" className="text-[11px] font-semibold text-violet-600 hover:text-violet-700">View all batches</Link>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-[12px]">

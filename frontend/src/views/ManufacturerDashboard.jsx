@@ -887,7 +887,7 @@ function ProductIntelligenceCard({ products }) {
     <div className="col-span-12 lg:col-span-5 bg-white rounded-[22px] p-6 shadow-[0_2px_8px_rgba(15,23,42,0.04)] border border-slate-100/70" data-testid="top-products-card">
       <div className="flex items-center justify-between mb-1">
         <h3 className="text-[17px] font-semibold text-slate-900">Product Intelligence</h3>
-        <Link to="/inventory" className="text-xs text-violet-600 hover:underline font-semibold flex items-center gap-1">View catalog <ArrowRight className="h-3 w-3" /></Link>
+        <Link to="/product-intelligence" className="text-xs text-violet-600 hover:underline font-semibold flex items-center gap-1">View catalog <ArrowRight className="h-3 w-3" /></Link>
       </div>
       <p className="text-xs text-slate-500 mb-4">Top performers across the network · last 30 days</p>
 
@@ -1146,7 +1146,7 @@ function StockoutRiskCard({ items }) {
     <div className="col-span-12 lg:col-span-4 bg-white rounded-[22px] p-6 shadow-[0_2px_8px_rgba(15,23,42,0.04)] border border-slate-100/70" data-testid="stockout-risk-card">
       <div className="flex items-center justify-between mb-1">
         <h3 className="text-[15px] font-semibold text-slate-900">Stockout Risk</h3>
-        <Link to="/inventory" className="text-xs text-violet-600 hover:underline font-semibold">View all</Link>
+        <Link to="/product-intelligence" className="text-xs text-violet-600 hover:underline font-semibold">View all</Link>
       </div>
       <p className="text-xs text-slate-500 mb-4">SKUs projected to deplete within 7 days</p>
       <div className="space-y-3">

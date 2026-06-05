@@ -41,9 +41,12 @@ function navForRole(role) {
   }
   const base = [
     { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { to: "/inventory", label: "Inventory", icon: Boxes },
-    { to: "/shipments", label: "Shipments", icon: Truck },
   ];
+  // Manufacturers use Product Intelligence instead of the raw Inventory ledger.
+  if (role !== "manufacturer") {
+    base.push({ to: "/inventory", label: "Inventory", icon: Boxes });
+  }
+  base.push({ to: "/shipments", label: "Shipments", icon: Truck });
   if (role === "manufacturer") {
     base.push({ to: "/product-intelligence", label: "Product Intelligence", icon: Sparkles });
     base.push({ to: "/intel", label: "Intelligence", icon: BrainCircuit });

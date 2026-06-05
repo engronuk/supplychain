@@ -449,7 +449,7 @@ function PortfolioTable({ rows }) {
       </div>
 
       <div className="mt-4 pt-3 border-t border-slate-100">
-        <Link to="/inventory" className="inline-flex items-center gap-1 text-[12px] font-semibold text-violet-600 hover:text-violet-700">
+        <Link to="/product-intelligence" className="inline-flex items-center gap-1 text-[12px] font-semibold text-violet-600 hover:text-violet-700">
           View all products <ArrowRight className="h-3 w-3" />
         </Link>
       </div>
@@ -568,7 +568,7 @@ function BatchHealthDonut({ data }) {
           Batch Health Overview
           <Info className="h-3 w-3 text-slate-300" />
         </h3>
-        <Link to="/inventory" className="text-[11px] font-semibold text-violet-600 hover:text-violet-700">View all batches →</Link>
+        <Link to="/product-intelligence" className="text-[11px] font-semibold text-violet-600 hover:text-violet-700">View all batches →</Link>
       </div>
       <div className="flex items-center gap-4 mt-3">
         <div className="relative flex-shrink-0">
@@ -631,7 +631,7 @@ function ExpiryRiskDonut({ data }) {
         <h3 className="text-[14px] font-semibold text-slate-900 flex items-center gap-1.5">
           Expiry Risk <span className="text-slate-400 font-normal text-[12px]">(Units)</span>
         </h3>
-        <Link to="/inventory" className="text-[11px] font-semibold text-violet-600 hover:text-violet-700">View full report →</Link>
+        <Link to="/product-intelligence" className="text-[11px] font-semibold text-violet-600 hover:text-violet-700">View full report →</Link>
       </div>
       <div className="flex items-center gap-4 mt-3">
         <div className="relative flex-shrink-0">
@@ -1130,7 +1130,7 @@ function StockRiskCenter({ items }) {
         <h3 className="text-[14px] font-semibold text-slate-900">
           Stock Risk Center <span className="text-slate-400 font-normal text-[12px]">(Top 5)</span>
         </h3>
-        <Link to="/inventory" className="text-[11px] font-semibold text-violet-600 hover:text-violet-700">View all →</Link>
+        <Link to="/product-intelligence" className="text-[11px] font-semibold text-violet-600 hover:text-violet-700">View all →</Link>
       </div>
       <div className="divide-y divide-slate-100">
         {items.length === 0 && (
