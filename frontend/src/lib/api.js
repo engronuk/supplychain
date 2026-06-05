@@ -149,6 +149,15 @@ export const Api = {
     api.get(`/manufacturer/${manufacturer_id}/shipment-command-center`).then((r) => r.data),
   manufacturerShipmentIntelligence: (manufacturer_id, shipment_id) =>
     api.get(`/manufacturer/${manufacturer_id}/shipment-intelligence/${shipment_id}`).then((r) => r.data),
+  manufacturerDistributorOrders: (manufacturer_id) =>
+    api.get(`/manufacturer/${manufacturer_id}/distributor-orders`).then((r) => r.data),
+  manufacturerOrderApprove: (manufacturer_id, order_id) =>
+    api.post(`/manufacturer/${manufacturer_id}/distributor-orders/${order_id}/approve`).then((r) => r.data),
+  manufacturerOrderReject: (manufacturer_id, order_id, reason) =>
+    api.post(`/manufacturer/${manufacturer_id}/distributor-orders/${order_id}/reject`,
+             { reason }).then((r) => r.data),
+  manufacturerOrderDispatch: (manufacturer_id, order_id) =>
+    api.post(`/manufacturer/${manufacturer_id}/distributor-orders/${order_id}/dispatch`).then((r) => r.data),
   manufacturerRetailerDetail: (manufacturer_id, distributor_id, retailer_id) =>
     api.get(`/manufacturer/${manufacturer_id}/distributor/${distributor_id}/retailer/${retailer_id}`).then((r) => r.data),
 

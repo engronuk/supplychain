@@ -23,7 +23,9 @@ import {
   Search, Filter, Download, ChevronRight, ChevronLeft, Plus,
   Package, Truck, CheckCircle2, AlertTriangle, DollarSign, Shield,
   Sparkles, ArrowRight, X, Printer, MapPin, Loader2, Info,
+  ClipboardList, ThumbsUp, ThumbsDown, Send,
 } from "lucide-react";
+import { toast } from "sonner";
 
 // -------- formatters --------------------------------------------------------
 const fmtMoney = (v) => {
@@ -49,17 +51,26 @@ const titleCase = (s) => (s || "").replace(/(^|\s)\S/g, (c) => c.toUpperCase());
 export default function ShipmentCommandCenter() {
   const { session } = useSession();
   const [data, setData] = useState(null);
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [openShipmentId, setOpenShipmentId] = useState(null);
 
+  const reload = async () => {
+    if (!session?.entity?.id) return;
+    const [cc, ords] = await Promise.all([
+      Api.manufacturerShipmentCommand(session.entity.id).catch(() => null),
+      Api.manufacturerDistributorOrders(session.entity.id).catch(() => []),
+    ]);
+    setData(cc);
+    setOrders(ords || []);
+  };
+
   useEffect(() => {
     if (!session?.entity?.id) return;
     setLoading(true);
-    Api.manufacturerShipmentCommand(session.entity.id)
-      .then(setData)
-      .catch(() => setData(null))
-      .finally(() => setLoading(false));
+    reload().finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.entity?.id]);
 
   if (loading || !data) {
@@ -79,6 +90,12 @@ export default function ShipmentCommandCenter() {
         <PageHeader rows={data.shipments} query={q} onQuery={setQ} />
 
         <KPIStrip kpis={data.kpis} />
+
+        <OrderFulfillmentQueue
+          orders={orders}
+          manufacturerId={session.entity.id}
+          onChanged={reload}
+        />
 
         <div className="grid grid-cols-12 gap-6">
           <div className="col-span-12 xl:col-span-8">
@@ -986,3 +1003,425 @@ function HealthGauge({ score }) {
     </div>
   );
 }
+
+// =============================================================================
+// ORDER FULFILLMENT QUEUE (distributor → manufacturer)
+// =============================================================================
+const ORDER_STATUS_CHIP = {
+  pending:    { bg: "bg-amber-50",   text: "text-amber-700",   label: "Pending Approval" },
+  approved:   { bg: "bg-blue-50",    text: "text-blue-700",    label: "Approved" },
+  dispatched: { bg: "bg-violet-50",  text: "text-violet-700",  label: "Dispatched" },
+  delivered:  { bg: "bg-emerald-50", text: "text-emerald-700", label: "Delivered" },
+  rejected:   { bg: "bg-rose-50",    text: "text-rose-700",    label: "Rejected" },
+};
+
+const ORDER_TABS = [
+  { k: "pending",    l: "Pending Approval" },
+  { k: "approved",   l: "Approved" },
+  { k: "dispatched", l: "Dispatched" },
+  { k: "delivered",  l: "Delivered" },
+  { k: "rejected",   l: "Rejected" },
+];
+
+function OrderFulfillmentQueue({ orders, manufacturerId, onChanged }) {
+  const [tab, setTab] = useState("pending");
+  const [openOrder, setOpenOrder] = useState(null);
+  const [rejectFor, setRejectFor] = useState(null);
+  const counts = useMemo(() => {
+    const c = { pending: 0, approved: 0, dispatched: 0, delivered: 0, rejected: 0 };
+    orders.forEach((o) => { c[o.status] = (c[o.status] || 0) + 1; });
+    return c;
+  }, [orders]);
+  const filtered = useMemo(
+    () => orders.filter((o) => o.status === tab).slice(0, 20),
+    [orders, tab],
+  );
+  const totalPending = counts.pending;
+  const totalValuePending = useMemo(
+    () => orders.filter((o) => o.status === "pending").reduce((s, o) => s + (o.total_value || 0), 0),
+    [orders],
+  );
+
+  const callAction = async (fn, successMsg) => {
+    try {
+      await fn();
+      toast.success(successMsg);
+      await onChanged();
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Action failed");
+    }
+  };
+
+  return (
+    <div
+      className="bg-white rounded-2xl shadow-[0_2px_8px_rgba(15,23,42,0.04)] border border-slate-100/70 overflow-hidden"
+      data-testid="order-fulfillment-queue"
+    >
+      <div className="px-6 pt-5 pb-3 flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-xl bg-violet-50 text-violet-700 flex items-center justify-center">
+            <ClipboardList className="h-5 w-5" />
+          </div>
+          <div>
+            <h3 className="text-[16px] font-semibold text-slate-900">Distributor Orders</h3>
+            <p className="text-[11.5px] text-slate-500">
+              {totalPending > 0
+                ? <><span className="font-semibold text-amber-700">{totalPending} order{totalPending === 1 ? "" : "s"}</span> awaiting approval · {fmtMoney(totalValuePending)}</>
+                : "All caught up — no pending orders."}
+            </p>
+          </div>
+        </div>
+        <nav className="flex items-center gap-1 bg-slate-50 rounded-xl p-1" data-testid="order-tabs">
+          {ORDER_TABS.map((t) => (
+            <button
+              key={t.k}
+              onClick={() => setTab(t.k)}
+              className={`px-3 h-8 rounded-lg text-[11.5px] font-semibold transition-all flex items-center gap-1.5 ${
+                tab === t.k
+                  ? "bg-white text-slate-900 shadow-sm"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+              data-testid={`order-tab-${t.k}`}
+            >
+              {t.l}
+              {counts[t.k] > 0 && (
+                <span className={`inline-flex items-center justify-center h-4 min-w-[18px] px-1 rounded-full text-[9.5px] font-bold tabular-nums ${
+                  tab === t.k ? "bg-violet-100 text-violet-700" : "bg-slate-200 text-slate-600"
+                }`}>
+                  {counts[t.k]}
+                </span>
+              )}
+            </button>
+          ))}
+        </nav>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-[12px]" data-testid="order-table">
+          <thead>
+            <tr className="text-[10.5px] uppercase tracking-wider text-slate-400 font-semibold border-t border-slate-100">
+              <th className="text-left px-6 py-3">Distributor</th>
+              <th className="text-left py-3">Order</th>
+              <th className="text-right py-3">Units</th>
+              <th className="text-right py-3">Value</th>
+              <th className="text-left py-3">Created</th>
+              <th className="text-left py-3">Status</th>
+              <th className="text-right py-3 pr-6">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-50">
+            {filtered.length === 0 && (
+              <tr><td colSpan={7} className="text-center text-slate-400 py-10 text-[11.5px]">
+                No orders in this state.
+              </td></tr>
+            )}
+            {filtered.map((o) => {
+              const chip = ORDER_STATUS_CHIP[o.status] || ORDER_STATUS_CHIP.pending;
+              return (
+                <tr key={o.id} className="group hover:bg-slate-50/60 transition-colors" data-testid={`order-row-${o.id}`}>
+                  <td className="px-6 py-3">
+                    <div className="text-[12.5px] font-semibold text-slate-900 truncate max-w-[220px]">
+                      {titleCase(o.distributor_name)}
+                    </div>
+                    <div className="text-[10px] text-slate-500">{o.distributor_city}</div>
+                  </td>
+                  <td className="py-3">
+                    <div className="text-[12px] font-medium text-slate-900">
+                      {o.items.length} SKU{o.items.length === 1 ? "" : "s"}
+                    </div>
+                    <div className="text-[10.5px] text-slate-500 truncate max-w-[260px]">
+                      {o.items.slice(0, 2).map((it) => it.product_name).join(", ")}
+                      {o.items.length > 2 ? `, +${o.items.length - 2} more` : ""}
+                    </div>
+                  </td>
+                  <td className="py-3 text-right text-slate-700 tabular-nums">{fmtInt(o.total_units)}</td>
+                  <td className="py-3 text-right text-slate-900 font-semibold tabular-nums">{fmtMoney(o.total_value)}</td>
+                  <td className="py-3 text-slate-600 whitespace-nowrap">{fmtDate(o.created_at)}</td>
+                  <td className="py-3">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${chip.bg} ${chip.text}`}>
+                      {chip.label}
+                    </span>
+                    {o.status === "rejected" && o.rejection_reason && (
+                      <div className="text-[9.5px] text-slate-400 italic mt-0.5 max-w-[180px] truncate">{o.rejection_reason}</div>
+                    )}
+                  </td>
+                  <td className="py-3 pr-6 text-right">
+                    <div className="inline-flex items-center gap-1">
+                      <button
+                        onClick={() => setOpenOrder(o)}
+                        className="h-7 px-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-[11px] font-semibold text-slate-700"
+                        data-testid={`order-view-${o.id}`}
+                      >
+                        View
+                      </button>
+                      {o.status === "pending" && (
+                        <>
+                          <button
+                            onClick={() => callAction(
+                              () => Api.manufacturerOrderApprove(manufacturerId, o.id),
+                              `Order from ${o.distributor_name} approved`,
+                            )}
+                            className="h-7 px-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[11px] font-semibold inline-flex items-center gap-1"
+                            data-testid={`order-approve-${o.id}`}
+                          >
+                            <ThumbsUp className="h-3 w-3" /> Approve
+                          </button>
+                          <button
+                            onClick={() => setRejectFor(o)}
+                            className="h-7 px-2.5 rounded-lg border border-rose-200 bg-white hover:bg-rose-50 text-rose-700 text-[11px] font-semibold inline-flex items-center gap-1"
+                            data-testid={`order-reject-${o.id}`}
+                          >
+                            <ThumbsDown className="h-3 w-3" /> Reject
+                          </button>
+                        </>
+                      )}
+                      {o.status === "approved" && (
+                        <button
+                          onClick={() => callAction(
+                            () => Api.manufacturerOrderDispatch(manufacturerId, o.id),
+                            `Shipment dispatched to ${o.distributor_name}`,
+                          )}
+                          className="h-7 px-2.5 rounded-lg bg-gradient-to-br from-violet-600 to-violet-700 hover:from-violet-700 hover:to-violet-800 text-white text-[11px] font-semibold inline-flex items-center gap-1"
+                          data-testid={`order-dispatch-${o.id}`}
+                        >
+                          <Send className="h-3 w-3" /> Dispatch
+                        </button>
+                      )}
+                      {o.status === "dispatched" && (
+                        <span className="text-[10.5px] text-slate-500 italic px-2">Awaiting delivery</span>
+                      )}
+                      {o.status === "delivered" && (
+                        <span className="text-[10.5px] text-emerald-600 font-semibold px-2 inline-flex items-center gap-1">
+                          <CheckCircle2 className="h-3 w-3" /> Confirmed
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      <OrderDetailDrawer
+        order={openOrder}
+        manufacturerId={manufacturerId}
+        onClose={() => setOpenOrder(null)}
+        onChanged={onChanged}
+      />
+      <RejectOrderDialog
+        order={rejectFor}
+        manufacturerId={manufacturerId}
+        onClose={() => setRejectFor(null)}
+        onDone={async () => { setRejectFor(null); await onChanged(); }}
+      />
+    </div>
+  );
+}
+
+function OrderDetailDrawer({ order, manufacturerId, onClose, onChanged }) {
+  if (!order) return null;
+  const chip = ORDER_STATUS_CHIP[order.status] || ORDER_STATUS_CHIP.pending;
+  const call = async (fn, msg) => {
+    try { await fn(); toast.success(msg); await onChanged(); onClose(); }
+    catch (e) { toast.error(e?.response?.data?.detail || "Action failed"); }
+  };
+  return (
+    <>
+      <div className="fixed inset-0 z-40 bg-slate-900/30 backdrop-blur-sm animate-in fade-in" onClick={onClose} />
+      <aside
+        className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-[480px] bg-white shadow-2xl flex flex-col overflow-hidden animate-slide-in-right"
+        data-testid="order-drawer"
+      >
+        <div className="px-6 py-5 border-b border-slate-100 flex items-start justify-between">
+          <div>
+            <div className="text-[10.5px] font-semibold text-slate-500 tracking-wider uppercase">Purchase Order</div>
+            <h2 className="text-[18px] font-bold text-slate-900 mt-0.5">{titleCase(order.distributor_name)}</h2>
+            <div className="flex items-center gap-2 mt-1">
+              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${chip.bg} ${chip.text}`}>
+                {chip.label}
+              </span>
+              <span className="text-[10.5px] text-slate-500">{fmtDate(order.created_at)} · {fmtTime(order.created_at)}</span>
+            </div>
+          </div>
+          <button onClick={onClose} className="h-8 w-8 rounded-lg hover:bg-slate-50 inline-flex items-center justify-center" data-testid="order-drawer-close">
+            <X className="h-4 w-4 text-slate-500" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+          {order.note && (
+            <section>
+              <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Distributor Note</h3>
+              <div className="rounded-xl bg-amber-50/50 border border-amber-100 p-3 text-[12px] text-slate-700 italic">
+                "{order.note}"
+              </div>
+            </section>
+          )}
+          <section>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">Items</h3>
+              <span className="text-[10.5px] text-slate-500">{order.items.length} SKUs</span>
+            </div>
+            <div className="rounded-xl border border-slate-100 overflow-hidden">
+              <table className="w-full text-[11.5px]">
+                <thead className="bg-slate-50/50">
+                  <tr className="text-[9.5px] uppercase tracking-wider text-slate-400 font-semibold">
+                    <th className="text-left px-3 py-2">Product</th>
+                    <th className="text-right px-3 py-2">Qty</th>
+                    <th className="text-right px-3 py-2 pr-3">Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {order.items.map((it) => (
+                    <tr key={it.product_id}>
+                      <td className="px-3 py-2">
+                        <div className="font-semibold text-slate-900">{it.product_name}</div>
+                        <div className="text-[10px] text-slate-500 font-mono">{it.sku}</div>
+                      </td>
+                      <td className="px-3 py-2 text-right text-slate-700 tabular-nums">{fmtInt(it.quantity)}</td>
+                      <td className="px-3 py-2 pr-3 text-right text-slate-900 font-semibold tabular-nums">{fmtMoney((it.unit_price || 0) * it.quantity)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-slate-50/70">
+                    <td className="px-3 py-2 font-bold text-slate-700 text-[11px]">Total</td>
+                    <td className="px-3 py-2 text-right tabular-nums font-bold text-slate-700">{fmtInt(order.total_units)} units</td>
+                    <td className="px-3 py-2 pr-3 text-right tabular-nums font-bold text-violet-700 text-[13px]">{fmtMoney(order.total_value)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </section>
+          <section>
+            <h3 className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 mb-2">Timeline</h3>
+            <ul className="space-y-2">
+              <TimelineRow ts={order.created_at} label="Order placed by distributor" done />
+              <TimelineRow ts={order.approved_at} label="Approved by manufacturer" done={!!order.approved_at} />
+              <TimelineRow ts={order.dispatched_at} label="Dispatched as shipment" done={!!order.dispatched_at} />
+              <TimelineRow ts={order.delivered_at} label="Delivered & acknowledged" done={!!order.delivered_at} />
+              {order.rejected_at && (
+                <TimelineRow ts={order.rejected_at} label="Rejected" reject />
+              )}
+            </ul>
+          </section>
+        </div>
+        {order.status === "pending" && (
+          <div className="px-6 py-4 border-t border-slate-100 flex items-center gap-2">
+            <button
+              onClick={() => call(
+                () => Api.manufacturerOrderApprove(manufacturerId, order.id),
+                "Order approved",
+              )}
+              className="flex-1 h-10 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-[12px] font-semibold inline-flex items-center justify-center gap-1.5"
+              data-testid="drawer-approve"
+            >
+              <ThumbsUp className="h-3.5 w-3.5" /> Approve
+            </button>
+          </div>
+        )}
+        {order.status === "approved" && (
+          <div className="px-6 py-4 border-t border-slate-100">
+            <button
+              onClick={() => call(
+                () => Api.manufacturerOrderDispatch(manufacturerId, order.id),
+                "Shipment dispatched",
+              )}
+              className="w-full h-10 rounded-xl bg-gradient-to-br from-violet-600 to-violet-700 hover:from-violet-700 hover:to-violet-800 text-white text-[12px] font-semibold inline-flex items-center justify-center gap-1.5"
+              data-testid="drawer-dispatch"
+            >
+              <Send className="h-3.5 w-3.5" /> Dispatch Shipment
+            </button>
+          </div>
+        )}
+      </aside>
+    </>
+  );
+}
+
+function TimelineRow({ ts, label, done, reject }) {
+  const tone = reject
+    ? "text-rose-600 border-rose-300 bg-rose-50"
+    : done
+      ? "text-emerald-600 border-emerald-300 bg-emerald-50"
+      : "text-slate-300 border-slate-200 bg-white";
+  return (
+    <li className="flex items-start gap-3" data-testid="timeline-row">
+      <span className={`h-5 w-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${tone}`}>
+        {done || reject ? <CheckCircle2 className="h-2.5 w-2.5" /> : null}
+      </span>
+      <div className="min-w-0">
+        <div className={`text-[11.5px] font-semibold ${done || reject ? "text-slate-900" : "text-slate-400"}`}>{label}</div>
+        {ts && (
+          <div className="text-[10px] text-slate-500">{fmtDate(ts)} · {fmtTime(ts)}</div>
+        )}
+      </div>
+    </li>
+  );
+}
+
+function RejectOrderDialog({ order, manufacturerId, onClose, onDone }) {
+  const [reason, setReason] = useState("");
+  const [saving, setSaving] = useState(false);
+  if (!order) return null;
+  const submit = async () => {
+    setSaving(true);
+    try {
+      await Api.manufacturerOrderReject(manufacturerId, order.id, reason);
+      toast.success("Order rejected");
+      await onDone();
+      setReason("");
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Failed to reject order");
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <>
+      <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm animate-in fade-in" onClick={onClose} />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+        <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full pointer-events-auto" data-testid="reject-dialog">
+          <div className="px-6 py-5 border-b border-slate-100">
+            <h3 className="text-[16px] font-semibold text-slate-900">Reject order</h3>
+            <p className="text-[11.5px] text-slate-500 mt-1">
+              From <span className="font-semibold text-slate-700">{titleCase(order.distributor_name)}</span>
+            </p>
+          </div>
+          <div className="px-6 py-5">
+            <label className="text-[11px] font-semibold text-slate-600 uppercase tracking-wider">
+              Reason (optional)
+            </label>
+            <textarea
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={3}
+              placeholder="e.g. SKU out of stock, distributor allocation reached, etc."
+              className="w-full mt-2 px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-[12.5px] focus:outline-none focus:ring-2 focus:ring-violet-200 focus:border-violet-300"
+              data-testid="reject-reason-input"
+            />
+          </div>
+          <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-end gap-2">
+            <button
+              onClick={onClose}
+              className="h-9 px-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-[12px] font-semibold text-slate-700"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={submit}
+              disabled={saving}
+              className="h-9 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 disabled:opacity-60 text-white text-[12px] font-semibold inline-flex items-center gap-1.5"
+              data-testid="reject-confirm"
+            >
+              {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ThumbsDown className="h-3.5 w-3.5" />}
+              Reject order
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+

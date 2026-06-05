@@ -142,7 +142,7 @@ class Notification(BaseModel):
     target_id: str
     title: str
     message: str
-    type: Literal["shipment", "request", "inventory", "system"] = "system"
+    type: Literal["shipment", "request", "inventory", "system", "order"] = "system"
     read: bool = False
     created_at: str = Field(default_factory=now_iso)
 

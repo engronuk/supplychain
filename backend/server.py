@@ -15,6 +15,7 @@ from routes import (
     distributor,
     distributor_intelligence,
     distributor_network,
+    distributor_orders,
     shipment_command,
     entities,
     geo,
@@ -37,6 +38,7 @@ from services.migrations import ensure_indexes
 from services.seed import seed_from_csv
 from services.seed_batches import seed_batches
 from services.seed_demo_users import seed_demo_users
+from services.seed_distributor_orders import seed_distributor_orders
 from services.refresh_demo_dates import refresh_demo_dates
 
 app = FastAPI(title="TradeKonekt API")
@@ -57,6 +59,7 @@ for r in (
     distributor.router,
     distributor_intelligence.router,
     distributor_network.router,
+    distributor_orders.router,
     shipment_command.router,
     manufacturer.router,
     product_intelligence.router,
@@ -151,6 +154,15 @@ async def _background_bootstrap():
             logger.info("Batches seeded: %s", result)
     except Exception:
         logger.exception("Batch seed failed (continuing)")
+
+    # Idempotent distributor → manufacturer order seed — used by the
+    # Shipment Command Center's order-fulfillment queue.
+    try:
+        result = await seed_distributor_orders()
+        if result.get("created"):
+            logger.info("Distributor orders seeded: %s", result)
+    except Exception:
+        logger.exception("Distributor order seed failed (continuing)")
 
     # Refresh seeded date fields so the demo always looks "actively used
     # today". Skipped immediately after a fresh seed (data is already
