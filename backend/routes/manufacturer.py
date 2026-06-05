@@ -33,6 +33,23 @@ async def manufacturer_overview(manufacturer_id: str):
       - top_products, fastest_growing_categories, demand_forecast,
         stockout_risk, distributor_table, pipeline, alerts
     """
+    from services.snapshots import read_or_compute
+    return await read_or_compute(
+        "overview", manufacturer_id,
+        lambda: _build_manufacturer_overview(manufacturer_id),
+    )
+
+
+@router.post("/manufacturer/{manufacturer_id}/overview/refresh")
+async def manufacturer_overview_refresh(manufacturer_id: str):
+    from services.snapshots import recompute
+    return await recompute(
+        "overview", manufacturer_id,
+        lambda: _build_manufacturer_overview(manufacturer_id),
+    )
+
+
+async def _build_manufacturer_overview(manufacturer_id: str):
     mfg = await db.manufacturers.find_one({"id": manufacturer_id}, {"_id": 0})
     if not mfg:
         raise HTTPException(404, "Manufacturer not found")
@@ -1004,15 +1021,15 @@ async def create_product(manufacturer_id: str, payload: dict):
 
 
 def _invalidate_manufacturer_caches(manufacturer_id: str):
-    """Drop in-memory response caches that depend on this manufacturer."""
+    """Drop persisted dashboard snapshots so the next read recomputes."""
     try:
-        from response_cache import invalidate
-        for prefix in (
-            f"product-intelligence:{manufacturer_id}",
-            f"shipment-command:{manufacturer_id}",
-            f"distributor-network:{manufacturer_id}",
-        ):
-            invalidate(prefix)
+        from services.snapshots import db as _db
+        import asyncio
+        async def _drop():
+            await _db.dashboard_snapshots.delete_many({"manufacturer_id": manufacturer_id})
+        # Best-effort fire-and-forget — we're already inside a request loop.
+        loop = asyncio.get_event_loop()
+        loop.create_task(_drop())
     except Exception:  # cache is best-effort
         pass
 

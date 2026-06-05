@@ -23,6 +23,7 @@ import { Api } from "@/lib/api";
 import { useCachedFetch, invalidate as invalidateCache } from "@/lib/dataCache";
 import { STATE_PATHS, VIEWBOX as NG_VIEWBOX } from "@/lib/nigeriaStates";
 import { toast } from "sonner";
+import { RefreshPill } from "@/components/RefreshPill";
 import {
   Sparkles, Package, Layers, Warehouse, Clock, ShieldAlert, Coins,
   Calendar, Filter, Download, Search, TrendingUp, TrendingDown,
@@ -62,20 +63,32 @@ const fmtDateRange = () => {
 // ============================================================================
 export default function ProductIntelligenceCenter() {
   const { session } = useSession();
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const entityId = session?.entity?.id;
+  const [modal, setModal] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [modal, setModal] = useState(null); // { mode: "create" | "edit", product?: {} }
 
-  const load = (isRefresh = false) => {
-    if (!session?.entity?.id) return;
-    if (isRefresh) setRefreshing(true); else setLoading(true);
-    Api.manufacturerProductIntelligence(session.entity.id)
-      .then(setData)
-      .finally(() => { setLoading(false); setRefreshing(false); });
+  const cacheKey = entityId ? `product-intel:${entityId}` : null;
+  const { data, loading, reload } = useCachedFetch(
+    cacheKey,
+    () => Api.manufacturerProductIntelligence(entityId),
+    [entityId],
+  );
+
+  const onRefresh = async () => {
+    if (!entityId) return;
+    setRefreshing(true);
+    try {
+      const fresh = await Api.refreshProductIntelligence(entityId);
+      const dc = await import("@/lib/dataCache");
+      dc.setCached(cacheKey, fresh);
+      reload();
+      toast.success("Refreshed");
+    } catch (err) {
+      toast.error("Could not refresh");
+    } finally {
+      setRefreshing(false);
+    }
   };
-
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [session?.entity?.id]);
 
   if (loading || !data) {
     return (
@@ -92,7 +105,8 @@ export default function ProductIntelligenceCenter() {
       <div className="px-8 py-7 max-w-[1840px] mx-auto space-y-6">
         <TitleBar
           refreshing={refreshing}
-          onRefresh={() => load(true)}
+          asOf={data?._snapshot?.as_of}
+          onRefresh={onRefresh}
           onNewProduct={() => setModal({ mode: "create" })}
         />
         <KPIStrip kpis={data.kpis} />
@@ -128,9 +142,9 @@ export default function ProductIntelligenceCenter() {
         <ProductFormModal
           mode={modal.mode}
           product={modal.product}
-          manufacturerId={session.entity.id}
+          manufacturerId={entityId}
           onClose={() => setModal(null)}
-          onSaved={() => { setModal(null); load(true); }}
+          onSaved={() => { setModal(null); invalidateCache(cacheKey); reload(); }}
         />
       )}
     </div>
@@ -140,7 +154,7 @@ export default function ProductIntelligenceCenter() {
 // ============================================================================
 // HEADER
 // ============================================================================
-function TitleBar({ refreshing, onRefresh, onNewProduct }) {
+function TitleBar({ refreshing, onRefresh, onNewProduct, asOf }) {
   return (
     <div className="flex items-end justify-between flex-wrap gap-4">
       <div>
@@ -167,6 +181,7 @@ function TitleBar({ refreshing, onRefresh, onNewProduct }) {
           <Download className="h-3.5 w-3.5 text-slate-500" />
           <span className="font-medium">Export</span>
         </button>
+        <RefreshPill asOf={asOf} onRefresh={onRefresh} busy={refreshing} testId="pi-refresh-pill" />
         <button
           onClick={onNewProduct}
           className="inline-flex items-center gap-2 px-4 h-10 rounded-xl bg-gradient-to-br from-[#6D28D9] to-[#8B5CF6] text-white text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
@@ -174,14 +189,6 @@ function TitleBar({ refreshing, onRefresh, onNewProduct }) {
         >
           <Plus className="h-4 w-4" />
           New Product
-        </button>
-        <button
-          onClick={onRefresh}
-          className="absolute right-8 top-[100px] flex items-center gap-1.5 text-[11px] text-slate-400 hover:text-slate-700 transition-colors"
-          data-testid="pi-refresh"
-        >
-          <RefreshCw className={`h-3 w-3 ${refreshing ? "animate-spin" : ""}`} />
-          Last updated: {refreshing ? "refreshing…" : "just now"}
         </button>
       </div>
     </div>

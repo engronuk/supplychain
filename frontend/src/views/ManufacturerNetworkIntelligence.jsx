@@ -16,7 +16,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSession } from "@/context/SessionContext";
 import { Api } from "@/lib/api";
-import { useCachedFetch } from "@/lib/dataCache";
+import { useCachedFetch, setCached as setDataCache } from "@/lib/dataCache";
+import { RefreshPill } from "@/components/RefreshPill";
+import { toast } from "sonner";
 import {
   Search, Filter, Download, ChevronRight, ChevronLeft, ArrowRight,
   Building2, Users, Coins, Package, Gauge, AlertTriangle,
@@ -54,13 +56,29 @@ export default function ManufacturerNetworkIntelligence() {
   const entityId = session?.entity?.id;
   const [q, setQ] = useState("");
   const [filters, setFilters] = useState({ region: "all", health: "all", status: "all" });
+  const [refreshing, setRefreshing] = useState(false);
 
   const cacheKey = entityId ? `dist-net:${entityId}` : null;
-  const { data, loading } = useCachedFetch(
+  const { data, loading, reload } = useCachedFetch(
     cacheKey,
     () => Api.manufacturerDistributorNetworkIntelligence(entityId),
     [entityId],
   );
+
+  const onRefresh = async () => {
+    if (!entityId) return;
+    setRefreshing(true);
+    try {
+      const fresh = await Api.refreshDistributorNetwork(entityId);
+      setDataCache(cacheKey, fresh);
+      reload();
+      toast.success("Refreshed");
+    } catch (err) {
+      toast.error("Could not refresh");
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   if (loading || !data) {
     return (
@@ -80,6 +98,9 @@ export default function ManufacturerNetworkIntelligence() {
           query={q} onQuery={setQ}
           filters={filters} onFilters={setFilters}
           tableRows={data.distributors_table}
+          asOf={data?._snapshot?.as_of}
+          onRefresh={onRefresh}
+          refreshing={refreshing}
         />
         <KPIStrip kpis={data.kpis} />
 
@@ -126,7 +147,7 @@ function Breadcrumb() {
   );
 }
 
-function PageHeader({ query, onQuery, filters, onFilters, tableRows }) {
+function PageHeader({ query, onQuery, filters, onFilters, tableRows, asOf, onRefresh, refreshing }) {
   const [filterOpen, setFilterOpen] = useState(false);
 
   const exportCsv = () => {
@@ -165,6 +186,7 @@ function PageHeader({ query, onQuery, filters, onFilters, tableRows }) {
         </p>
       </div>
       <div className="flex items-center gap-2 flex-wrap">
+        <RefreshPill asOf={asOf} onRefresh={onRefresh} busy={refreshing} testId="network-refresh-pill" />
         <div className="relative">
           <Search className="h-3.5 w-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input

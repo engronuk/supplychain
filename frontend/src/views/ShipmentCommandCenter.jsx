@@ -19,15 +19,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "@/context/SessionContext";
 import { Api } from "@/lib/api";
-import { useCachedFetch, invalidate as invalidateCache } from "@/lib/dataCache";
+import { useCachedFetch, invalidate as invalidateCache, setCached as setDataCache } from "@/lib/dataCache";
 import { STATE_PATHS, VIEWBOX as NG_VIEWBOX } from "@/lib/nigeriaStates";
+import { RefreshPill } from "@/components/RefreshPill";
+import { toast } from "sonner";
 import {
   Search, Filter, Download, ChevronRight, ChevronLeft, Plus,
   Package, Truck, CheckCircle2, AlertTriangle, DollarSign, Shield,
   Sparkles, ArrowRight, X, Printer, MapPin, Loader2, Info,
   ClipboardList, ThumbsUp, ThumbsDown, Send,
 } from "lucide-react";
-import { toast } from "sonner";
 
 // -------- formatters --------------------------------------------------------
 const fmtMoney = (v) => {
@@ -55,6 +56,7 @@ export default function ShipmentCommandCenter() {
   const entityId = session?.entity?.id;
   const [q, setQ] = useState("");
   const [openShipmentId, setOpenShipmentId] = useState(null);
+  const [refreshingNow, setRefreshingNow] = useState(false);
 
   const cacheKey = entityId ? `shipment-cc:${entityId}` : null;
   const fetchAll = async () => {
@@ -64,11 +66,27 @@ export default function ShipmentCommandCenter() {
     ]);
     return { data: cc, orders: ords || [] };
   };
-  const { data: payload, loading, refreshing, reload } = useCachedFetch(
+  const { data: payload, loading, reload } = useCachedFetch(
     cacheKey, fetchAll, [entityId],
   );
   const data = payload?.data;
   const orders = payload?.orders || [];
+
+  const onRefresh = async () => {
+    if (!entityId) return;
+    setRefreshingNow(true);
+    try {
+      const fresh = await Api.refreshShipmentCommand(entityId);
+      const ords = await Api.manufacturerDistributorOrders(entityId).catch(() => []);
+      setDataCache(cacheKey, { data: fresh, orders: ords });
+      reload();
+      toast.success("Refreshed");
+    } catch (err) {
+      toast.error("Could not refresh");
+    } finally {
+      setRefreshingNow(false);
+    }
+  };
 
   if (loading || !data) {
     return (
@@ -84,14 +102,21 @@ export default function ShipmentCommandCenter() {
     <div className="min-h-full bg-[#FAFAF7]" data-testid="shipment-command-center">
       <div className="px-8 py-7 max-w-[1840px] mx-auto space-y-6">
         <Breadcrumb />
-        <PageHeader rows={data.shipments} query={q} onQuery={setQ} />
+        <PageHeader
+          rows={data.shipments}
+          query={q}
+          onQuery={setQ}
+          asOf={data?._snapshot?.as_of}
+          onRefresh={onRefresh}
+          refreshing={refreshingNow}
+        />
 
         <KPIStrip kpis={data.kpis} />
 
         <OrderFulfillmentQueue
           orders={orders}
           manufacturerId={entityId}
-          onChanged={() => { invalidateCache(`shipment-cc:${entityId}`); reload(); }}
+          onChanged={() => { invalidateCache(cacheKey); reload(); }}
         />
 
         <div className="grid grid-cols-12 gap-6">
@@ -143,7 +168,7 @@ function Breadcrumb() {
   );
 }
 
-function PageHeader({ rows }) {
+function PageHeader({ rows, asOf, onRefresh, refreshing }) {
   const exportCsv = () => {
     const header = ["Shipment ID", "Distributor", "City", "Value", "Products",
                     "Units", "Dispatched", "Expected", "Actual Arrival", "Status",
@@ -177,6 +202,7 @@ function PageHeader({ rows }) {
         </p>
       </div>
       <div className="flex items-center gap-2 flex-wrap">
+        <RefreshPill asOf={asOf} onRefresh={onRefresh} busy={refreshing} testId="scc-refresh-pill" />
         <button
           onClick={exportCsv}
           className="inline-flex items-center gap-2 h-10 px-3.5 rounded-xl border border-slate-200 bg-white text-[12.5px] font-semibold text-slate-700 hover:bg-slate-50 transition-colors"

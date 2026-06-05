@@ -82,6 +82,11 @@ INDEX_SPECS: List[Tuple[str, list, dict]] = [
     ("users", [("invitation_token", ASCENDING)],
      {"name": "by_invitation_token", "sparse": True}),
     ("users", [("reset_token", ASCENDING)], {"name": "by_reset_token", "sparse": True}),
+
+    # Dashboard snapshots (Intelligence-style pre-aggregated payloads)
+    ("dashboard_snapshots", [("key", ASCENDING)], {"unique": True, "name": "uniq_key"}),
+    ("dashboard_snapshots", [("manufacturer_id", ASCENDING), ("kind", ASCENDING)],
+     {"name": "by_manufacturer_kind"}),
 ]
 
 

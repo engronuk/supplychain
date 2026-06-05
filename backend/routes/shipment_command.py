@@ -62,9 +62,18 @@ def _days_between(a: str | None, b: str | None) -> float | None:
 # ----------------------------------------------------------------------------
 @router.get("/manufacturer/{manufacturer_id}/shipment-command-center")
 async def shipment_command_center(manufacturer_id: str):
-    from response_cache import cached
-    return await cached(
-        f"shipment-command:{manufacturer_id}", 30.0,
+    from services.snapshots import read_or_compute
+    return await read_or_compute(
+        "shipment-command", manufacturer_id,
+        lambda: _build_shipment_command(manufacturer_id),
+    )
+
+
+@router.post("/manufacturer/{manufacturer_id}/shipment-command-center/refresh")
+async def shipment_command_center_refresh(manufacturer_id: str):
+    from services.snapshots import recompute
+    return await recompute(
+        "shipment-command", manufacturer_id,
         lambda: _build_shipment_command(manufacturer_id),
     )
 

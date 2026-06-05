@@ -102,9 +102,18 @@ def _zone_for(region: str) -> str:
 
 @router.get("/manufacturer/{manufacturer_id}/product-intelligence")
 async def product_intelligence(manufacturer_id: str):
-    from response_cache import cached
-    return await cached(
-        f"product-intelligence:{manufacturer_id}", 30.0,
+    from services.snapshots import read_or_compute
+    return await read_or_compute(
+        "product-intelligence", manufacturer_id,
+        lambda: _build_product_intelligence(manufacturer_id),
+    )
+
+
+@router.post("/manufacturer/{manufacturer_id}/product-intelligence/refresh")
+async def product_intelligence_refresh(manufacturer_id: str):
+    from services.snapshots import recompute
+    return await recompute(
+        "product-intelligence", manufacturer_id,
         lambda: _build_product_intelligence(manufacturer_id),
     )
 

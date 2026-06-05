@@ -259,12 +259,11 @@ async def dispatch_order(manufacturer_id: str, order_id: str):
 
 def _invalidate_caches(manufacturer_id: str):
     try:
-        from response_cache import invalidate
-        for prefix in (
-            f"shipment-command:{manufacturer_id}",
-            f"distributor-network:{manufacturer_id}",
-            f"product-intelligence:{manufacturer_id}",
-        ):
-            invalidate(prefix)
+        from services.snapshots import db as _db
+        import asyncio
+        async def _drop():
+            await _db.dashboard_snapshots.delete_many({"manufacturer_id": manufacturer_id})
+        loop = asyncio.get_event_loop()
+        loop.create_task(_drop())
     except Exception:
         pass

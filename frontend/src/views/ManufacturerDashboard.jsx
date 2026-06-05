@@ -11,6 +11,9 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useSession } from "@/context/SessionContext";
 import { Api } from "@/lib/api";
+import { useCachedFetch, setCached as setDataCache } from "@/lib/dataCache";
+import { RefreshPill } from "@/components/RefreshPill";
+import { toast } from "sonner";
 import { STATE_PATHS, STATE_ZONE, VIEWBOX as NG_VIEWBOX } from "@/lib/nigeriaStates";
 import {
   TrendingUp, TrendingDown, Sparkles, Bell,
@@ -33,17 +36,31 @@ const fmtInt = (v) => Number(v || 0).toLocaleString();
 
 export default function ManufacturerDashboard() {
   const { session } = useSession();
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const entityId = session?.entity?.id;
   const [trendWindow, setTrendWindow] = useState(12);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
-    if (!session?.entity?.id) return;
-    setLoading(true);
-    Api.manufacturerOverview(session.entity.id)
-      .then(setData)
-      .finally(() => setLoading(false));
-  }, [session?.entity?.id]);
+  const cacheKey = entityId ? `mfg-overview:${entityId}` : null;
+  const { data, loading, reload } = useCachedFetch(
+    cacheKey,
+    () => Api.manufacturerOverview(entityId),
+    [entityId],
+  );
+
+  const onRefresh = async () => {
+    if (!entityId) return;
+    setRefreshing(true);
+    try {
+      const fresh = await Api.refreshOverview(entityId);
+      setDataCache(cacheKey, fresh);
+      reload();
+      toast.success("Refreshed");
+    } catch (err) {
+      toast.error("Could not refresh");
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   if (loading || !data) {
     return (
@@ -58,7 +75,11 @@ export default function ManufacturerDashboard() {
   return (
     <div className="min-h-full bg-[#FAFAF7]" data-testid="mfg-executive-dashboard">
       <div className="px-8 py-7 max-w-[1760px] mx-auto space-y-7">
-        <TitleBar />
+        <TitleBar
+          asOf={data?._snapshot?.as_of}
+          onRefresh={onRefresh}
+          refreshing={refreshing}
+        />
 
         {/* 1 — EXECUTIVE HERO (AI summary + confidence + actions) */}
         <ExecutiveHero
@@ -108,7 +129,7 @@ export default function ManufacturerDashboard() {
 // ============================================================================
 // TitleBar — replaces Layout's topbar context heading on the dashboard
 // ============================================================================
-function TitleBar() {
+function TitleBar({ asOf, onRefresh, refreshing }) {
   return (
     <div className="flex items-end justify-between">
       <div>
@@ -120,13 +141,7 @@ function TitleBar() {
         </div>
         <p className="text-sm text-slate-500 mt-2">Real-time overview of your distribution network across Nigeria.</p>
       </div>
-      <div className="text-xs text-slate-400 flex items-center gap-2">
-        <span className="relative inline-flex h-2 w-2">
-          <span className="absolute inset-0 rounded-full bg-emerald-400 opacity-75 animate-ping" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-        </span>
-        Live · synced {new Date().toLocaleTimeString("en-US", {hour: "2-digit", minute: "2-digit"})}
-      </div>
+      <RefreshPill asOf={asOf} onRefresh={onRefresh} busy={refreshing} testId="dashboard-refresh-pill" />
     </div>
   );
 }

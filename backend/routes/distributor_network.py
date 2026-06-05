@@ -149,9 +149,18 @@ def _health_score(rev_90d: float, sell_through: float,
 # ----------------------------------------------------------------------------
 @router.get("/manufacturer/{manufacturer_id}/distributor-network-intelligence")
 async def distributor_network_intelligence(manufacturer_id: str):
-    from response_cache import cached
-    return await cached(
-        f"distributor-network:{manufacturer_id}", 30.0,
+    from services.snapshots import read_or_compute
+    return await read_or_compute(
+        "distributor-network", manufacturer_id,
+        lambda: _build_distributor_network(manufacturer_id),
+    )
+
+
+@router.post("/manufacturer/{manufacturer_id}/distributor-network-intelligence/refresh")
+async def distributor_network_intelligence_refresh(manufacturer_id: str):
+    from services.snapshots import recompute
+    return await recompute(
+        "distributor-network", manufacturer_id,
         lambda: _build_distributor_network(manufacturer_id),
     )
 

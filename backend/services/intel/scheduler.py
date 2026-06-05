@@ -88,6 +88,33 @@ async def job_hourly():
             logger.exception("hourly job failed for %s", tid)
 
 
+async def job_dashboard_snapshots():
+    """Refresh the heavy manufacturer dashboard snapshots in the background.
+
+    Reads from these endpoints become instant because the GET path just loads
+    a single Mongo document while this job recomputes the payload off-peak.
+    """
+    from services.snapshots import set_snapshot
+    from routes.manufacturer import _build_manufacturer_overview
+    from routes.product_intelligence import _build_product_intelligence
+    from routes.shipment_command import _build_shipment_command
+    from routes.distributor_network import _build_distributor_network
+
+    builders = {
+        "overview": _build_manufacturer_overview,
+        "product-intelligence": _build_product_intelligence,
+        "shipment-command": _build_shipment_command,
+        "distributor-network": _build_distributor_network,
+    }
+    for tid in await _tenants():
+        for kind, build in builders.items():
+            try:
+                payload = await build(tid)
+                await set_snapshot(kind, tid, payload)
+            except Exception:
+                logger.exception("snapshot refresh failed for %s:%s", kind, tid)
+
+
 async def job_external():
     for tid in await _tenants():
         try:
@@ -146,6 +173,15 @@ def start_scheduler():
         job_forecasts, IntervalTrigger(minutes=15), id="intel_forecasts",
         max_instances=1, coalesce=True,
         next_run_time=now + timedelta(minutes=10),
+    )
+    # Dashboard snapshots — every 10 min, first run T+3 min. This is the
+    # core read-path accelerator: the heavy Product Intelligence / Shipment
+    # Command / Distributor Network / Overview payloads are recomputed off
+    # the request path and stored in dashboard_snapshots so GETs are O(1).
+    scheduler.add_job(
+        job_dashboard_snapshots, IntervalTrigger(minutes=10), id="dashboard_snapshots",
+        max_instances=1, coalesce=True,
+        next_run_time=now + timedelta(minutes=3),
     )
     # Daily exec summary + retention cleanup — fixed 06:00 UTC
     scheduler.add_job(

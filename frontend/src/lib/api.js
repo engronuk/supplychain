@@ -161,6 +161,16 @@ export const Api = {
   manufacturerRetailerDetail: (manufacturer_id, distributor_id, retailer_id) =>
     api.get(`/manufacturer/${manufacturer_id}/distributor/${distributor_id}/retailer/${retailer_id}`).then((r) => r.data),
 
+  // Snapshot recompute (force fresh data — same pattern as Intelligence module)
+  refreshOverview: (manufacturer_id) =>
+    api.post(`/manufacturer/${manufacturer_id}/overview/refresh`).then((r) => r.data),
+  refreshProductIntelligence: (manufacturer_id) =>
+    api.post(`/manufacturer/${manufacturer_id}/product-intelligence/refresh`).then((r) => r.data),
+  refreshShipmentCommand: (manufacturer_id) =>
+    api.post(`/manufacturer/${manufacturer_id}/shipment-command-center/refresh`).then((r) => r.data),
+  refreshDistributorNetwork: (manufacturer_id) =>
+    api.post(`/manufacturer/${manufacturer_id}/distributor-network-intelligence/refresh`).then((r) => r.data),
+
   // Mutations
   createProduct: (manufacturer_id, payload) =>
     api.post(`/manufacturer/${manufacturer_id}/products`, payload).then((r) => r.data),
