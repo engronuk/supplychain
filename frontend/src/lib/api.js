@@ -145,6 +145,10 @@ export const Api = {
     api.get(`/manufacturer/${manufacturer_id}/distributor-intelligence/${distributor_id}`).then((r) => r.data),
   manufacturerDistributorNetworkIntelligence: (manufacturer_id) =>
     api.get(`/manufacturer/${manufacturer_id}/distributor-network-intelligence`).then((r) => r.data),
+  manufacturerShipmentCommand: (manufacturer_id) =>
+    api.get(`/manufacturer/${manufacturer_id}/shipment-command-center`).then((r) => r.data),
+  manufacturerShipmentIntelligence: (manufacturer_id, shipment_id) =>
+    api.get(`/manufacturer/${manufacturer_id}/shipment-intelligence/${shipment_id}`).then((r) => r.data),
   manufacturerRetailerDetail: (manufacturer_id, distributor_id, retailer_id) =>
     api.get(`/manufacturer/${manufacturer_id}/distributor/${distributor_id}/retailer/${retailer_id}`).then((r) => r.data),
 

@@ -16,10 +16,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { Truck, PackageCheck, Plus, Trash2, ArrowRight, RotateCw } from "lucide-react";
 import { toast } from "sonner";
 import retailerAnalyticsService from "@/services/retailerAnalyticsService";
+import ShipmentCommandCenter from "./ShipmentCommandCenter";
 
 const STATUSES = ["all", "pending", "in_transit", "received"];
 
 export default function ShipmentTracker() {
+  const { session } = useSession();
+  const role = session.role;
+  // Manufacturers get the premium Shipment Command Center; the simple
+  // operational ledger is kept for distributors/retailers.
+  if (role === "manufacturer") return <ShipmentCommandCenter />;
+
+  return <ShipmentTrackerLegacy />;
+}
+
+function ShipmentTrackerLegacy() {
   const { session } = useSession();
   const role = session.role;
   const [shipments, setShipments] = useState([]);
