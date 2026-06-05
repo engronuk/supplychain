@@ -897,12 +897,115 @@ async def manufacturer_distributor_detail(manufacturer_id: str, distributor_id: 
 
 
 # ============================================================================
-# MUTATIONS — Edit Product / Edit Distributor / Adjust Inventory
+# MUTATIONS — Create / Edit Product, Edit Distributor, Adjust Inventory
 # ============================================================================
+@router.post("/manufacturer/{manufacturer_id}/products")
+async def create_product(manufacturer_id: str, payload: dict):
+    """Onboard a new SKU under a manufacturer.
+
+    Required: ``name``, ``sku``, ``category``, ``unit_price``.
+    Optional: ``barcode``, ``description``, ``image_url`` and the initial batch
+    fields ``batch_number``, ``manufactured_at`` (YYYY-MM-DD),
+    ``expiry_date`` (YYYY-MM-DD), ``quantity`` — if any of the batch fields
+    are present an initial batch row + inventory row are created in the same
+    request.
+    """
+    import uuid
+    from datetime import datetime, timezone
+
+    # ---- validate manufacturer ---------------------------------------------
+    mf = await db.manufacturers.find_one({"id": manufacturer_id}, {"_id": 0})
+    if not mf:
+        raise HTTPException(404, "Manufacturer not found")
+
+    # ---- required fields ---------------------------------------------------
+    required = ("name", "sku", "category", "unit_price")
+    missing = [k for k in required if not payload.get(k)]
+    if missing:
+        raise HTTPException(400, f"Missing required fields: {', '.join(missing)}")
+
+    try:
+        unit_price = float(payload["unit_price"])
+    except (TypeError, ValueError):
+        raise HTTPException(400, "unit_price must be a number")
+
+    sku = str(payload["sku"]).strip()
+    # SKU uniqueness within the manufacturer's catalogue
+    dup = await db.products.find_one(
+        {"manufacturer_id": manufacturer_id, "sku": sku},
+        {"_id": 0, "id": 1},
+    )
+    if dup:
+        raise HTTPException(409, f"SKU '{sku}' already exists for this manufacturer")
+
+    product = {
+        "id": str(uuid.uuid4()),
+        "manufacturer_id": manufacturer_id,
+        "name": str(payload["name"]).strip(),
+        "sku": sku,
+        "category": str(payload["category"]).strip(),
+        "unit_price": unit_price,
+        "barcode": str(payload.get("barcode") or "").strip(),
+        "description": str(payload.get("description") or "").strip(),
+        "image_url": (payload.get("image_url") or "").strip(),
+        "created_at": now_iso(),
+        "updated_at": now_iso(),
+    }
+    await db.products.insert_one(product)
+
+    # ---- optional initial batch -------------------------------------------
+    batch_doc = None
+    has_batch_fields = any(
+        payload.get(k) for k in ("batch_number", "expiry_date", "manufactured_at", "quantity")
+    )
+    if has_batch_fields:
+        batch_qty = payload.get("quantity")
+        try:
+            batch_qty_int = int(batch_qty) if batch_qty is not None else 0
+        except (TypeError, ValueError):
+            raise HTTPException(400, "quantity must be an integer")
+
+        batch_doc = {
+            "id": str(uuid.uuid4()),
+            "manufacturer_id": manufacturer_id,
+            "product_id": product["id"],
+            "batch_number": str(payload.get("batch_number") or "").strip()
+                or f"{(product['name'][:2] or 'XX').upper()}{datetime.now(timezone.utc).strftime('%y%m%d')}A",
+            "manufactured_at": str(payload.get("manufactured_at") or "").strip()
+                or datetime.now(timezone.utc).date().isoformat(),
+            "expiry_date": str(payload.get("expiry_date") or "").strip(),
+            "quantity": batch_qty_int,
+            "status": "healthy",
+            "created_at": now_iso(),
+        }
+        if not batch_doc["expiry_date"]:
+            raise HTTPException(400, "expiry_date is required when seeding a batch")
+        await db.batches.insert_one(batch_doc)
+
+        # Seed an inventory row at the manufacturer's depot so the new SKU
+        # immediately appears in dashboards.
+        if batch_qty_int > 0:
+            await db.inventory.insert_one({
+                "id": str(uuid.uuid4()),
+                "owner_type": "manufacturer",
+                "owner_id": manufacturer_id,
+                "product_id": product["id"],
+                "quantity": batch_qty_int,
+                "reorder_level": 10,
+                "velocity": 0.0,
+                "updated_at": now_iso(),
+            })
+
+    product.pop("_id", None)
+    if batch_doc:
+        batch_doc.pop("_id", None)
+    return {"product": product, "batch": batch_doc}
+
+
 @router.patch("/products/{product_id}")
 async def update_product(product_id: str, payload: dict):
-    """Allowed fields: name, sku, category, unit_price, barcode."""
-    allowed = {"name", "sku", "category", "unit_price", "barcode"}
+    """Allowed fields: name, sku, category, unit_price, barcode, description, image_url."""
+    allowed = {"name", "sku", "category", "unit_price", "barcode", "description", "image_url"}
     update = {k: v for k, v in payload.items() if k in allowed and v is not None}
     if "unit_price" in update:
         try:

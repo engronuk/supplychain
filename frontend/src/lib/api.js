@@ -162,8 +162,22 @@ export const Api = {
     api.get(`/manufacturer/${manufacturer_id}/distributor/${distributor_id}/retailer/${retailer_id}`).then((r) => r.data),
 
   // Mutations
+  createProduct: (manufacturer_id, payload) =>
+    api.post(`/manufacturer/${manufacturer_id}/products`, payload).then((r) => r.data),
   updateProduct: (product_id, payload) =>
     api.patch(`/products/${product_id}`, payload).then((r) => r.data),
+  uploadProductImage: (file) => {
+    const form = new FormData();
+    form.append("file", file);
+    return api
+      .post("/uploads/product-image", form, { headers: { "Content-Type": "multipart/form-data" } })
+      .then((r) => r.data);
+  },
+  productImageUrl: (relative) => {
+    if (!relative) return null;
+    if (/^https?:\/\//i.test(relative)) return relative;
+    return `${BACKEND_URL}${relative}`;
+  },
   updateDistributor: (distributor_id, payload) =>
     api.patch(`/distributors/${distributor_id}`, payload).then((r) => r.data),
   adjustInventory: (payload) =>

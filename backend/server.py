@@ -6,6 +6,7 @@ import os
 
 from fastapi import APIRouter, FastAPI
 from starlette.middleware.cors import CORSMiddleware
+from starlette.staticfiles import StaticFiles
 
 from core import client, db, logger
 from routes import (
@@ -32,6 +33,7 @@ from routes import (
     seed as seed_route,
     shipments,
     stock_requests,
+    uploads,
 )
 from services.intel.scheduler import start_scheduler, stop_scheduler
 from services.migrations import ensure_indexes
@@ -69,10 +71,17 @@ for r in (
     sales.router,
     intel.router,
     seed_route.router,
+    uploads.router,
 ):
     api_router.include_router(r)
 
 app.include_router(api_router)
+
+# Serve uploaded files (product images, etc.) — mounted under /api so the
+# Kubernetes ingress routes the requests to the backend pod.
+_static_dir = os.path.join(os.path.dirname(__file__), "static")
+os.makedirs(_static_dir, exist_ok=True)
+app.mount("/api/static", StaticFiles(directory=_static_dir), name="static")
 
 # CORS: when CORS_ORIGINS is unset (or "*"), use a regex that matches any
 # origin AND echoes it back per-request. The CORS spec forbids responding

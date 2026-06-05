@@ -21,11 +21,13 @@ import { Link } from "react-router-dom";
 import { useSession } from "@/context/SessionContext";
 import { Api } from "@/lib/api";
 import { STATE_PATHS, VIEWBOX as NG_VIEWBOX } from "@/lib/nigeriaStates";
+import { toast } from "sonner";
 import {
   Sparkles, Package, Layers, Warehouse, Clock, ShieldAlert, Coins,
   Calendar, Filter, Download, Search, TrendingUp, TrendingDown,
   ChevronRight, ArrowUpRight, ArrowRight, AlertTriangle, RefreshCw,
   Info, Loader2, CheckCircle2, Activity, Boxes,
+  Plus, Pencil, Upload, X,
 } from "lucide-react";
 
 // ---------- formatters ----------
@@ -62,6 +64,7 @@ export default function ProductIntelligenceCenter() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [modal, setModal] = useState(null); // { mode: "create" | "edit", product?: {} }
 
   const load = (isRefresh = false) => {
     if (!session?.entity?.id) return;
@@ -86,7 +89,11 @@ export default function ProductIntelligenceCenter() {
   return (
     <div className="min-h-full bg-[#FAFAF7]" data-testid="product-intelligence-center">
       <div className="px-8 py-7 max-w-[1840px] mx-auto space-y-6">
-        <TitleBar refreshing={refreshing} onRefresh={() => load(true)} />
+        <TitleBar
+          refreshing={refreshing}
+          onRefresh={() => load(true)}
+          onNewProduct={() => setModal({ mode: "create" })}
+        />
         <KPIStrip kpis={data.kpis} />
         <AIBriefHero brief={data.ai_brief} />
 
@@ -94,7 +101,10 @@ export default function ProductIntelligenceCenter() {
         <div className="grid grid-cols-12 gap-6">
           {/* LEFT (70%) */}
           <div className="col-span-12 xl:col-span-8 space-y-6">
-            <PortfolioTable rows={data.portfolio} />
+            <PortfolioTable
+              rows={data.portfolio}
+              onEditProduct={(p) => setModal({ mode: "edit", product: p })}
+            />
             <PerformanceMatrix items={data.performance_matrix} portfolio={data.portfolio} />
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               <BatchHealthDonut data={data.batch_health} />
@@ -112,6 +122,16 @@ export default function ProductIntelligenceCenter() {
 
         <RecentAlertsStrip alerts={data.recent_alerts} />
       </div>
+
+      {modal && (
+        <ProductFormModal
+          mode={modal.mode}
+          product={modal.product}
+          manufacturerId={session.entity.id}
+          onClose={() => setModal(null)}
+          onSaved={() => { setModal(null); load(true); }}
+        />
+      )}
     </div>
   );
 }
@@ -119,7 +139,7 @@ export default function ProductIntelligenceCenter() {
 // ============================================================================
 // HEADER
 // ============================================================================
-function TitleBar({ refreshing, onRefresh }) {
+function TitleBar({ refreshing, onRefresh, onNewProduct }) {
   return (
     <div className="flex items-end justify-between flex-wrap gap-4">
       <div>
@@ -142,9 +162,17 @@ function TitleBar({ refreshing, onRefresh }) {
           <Filter className="h-3.5 w-3.5 text-slate-500" />
           <span className="font-medium">Filter</span>
         </button>
-        <button className="inline-flex items-center gap-2 px-4 h-10 rounded-xl bg-gradient-to-br from-[#6D28D9] to-[#8B5CF6] text-white text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm" data-testid="pi-export">
-          <Download className="h-3.5 w-3.5" />
-          Export
+        <button className="inline-flex items-center gap-2 px-3.5 h-10 rounded-xl border border-slate-200 bg-white text-sm text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors" data-testid="pi-export">
+          <Download className="h-3.5 w-3.5 text-slate-500" />
+          <span className="font-medium">Export</span>
+        </button>
+        <button
+          onClick={onNewProduct}
+          className="inline-flex items-center gap-2 px-4 h-10 rounded-xl bg-gradient-to-br from-[#6D28D9] to-[#8B5CF6] text-white text-sm font-semibold hover:opacity-90 transition-opacity shadow-sm"
+          data-testid="pi-new-product"
+        >
+          <Plus className="h-4 w-4" />
+          New Product
         </button>
         <button
           onClick={onRefresh}
@@ -343,7 +371,7 @@ function ScoreSparkline({ points }) {
 // ============================================================================
 // PRODUCT PORTFOLIO TABLE
 // ============================================================================
-function PortfolioTable({ rows }) {
+function PortfolioTable({ rows, onEditProduct }) {
   const [tab, setTab] = useState("all");
   const [query, setQuery] = useState("");
   const [sortKey, setSortKey] = useState("revenue_90d");
@@ -436,7 +464,7 @@ function PortfolioTable({ rows }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
-            {filtered.map(r => <PortfolioRow key={r.id} row={r} />)}
+            {filtered.map(r => <PortfolioRow key={r.id} row={r} onEdit={() => onEditProduct?.(r)} />)}
             {filtered.length === 0 && (
               <tr>
                 <td colSpan={9} className="text-center py-12 text-slate-400 text-xs">
@@ -463,13 +491,13 @@ const HEALTH_CHIP = {
   risk:    { bg: "bg-rose-50",     text: "text-rose-700",    dot: "#EF4444", label: "Risk" },
 };
 
-function PortfolioRow({ row }) {
+function PortfolioRow({ row, onEdit }) {
   const h = HEALTH_CHIP[row.inventory_health] || HEALTH_CHIP.healthy;
   return (
     <tr className="group hover:bg-slate-50/60 transition-colors" data-testid={`pi-product-${row.id}`}>
       <td className="py-2.5 pl-2">
         <Link to={`/products/${row.id}`} className="flex items-center gap-2.5">
-          <ProductIcon name={row.name} />
+          <ProductIcon name={row.name} imageUrl={row.image_url} />
           <span className="font-semibold text-slate-900 group-hover:text-violet-700 text-[13px]">{row.name}</span>
         </Link>
       </td>
@@ -486,18 +514,39 @@ function PortfolioRow({ row }) {
       </td>
       <td className="py-2.5"><MiniSparkArea points={row.sparkline_30d} health={row.inventory_health} /></td>
       <td className="py-2.5 pr-2 text-right">
-        <Link to={`/products/${row.id}`}
-          className="inline-flex h-7 w-7 rounded-lg bg-slate-50 hover:bg-violet-50 items-center justify-center group-hover:bg-violet-100 transition-colors">
-          <ChevronRight className="h-3.5 w-3.5 text-slate-400 group-hover:text-violet-600" />
-        </Link>
+        <div className="inline-flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onEdit?.(); }}
+            className="inline-flex h-7 w-7 rounded-lg bg-slate-50 hover:bg-violet-100 items-center justify-center transition-colors"
+            data-testid={`pi-edit-${row.id}`}
+            title="Edit product"
+          >
+            <Pencil className="h-3.5 w-3.5 text-slate-500 hover:text-violet-700" />
+          </button>
+          <Link to={`/products/${row.id}`}
+            className="inline-flex h-7 w-7 rounded-lg bg-slate-50 hover:bg-violet-50 items-center justify-center group-hover:bg-violet-100 transition-colors">
+            <ChevronRight className="h-3.5 w-3.5 text-slate-400 group-hover:text-violet-600" />
+          </Link>
+        </div>
       </td>
     </tr>
   );
 }
 
-function ProductIcon({ name }) {
-  // Use deterministic emoji-free gradient avatar (subtle different tints per product)
-  const seed = name.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+function ProductIcon({ name, imageUrl }) {
+  const resolved = imageUrl ? Api.productImageUrl(imageUrl) : null;
+  if (resolved) {
+    return (
+      <img
+        src={resolved}
+        alt={name}
+        className="h-8 w-8 rounded-lg object-cover flex-shrink-0 shadow-sm border border-slate-100 bg-white"
+      />
+    );
+  }
+  // Deterministic emoji-free gradient avatar (subtle different tints per product)
+  const seed = (name || "?").split("").reduce((a, c) => a + c.charCodeAt(0), 0);
   const palettes = [
     ["#A78BFA", "#7C3AED"], ["#FBBF24", "#D97706"], ["#34D399", "#059669"],
     ["#60A5FA", "#2563EB"], ["#F472B6", "#DB2777"], ["#FB7185", "#E11D48"],
@@ -1223,5 +1272,292 @@ function RecentAlertsStrip({ alerts }) {
         })}
       </div>
     </div>
+  );
+}
+
+
+// ============================================================================
+// PRODUCT FORM MODAL — Create / Edit a SKU (with image upload + initial batch)
+// ============================================================================
+const CATEGORIES = [
+  "Home Care", "Personal Care", "Foods", "Refreshment",
+  "Beauty & Wellbeing", "Nutrition", "Ice Cream", "Other",
+];
+
+function ProductFormModal({ mode, product, manufacturerId, onClose, onSaved }) {
+  const isEdit = mode === "edit";
+  const [form, setForm] = useState(() => ({
+    name: product?.name || "",
+    sku: product?.sku || "",
+    category: product?.category || "Home Care",
+    unit_price: product?.unit_price || "",
+    barcode: product?.barcode || "",
+    description: product?.description || "",
+    image_url: product?.image_url || "",
+    // batch (create only)
+    batch_number: "",
+    manufactured_at: new Date().toISOString().slice(0, 10),
+    expiry_date: "",
+    quantity: "",
+  }));
+  const [uploading, setUploading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const set = (k) => (e) =>
+    setForm((f) => ({ ...f, [k]: e?.target ? e.target.value : e }));
+
+  const onUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const { image_url } = await Api.uploadProductImage(file);
+      setForm((f) => ({ ...f, image_url }));
+      toast.success("Image uploaded");
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Upload failed");
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
+  };
+
+  const onSubmit = async (e) => {
+    e.preventDefault();
+    if (!form.name.trim() || !form.sku.trim() || !form.category || !form.unit_price) {
+      toast.error("Name, SKU, Category and Unit Price are required.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      if (isEdit) {
+        await Api.updateProduct(product.id, {
+          name: form.name.trim(),
+          sku: form.sku.trim(),
+          category: form.category,
+          unit_price: Number(form.unit_price),
+          barcode: form.barcode.trim(),
+          description: form.description.trim(),
+          image_url: form.image_url,
+        });
+        toast.success(`${form.name} updated`);
+      } else {
+        const payload = {
+          name: form.name.trim(),
+          sku: form.sku.trim(),
+          category: form.category,
+          unit_price: Number(form.unit_price),
+          barcode: form.barcode.trim(),
+          description: form.description.trim(),
+          image_url: form.image_url,
+        };
+        // Include batch fields when user provided expiry + qty
+        if (form.expiry_date && form.quantity) {
+          payload.batch_number = form.batch_number.trim();
+          payload.manufactured_at = form.manufactured_at;
+          payload.expiry_date = form.expiry_date;
+          payload.quantity = Number(form.quantity);
+        }
+        await Api.createProduct(manufacturerId, payload);
+        toast.success(`${form.name} onboarded`);
+      }
+      onSaved?.();
+    } catch (err) {
+      toast.error(err?.response?.data?.detail || "Could not save product");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const preview = form.image_url ? Api.productImageUrl(form.image_url) : null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/55 backdrop-blur-sm p-3 sm:p-6"
+      onClick={onClose}
+      data-testid="pi-product-modal"
+    >
+      <div
+        className="bg-white w-full sm:max-w-2xl rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[92vh] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+          <div>
+            <div className="text-[10.5px] font-semibold uppercase tracking-wider text-violet-600">
+              {isEdit ? "Edit Product" : "Onboard New Product"}
+            </div>
+            <h2 className="text-[20px] font-bold text-slate-900 mt-0.5">
+              {isEdit ? product?.name : "Add to product portfolio"}
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="h-8 w-8 rounded-full hover:bg-slate-100 flex items-center justify-center"
+            data-testid="pi-modal-close"
+          >
+            <X className="h-4 w-4 text-slate-500" />
+          </button>
+        </div>
+
+        {/* Body */}
+        <form onSubmit={onSubmit} className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+          {/* Image uploader */}
+          <div className="flex items-center gap-4">
+            <div className="h-20 w-20 rounded-2xl border border-dashed border-slate-200 bg-slate-50 flex items-center justify-center overflow-hidden flex-shrink-0">
+              {preview ? (
+                <img src={preview} alt="preview" className="h-full w-full object-cover" />
+              ) : (
+                <Package className="h-7 w-7 text-slate-300" />
+              )}
+            </div>
+            <div className="flex-1">
+              <div className="text-[13px] font-semibold text-slate-800">Product image</div>
+              <div className="text-[11.5px] text-slate-500 mt-0.5">PNG / JPG / WEBP, up to 5 MB.</div>
+              <label className="mt-2 inline-flex items-center gap-2 px-3 h-8 rounded-lg border border-slate-200 bg-white text-[12px] font-semibold text-slate-700 hover:bg-slate-50 cursor-pointer">
+                {uploading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Upload className="h-3.5 w-3.5" />
+                )}
+                {uploading ? "Uploading…" : preview ? "Replace image" : "Upload image"}
+                <input
+                  type="file"
+                  className="hidden"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  onChange={onUpload}
+                  disabled={uploading}
+                  data-testid="pi-product-image-input"
+                />
+              </label>
+            </div>
+          </div>
+
+          {/* Core fields */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Product Name *">
+              <input
+                type="text" value={form.name} onChange={set("name")}
+                className={inputCls} required maxLength={120}
+                data-testid="pi-field-name"
+              />
+            </Field>
+            <Field label="SKU *">
+              <input
+                type="text" value={form.sku} onChange={set("sku")}
+                className={inputCls} required maxLength={40}
+                placeholder="e.g. SKU-OMO-500"
+                data-testid="pi-field-sku"
+              />
+            </Field>
+            <Field label="Category *">
+              <select
+                value={form.category} onChange={set("category")}
+                className={inputCls} data-testid="pi-field-category"
+              >
+                {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </Field>
+            <Field label="Unit Price (₦) *">
+              <input
+                type="number" min="0" step="0.01"
+                value={form.unit_price} onChange={set("unit_price")}
+                className={inputCls} required
+                data-testid="pi-field-price"
+              />
+            </Field>
+            <Field label="Barcode">
+              <input
+                type="text" value={form.barcode} onChange={set("barcode")}
+                className={inputCls} maxLength={40}
+                data-testid="pi-field-barcode"
+              />
+            </Field>
+            <Field label="Description" className="sm:col-span-2">
+              <textarea
+                value={form.description} onChange={set("description")}
+                className={`${inputCls} min-h-[72px] resize-none`} maxLength={500}
+                placeholder="Short marketing description (optional)"
+                data-testid="pi-field-description"
+              />
+            </Field>
+          </div>
+
+          {/* Initial batch section (create only) */}
+          {!isEdit && (
+            <div className="pt-3 border-t border-slate-100">
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <div className="text-[13px] font-semibold text-slate-800">Initial production batch</div>
+                  <div className="text-[11.5px] text-slate-500">Optional — fill in to seed the first batch + inventory now.</div>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field label="Batch Number">
+                  <input
+                    type="text" value={form.batch_number} onChange={set("batch_number")}
+                    className={inputCls} maxLength={40} placeholder="auto-generated if blank"
+                    data-testid="pi-field-batch"
+                  />
+                </Field>
+                <Field label="Quantity (units)">
+                  <input
+                    type="number" min="0" value={form.quantity} onChange={set("quantity")}
+                    className={inputCls} data-testid="pi-field-qty"
+                  />
+                </Field>
+                <Field label="Manufactured On">
+                  <input
+                    type="date" value={form.manufactured_at} onChange={set("manufactured_at")}
+                    className={inputCls} data-testid="pi-field-manufactured"
+                  />
+                </Field>
+                <Field label="Expiry Date">
+                  <input
+                    type="date" value={form.expiry_date} onChange={set("expiry_date")}
+                    className={inputCls} data-testid="pi-field-expiry"
+                  />
+                </Field>
+              </div>
+            </div>
+          )}
+        </form>
+
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 h-10 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            data-testid="pi-modal-cancel"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onSubmit}
+            disabled={submitting || uploading}
+            className="inline-flex items-center gap-2 px-5 h-10 rounded-xl bg-gradient-to-br from-[#6D28D9] to-[#8B5CF6] text-white text-sm font-semibold disabled:opacity-60 hover:opacity-90"
+            data-testid="pi-modal-submit"
+          >
+            {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            {isEdit ? "Save changes" : "Onboard product"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const inputCls =
+  "w-full h-10 px-3 rounded-xl border border-slate-200 bg-white text-[13px] text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-200 focus:border-violet-300 transition-all";
+
+function Field({ label, children, className = "" }) {
+  return (
+    <label className={`block ${className}`}>
+      <span className="text-[10.5px] font-semibold uppercase tracking-wider text-slate-500">{label}</span>
+      <div className="mt-1">{children}</div>
+    </label>
   );
 }

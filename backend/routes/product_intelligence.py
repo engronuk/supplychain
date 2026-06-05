@@ -287,6 +287,10 @@ async def product_intelligence(manufacturer_id: str):
         portfolio.append({
             "id": pid, "name": p["name"], "sku": p.get("sku", ""),
             "category": p.get("category", "—"),
+            "image_url": p.get("image_url") or "",
+            "barcode": p.get("barcode") or "",
+            "description": p.get("description") or "",
+            "unit_price": p.get("unit_price") or 0,
             "revenue_90d": round(rev_now, 2),
             "units_in_network": units,
             "active_batches": sum(1 for b in pbatches if b["status"] != "expired" and b["status"] != "recalled"),
