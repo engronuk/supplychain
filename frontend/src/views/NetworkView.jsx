@@ -14,7 +14,7 @@ import {
   Search, Warehouse, Store, ChevronUp, ChevronDown, ChevronsUpDown,
   Eye, Boxes, Receipt, Send, Phone, Mail, ArrowUpRight, Download,
 } from "lucide-react";
-import { DistributorDrawer } from "@/components/EntityDrawer";
+import ManufacturerNetworkIntelligence from "./ManufacturerNetworkIntelligence";
 
 // --- helpers
 const toneFor = (s) =>
@@ -31,88 +31,9 @@ const fmtDate = (v) => v ? new Date(v).toLocaleDateString("en-US", { month: "sho
 export default function NetworkView() {
   const { session } = useSession();
   const role = session.role;
-  if (role === "manufacturer") return <ManufacturerNetwork session={session} />;
+  if (role === "manufacturer") return <ManufacturerNetworkIntelligence />;
   if (role === "distributor") return <DistributorNetwork session={session} />;
   return <div className="p-8 text-slate-500">Network view is only available for manufacturer & distributor roles.</div>;
-}
-
-// ============================================================================
-// MANUFACTURER (distributors directory) — clickable rows open a drawer
-// ============================================================================
-function ManufacturerNetwork({ session }) {
-  const [items, setItems] = useState([]);
-  const [search, setSearch] = useState("");
-  const [selectedDistributorId, setSelectedDistributorId] = useState(null);
-
-  const load = () => { Api.distributors(session.entity.id).then(setItems); };
-  useEffect(() => { load(); /* eslint-disable-next-line */ }, [session.entity.id]);
-
-  const filtered = useMemo(() => {
-    const s = search.trim().toLowerCase();
-    return s ? items.filter((x) =>
-      (x.name || "").toLowerCase().includes(s) ||
-      (x.region || "").toLowerCase().includes(s) ||
-      (x.city || "").toLowerCase().includes(s)
-    ) : items;
-  }, [items, search]);
-
-  return (
-    <div className="p-8 max-w-7xl mx-auto" data-testid="network-view">
-      <PageHeader title="Distributors" description="All distributors carrying your products — click a row to drill down."
-        actions={
-          <div className="relative">
-            <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search distributors…" className="pl-9 w-72" data-testid="network-search" />
-          </div>
-        }
-      />
-      <div className="mb-4 flex items-center gap-2 text-sm text-slate-500">
-        <Warehouse className="h-4 w-4" />
-        <span><span className="font-semibold text-slate-900">{filtered.length}</span> distributors</span>
-      </div>
-      <Card><CardContent className="p-0">
-        <Table data-testid="network-table">
-          <TableHeader><TableRow>
-            <TableHead>Name</TableHead><TableHead>Region</TableHead><TableHead>City</TableHead>
-          </TableRow></TableHeader>
-          <TableBody>
-            {filtered.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={3} className="text-center text-graphite py-12">
-                  No distributors match your search.
-                </TableCell>
-              </TableRow>
-            )}
-            {filtered.map((x) => (
-              <TableRow
-                key={x.id}
-                onClick={() => setSelectedDistributorId(x.id)}
-                className="hover:bg-stone-50/80 cursor-pointer transition-colors group"
-                data-testid={`network-row-${x.id}`}
-              >
-                <TableCell className="font-medium text-slate-900">
-                  <span className="inline-flex items-center gap-1.5 group-hover:text-amber">
-                    {x.name}
-                    <ArrowUpRight className="h-3 w-3 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
-                  </span>
-                </TableCell>
-                <TableCell><Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200">{x.region || "—"}</Badge></TableCell>
-                <TableCell className="text-slate-600">{x.city || "—"}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent></Card>
-
-      <DistributorDrawer
-        open={!!selectedDistributorId}
-        onOpenChange={(o) => { if (!o) setSelectedDistributorId(null); }}
-        manufacturerId={session.entity.id}
-        distributorId={selectedDistributorId}
-        onUpdated={load}
-      />
-    </div>
-  );
 }
 
 // ============================================================================
