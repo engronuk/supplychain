@@ -13,7 +13,7 @@
  * Backend: GET /api/manufacturer/{id}/distributor-network-intelligence
  */
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useSession } from "@/context/SessionContext";
 import { Api } from "@/lib/api";
 import {
@@ -53,6 +53,7 @@ export default function ManufacturerNetworkIntelligence() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
+  const [filters, setFilters] = useState({ region: "all", health: "all", status: "all" });
 
   useEffect(() => {
     if (!session?.entity?.id) return;
@@ -77,7 +78,11 @@ export default function ManufacturerNetworkIntelligence() {
     <div className="min-h-full bg-[#FAFAF7]" data-testid="distributor-network-view">
       <div className="px-8 py-7 max-w-[1840px] mx-auto space-y-6">
         <Breadcrumb />
-        <PageHeader query={q} onQuery={setQ} />
+        <PageHeader
+          query={q} onQuery={setQ}
+          filters={filters} onFilters={setFilters}
+          tableRows={data.distributors_table}
+        />
         <KPIStrip kpis={data.kpis} />
 
         <div className="grid grid-cols-12 gap-6">
@@ -96,7 +101,7 @@ export default function ManufacturerNetworkIntelligence() {
 
         <div className="grid grid-cols-12 gap-6">
           <div className="col-span-12 xl:col-span-7">
-            <DistributorsTable rows={data.distributors_table} query={q} />
+            <DistributorsTable rows={data.distributors_table} query={q} filters={filters} />
           </div>
           <div className="col-span-12 xl:col-span-3">
             <RetailReach rows={data.retail_reach} />
@@ -123,7 +128,33 @@ function Breadcrumb() {
   );
 }
 
-function PageHeader({ query, onQuery }) {
+function PageHeader({ query, onQuery, filters, onFilters, tableRows }) {
+  const [filterOpen, setFilterOpen] = useState(false);
+
+  const exportCsv = () => {
+    const header = ["Distributor", "Region", "City", "Revenue (90D)", "Retailers",
+                    "Inventory Units", "Orders (90D)", "Sell-through %", "Health Score",
+                    "Health Band", "Last Shipment", "Status"];
+    const rows = tableRows.map((r) => [
+      r.name, r.region, r.city || "", r.revenue_90d, r.retailers_total,
+      r.inventory_units, r.orders_90d, r.sell_through_pct, r.health_score,
+      r.health_band, r.last_shipment || "", r.status,
+    ]);
+    const csv = [header, ...rows]
+      .map((row) => row.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `distributor-network-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const setF = (k, v) => onFilters({ ...filters, [k]: v });
+  const activeFilterCount = Object.values(filters).filter((v) => v !== "all").length;
+
   return (
     <div className="flex items-end justify-between gap-4 flex-wrap" data-testid="network-header">
       <div className="min-w-0">
@@ -146,13 +177,97 @@ function PageHeader({ query, onQuery }) {
             data-testid="network-search"
           />
         </div>
-        <button className="inline-flex items-center gap-2 h-10 px-3.5 rounded-xl border border-slate-200 bg-white text-[12.5px] font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors" data-testid="network-filters-btn">
-          <Filter className="h-3.5 w-3.5 text-slate-500" /> Filters
-        </button>
-        <button className="inline-flex items-center gap-2 h-10 px-3.5 rounded-xl border border-slate-200 bg-white text-[12.5px] font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors" data-testid="network-export-btn">
+        <div className="relative">
+          <button
+            onClick={() => setFilterOpen((o) => !o)}
+            className="inline-flex items-center gap-2 h-10 px-3.5 rounded-xl border border-slate-200 bg-white text-[12.5px] font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors"
+            data-testid="network-filters-btn"
+          >
+            <Filter className="h-3.5 w-3.5 text-slate-500" /> Filters
+            {activeFilterCount > 0 && (
+              <span className="inline-flex items-center justify-center h-4 min-w-[16px] px-1 rounded-full bg-violet-600 text-white text-[9.5px] font-bold tabular-nums">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+          {filterOpen && (
+            <FilterPopover
+              filters={filters}
+              setF={setF}
+              onReset={() => onFilters({ region: "all", health: "all", status: "all" })}
+              onClose={() => setFilterOpen(false)}
+            />
+          )}
+        </div>
+        <button
+          onClick={exportCsv}
+          className="inline-flex items-center gap-2 h-10 px-3.5 rounded-xl border border-slate-200 bg-white text-[12.5px] font-semibold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors"
+          data-testid="network-export-btn"
+        >
           <Download className="h-3.5 w-3.5 text-slate-500" /> Export
         </button>
       </div>
+    </div>
+  );
+}
+
+function FilterPopover({ filters, setF, onReset, onClose }) {
+  return (
+    <>
+      <div className="fixed inset-0 z-30" onClick={onClose} />
+      <div
+        className="absolute right-0 top-12 z-40 w-[280px] rounded-xl bg-white shadow-[0_18px_50px_-12px_rgba(15,23,42,0.18)] border border-slate-100 p-4"
+        data-testid="network-filters-popover"
+      >
+        <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-3">
+          Refine view
+        </div>
+        <FilterRow label="Region" value={filters.region} onChange={(v) => setF("region", v)}
+          options={[
+            { v: "all", l: "All regions" },
+            { v: "North West", l: "North West" }, { v: "North East", l: "North East" },
+            { v: "North Central", l: "North Central" },
+            { v: "South West", l: "South West" }, { v: "South East", l: "South East" },
+            { v: "South South", l: "South South" },
+          ]}
+          testId="filter-region"
+        />
+        <FilterRow label="Health Score" value={filters.health} onChange={(v) => setF("health", v)}
+          options={[
+            { v: "all", l: "Any" },
+            { v: "excellent", l: "Excellent" }, { v: "good", l: "Good" },
+            { v: "fair", l: "Fair" }, { v: "poor", l: "Poor" }, { v: "critical", l: "Critical" },
+          ]}
+          testId="filter-health"
+        />
+        <FilterRow label="Status" value={filters.status} onChange={(v) => setF("status", v)}
+          options={[
+            { v: "all", l: "Any" },
+            { v: "active", l: "Active" }, { v: "pending", l: "Pending" }, { v: "inactive", l: "Inactive" },
+          ]}
+          testId="filter-status"
+        />
+        <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100">
+          <button onClick={onReset} className="text-[11.5px] font-semibold text-slate-500 hover:text-slate-700" data-testid="filter-reset">Reset</button>
+          <button onClick={onClose} className="px-3 h-8 rounded-lg bg-violet-600 text-white text-[11.5px] font-semibold hover:bg-violet-700" data-testid="filter-apply">Apply</button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function FilterRow({ label, value, onChange, options, testId }) {
+  return (
+    <div className="mb-3">
+      <div className="text-[10.5px] font-semibold text-slate-600 mb-1.5">{label}</div>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full h-9 px-2.5 rounded-lg border border-slate-200 bg-white text-[12px] text-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-200"
+        data-testid={testId}
+      >
+        {options.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}
+      </select>
     </div>
   );
 }
@@ -322,9 +437,6 @@ function PerformanceMatrix({ points }) {
           <h3 className="text-[15px] font-semibold text-slate-900">Distributor Performance Matrix</h3>
           <p className="text-[11px] text-slate-500 mt-0.5">Revenue Generated vs Retailer Penetration</p>
         </div>
-        <button className="h-7 w-7 rounded-lg border border-slate-200 hover:bg-slate-50 inline-flex items-center justify-center" data-testid="matrix-expand">
-          <ExternalLink className="h-3 w-3 text-slate-400" />
-        </button>
       </div>
 
       <div className="relative pl-7" data-testid="matrix-canvas">
@@ -708,15 +820,16 @@ function SpotMetric({ label, value }) {
 // ============================================================================
 // DISTRIBUTORS TABLE — full master list with sort/filter/click-through
 // ============================================================================
-function DistributorsTable({ rows, query }) {
+function DistributorsTable({ rows, query, filters }) {
   const navigate = useNavigate();
   const [page, setPage] = useState(0);
+  const [showAll, setShowAll] = useState(false);
   const pageSize = 8;
   const [sortKey, setSortKey] = useState("revenue_90d");
   const [sortDir, setSortDir] = useState("desc");
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
+    const q = (query || "").trim().toLowerCase();
     let r = rows;
     if (q) {
       r = r.filter((x) =>
@@ -725,16 +838,30 @@ function DistributorsTable({ rows, query }) {
         (x.region || "").toLowerCase().includes(q)
       );
     }
+    if (filters?.region && filters.region !== "all") {
+      r = r.filter((x) => x.region === filters.region);
+    }
+    if (filters?.health && filters.health !== "all") {
+      r = r.filter((x) => x.health_band === filters.health);
+    }
+    if (filters?.status && filters.status !== "all") {
+      r = r.filter((x) => x.status === filters.status);
+    }
     const dir = sortDir === "asc" ? 1 : -1;
     return [...r].sort((a, b) => {
       const av = a[sortKey] ?? 0, bv = b[sortKey] ?? 0;
       if (typeof av === "string") return av.localeCompare(bv) * dir;
       return (av > bv ? 1 : av < bv ? -1 : 0) * dir;
     });
-  }, [rows, query, sortKey, sortDir]);
+  }, [rows, query, filters, sortKey, sortDir]);
+
+  // Reset page when filters/query change so we never land on an empty page.
+  useEffect(() => { setPage(0); }, [query, filters?.region, filters?.health, filters?.status]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const pageRows = filtered.slice(page * pageSize, (page + 1) * pageSize);
+  const pageRows = showAll
+    ? filtered
+    : filtered.slice(page * pageSize, (page + 1) * pageSize);
 
   const toggleSort = (key) => {
     if (sortKey === key) setSortDir(sortDir === "asc" ? "desc" : "asc");
@@ -819,12 +946,20 @@ function DistributorsTable({ rows, query }) {
         </table>
       </div>
 
-      {totalPages > 1 && (
+      {(totalPages > 1 || showAll) && (
         <div className="flex items-center justify-between mt-4">
-          <Link to="#" className="text-[11.5px] font-semibold text-violet-600 hover:text-violet-700" onClick={(e) => e.preventDefault()} data-testid="view-all-distributors">
-            View all {filtered.length} distributors →
-          </Link>
-          <Pagination total={totalPages} page={page} onPage={setPage} />
+          <button
+            onClick={() => setShowAll((v) => !v)}
+            className="text-[11.5px] font-semibold text-violet-600 hover:text-violet-700 inline-flex items-center gap-1"
+            data-testid="view-all-distributors"
+          >
+            {showAll
+              ? `Collapse to ${pageSize} per page ←`
+              : `View all ${filtered.length} distributors →`}
+          </button>
+          {!showAll && (
+            <Pagination total={totalPages} page={page} onPage={setPage} />
+          )}
         </div>
       )}
     </div>
@@ -883,11 +1018,21 @@ function Pagination({ total, page, onPage }) {
 // ============================================================================
 function RetailReach({ rows }) {
   const navigate = useNavigate();
+  const [showAll, setShowAll] = useState(false);
+  const visible = showAll ? rows : rows.slice(0, 6);
   return (
     <div className="bg-white rounded-2xl p-5 shadow-[0_2px_8px_rgba(15,23,42,0.04)] border border-slate-100/70 h-full" data-testid="retail-reach-panel">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-[14px] font-semibold text-slate-900">Retail Network Reach</h3>
-        <Link to="#" className="text-[11px] font-semibold text-violet-600 hover:text-violet-700" onClick={(e) => e.preventDefault()}>View all</Link>
+        {rows.length > 6 && (
+          <button
+            onClick={() => setShowAll((v) => !v)}
+            className="text-[11px] font-semibold text-violet-600 hover:text-violet-700"
+            data-testid="retail-reach-view-all"
+          >
+            {showAll ? "Show less" : "View all"}
+          </button>
+        )}
       </div>
       <div className="overflow-hidden">
         <div className="grid grid-cols-[1fr_50px_60px_70px_50px] gap-2 text-[10px] uppercase tracking-wider text-slate-400 font-semibold pb-2 border-b border-slate-100">
@@ -898,7 +1043,7 @@ function RetailReach({ rows }) {
           <div className="text-right">Growth</div>
         </div>
         <div className="divide-y divide-slate-50">
-          {rows.map((r, i) => {
+          {visible.map((r, i) => {
             const up = (r.growth_pct ?? 0) >= 0;
             return (
               <div
@@ -939,14 +1084,24 @@ const SEVERITY_CHIP = {
 
 function AtRiskPanel({ rows }) {
   const navigate = useNavigate();
+  const [showAll, setShowAll] = useState(false);
+  const visible = showAll ? rows : rows.slice(0, 5);
   return (
     <div className="bg-white rounded-2xl p-5 shadow-[0_2px_8px_rgba(15,23,42,0.04)] border border-slate-100/70 h-full" data-testid="at-risk-panel">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-[14px] font-semibold text-slate-900">Distributors Requiring Attention</h3>
-        <Link to="#" className="text-[11px] font-semibold text-violet-600 hover:text-violet-700" onClick={(e) => e.preventDefault()}>View all</Link>
+        {rows.length > 5 && (
+          <button
+            onClick={() => setShowAll((v) => !v)}
+            className="text-[11px] font-semibold text-violet-600 hover:text-violet-700"
+            data-testid="at-risk-view-all"
+          >
+            {showAll ? "Show less" : "View all"}
+          </button>
+        )}
       </div>
       <div className="space-y-2">
-        {rows.map((r, i) => {
+        {visible.map((r, i) => {
           const sev = SEVERITY_CHIP[r.severity] || SEVERITY_CHIP.low;
           return (
             <div

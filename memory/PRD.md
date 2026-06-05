@@ -368,3 +368,12 @@ Manufacturer can see all 91 distributors; Distributor sees all its retailers.
 - **Frontend** new view `views/ManufacturerNetworkIntelligence.jsx` (~830 lines, pixel-perfect to user mock): Breadcrumb · Title/Search/Filters/Export · 6 KPI cards with sparklines and "vs last month" deltas · Performance Matrix (bubble scatter with quadrant tints + health-color dots) · Nigeria choropleth + per-region overlay cards · Purple gradient AI Network Summary with "View Network Intelligence" CTA · Top Distributor Overview (5 horizontal spotlight cards, navigable) · All Distributors master table (sortable/paginated/click-through) · Retail Network Reach ranking · Distributors Requiring Attention with severity chips. Every distributor name/card/row navigates to `/distributors/{id}` — no popups.
 - **Removed**: dead `ManufacturerNetwork` function in `NetworkView.jsx`; manufacturer branch now delegates to `ManufacturerNetworkIntelligence`.
 - **Tested**: pytest 25/25 (7 new `TestDistributorNetwork` cases + 18 existing distributor intel tests). E2E smoke-screenshot confirms spotlight clicks, table row clicks, and search filtering all work.
+
+## Updates (2026-06-05 — Distributor Network — kill dead links)
+- **"View all 91 distributors" link** now actually expands the table — toggles between paginated (8 per page) and a full list of all 91 rows. Button label flips to "Collapse to 8 per page ←".
+- **Filters button** wires up a working popover with Region / Health Score / Status dropdowns; active filter count shown as a violet badge.
+- **Export button** wires up real CSV download of the current `distributors_table` (filename includes today's date).
+- **Retail Network Reach** "View all" toggles between top-6 and the full list (Show less ↔ View all).
+- **Distributors Requiring Attention** "View all" appears only when there are more than 5 issues — toggles in the same way.
+- **Removed**: dead `matrix-expand` icon button on the Performance Matrix; unused `Link` import.
+- **Verified**: e2e smoke confirms filter popover opens, region filter narrows the table to 8 SW rows, badge "1" appears, expand toggles between 8 and 91 rows, CSV downloads successfully, Retail Network Reach show/hide works.
