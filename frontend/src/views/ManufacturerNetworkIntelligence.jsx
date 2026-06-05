@@ -16,6 +16,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSession } from "@/context/SessionContext";
 import { Api } from "@/lib/api";
+import { useCachedFetch } from "@/lib/dataCache";
 import {
   Search, Filter, Download, ChevronRight, ChevronLeft, ArrowRight,
   Building2, Users, Coins, Package, Gauge, AlertTriangle,
@@ -50,19 +51,16 @@ const titleCase = (s) => (s || "").replace(/(^|\s)\S/g, (c) => c.toUpperCase());
 // ============================================================================
 export default function ManufacturerNetworkIntelligence() {
   const { session } = useSession();
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const entityId = session?.entity?.id;
   const [q, setQ] = useState("");
   const [filters, setFilters] = useState({ region: "all", health: "all", status: "all" });
 
-  useEffect(() => {
-    if (!session?.entity?.id) return;
-    setLoading(true);
-    Api.manufacturerDistributorNetworkIntelligence(session.entity.id)
-      .then(setData)
-      .catch(() => setData(null))
-      .finally(() => setLoading(false));
-  }, [session?.entity?.id]);
+  const cacheKey = entityId ? `dist-net:${entityId}` : null;
+  const { data, loading } = useCachedFetch(
+    cacheKey,
+    () => Api.manufacturerDistributorNetworkIntelligence(entityId),
+    [entityId],
+  );
 
   if (loading || !data) {
     return (

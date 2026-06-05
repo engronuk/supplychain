@@ -180,6 +180,7 @@ async def approve_order(manufacturer_id: str, order_id: str):
         "order",
     )
     order.update(update)
+    _invalidate_caches(manufacturer_id)
     return order
 
 
@@ -201,6 +202,7 @@ async def reject_order(manufacturer_id: str, order_id: str, payload: RejectPaylo
         "order",
     )
     order.update(update)
+    _invalidate_caches(manufacturer_id)
     return order
 
 
@@ -251,4 +253,18 @@ async def dispatch_order(manufacturer_id: str, order_id: str):
         "tracking_code": sh_doc["tracking_code"],
         "status": sh_doc["status"],
     }
+    _invalidate_caches(manufacturer_id)
     return order
+
+
+def _invalidate_caches(manufacturer_id: str):
+    try:
+        from response_cache import invalidate
+        for prefix in (
+            f"shipment-command:{manufacturer_id}",
+            f"distributor-network:{manufacturer_id}",
+            f"product-intelligence:{manufacturer_id}",
+        ):
+            invalidate(prefix)
+    except Exception:
+        pass

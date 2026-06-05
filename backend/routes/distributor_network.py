@@ -149,6 +149,14 @@ def _health_score(rev_90d: float, sell_through: float,
 # ----------------------------------------------------------------------------
 @router.get("/manufacturer/{manufacturer_id}/distributor-network-intelligence")
 async def distributor_network_intelligence(manufacturer_id: str):
+    from response_cache import cached
+    return await cached(
+        f"distributor-network:{manufacturer_id}", 30.0,
+        lambda: _build_distributor_network(manufacturer_id),
+    )
+
+
+async def _build_distributor_network(manufacturer_id: str):
     mfg = await db.manufacturers.find_one({"id": manufacturer_id}, {"_id": 0})
     if not mfg:
         raise HTTPException(404, "Manufacturer not found")

@@ -20,6 +20,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useSession } from "@/context/SessionContext";
 import { Api } from "@/lib/api";
+import { useCachedFetch, invalidate as invalidateCache } from "@/lib/dataCache";
 import { STATE_PATHS, VIEWBOX as NG_VIEWBOX } from "@/lib/nigeriaStates";
 import { toast } from "sonner";
 import {

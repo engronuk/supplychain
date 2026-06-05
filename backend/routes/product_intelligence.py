@@ -102,6 +102,14 @@ def _zone_for(region: str) -> str:
 
 @router.get("/manufacturer/{manufacturer_id}/product-intelligence")
 async def product_intelligence(manufacturer_id: str):
+    from response_cache import cached
+    return await cached(
+        f"product-intelligence:{manufacturer_id}", 30.0,
+        lambda: _build_product_intelligence(manufacturer_id),
+    )
+
+
+async def _build_product_intelligence(manufacturer_id: str):
     # ---------- 0 . Anchor entities ----------
     mfg = await db.manufacturers.find_one({"id": manufacturer_id}, {"_id": 0})
     if not mfg:

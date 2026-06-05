@@ -999,7 +999,22 @@ async def create_product(manufacturer_id: str, payload: dict):
     product.pop("_id", None)
     if batch_doc:
         batch_doc.pop("_id", None)
+    _invalidate_manufacturer_caches(manufacturer_id)
     return {"product": product, "batch": batch_doc}
+
+
+def _invalidate_manufacturer_caches(manufacturer_id: str):
+    """Drop in-memory response caches that depend on this manufacturer."""
+    try:
+        from response_cache import invalidate
+        for prefix in (
+            f"product-intelligence:{manufacturer_id}",
+            f"shipment-command:{manufacturer_id}",
+            f"distributor-network:{manufacturer_id}",
+        ):
+            invalidate(prefix)
+    except Exception:  # cache is best-effort
+        pass
 
 
 @router.patch("/products/{product_id}")
@@ -1019,6 +1034,8 @@ async def update_product(product_id: str, payload: dict):
     if res.matched_count == 0:
         raise HTTPException(404, "Product not found")
     fresh = await db.products.find_one({"id": product_id}, {"_id": 0})
+    if fresh and fresh.get("manufacturer_id"):
+        _invalidate_manufacturer_caches(fresh["manufacturer_id"])
     return fresh
 
 
@@ -1034,6 +1051,8 @@ async def update_distributor(distributor_id: str, payload: dict):
     if res.matched_count == 0:
         raise HTTPException(404, "Distributor not found")
     fresh = await db.distributors.find_one({"id": distributor_id}, {"_id": 0})
+    if fresh and fresh.get("manufacturer_id"):
+        _invalidate_manufacturer_caches(fresh["manufacturer_id"])
     return fresh
 
 

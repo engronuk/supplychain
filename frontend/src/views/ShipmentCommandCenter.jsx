@@ -19,6 +19,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "@/context/SessionContext";
 import { Api } from "@/lib/api";
+import { useCachedFetch, invalidate as invalidateCache } from "@/lib/dataCache";
 import { STATE_PATHS, VIEWBOX as NG_VIEWBOX } from "@/lib/nigeriaStates";
 import {
   Search, Filter, Download, ChevronRight, ChevronLeft, Plus,
@@ -51,28 +52,23 @@ const titleCase = (s) => (s || "").replace(/(^|\s)\S/g, (c) => c.toUpperCase());
 // =============================================================================
 export default function ShipmentCommandCenter() {
   const { session } = useSession();
-  const [data, setData] = useState(null);
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const entityId = session?.entity?.id;
   const [q, setQ] = useState("");
   const [openShipmentId, setOpenShipmentId] = useState(null);
 
-  const reload = async () => {
-    if (!session?.entity?.id) return;
+  const cacheKey = entityId ? `shipment-cc:${entityId}` : null;
+  const fetchAll = async () => {
     const [cc, ords] = await Promise.all([
-      Api.manufacturerShipmentCommand(session.entity.id).catch(() => null),
-      Api.manufacturerDistributorOrders(session.entity.id).catch(() => []),
+      Api.manufacturerShipmentCommand(entityId).catch(() => null),
+      Api.manufacturerDistributorOrders(entityId).catch(() => []),
     ]);
-    setData(cc);
-    setOrders(ords || []);
+    return { data: cc, orders: ords || [] };
   };
-
-  useEffect(() => {
-    if (!session?.entity?.id) return;
-    setLoading(true);
-    reload().finally(() => setLoading(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.entity?.id]);
+  const { data: payload, loading, refreshing, reload } = useCachedFetch(
+    cacheKey, fetchAll, [entityId],
+  );
+  const data = payload?.data;
+  const orders = payload?.orders || [];
 
   if (loading || !data) {
     return (
@@ -94,8 +90,8 @@ export default function ShipmentCommandCenter() {
 
         <OrderFulfillmentQueue
           orders={orders}
-          manufacturerId={session.entity.id}
-          onChanged={reload}
+          manufacturerId={entityId}
+          onChanged={() => { invalidateCache(`shipment-cc:${entityId}`); reload(); }}
         />
 
         <div className="grid grid-cols-12 gap-6">
