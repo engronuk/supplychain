@@ -133,6 +133,22 @@ async def boot_app():
 
 async def _background_bootstrap():
     """Heavy, deploy-aware bootstrap that runs AFTER the port is open."""
+    # In production we never want to run demo seeding / mass date refreshes.
+    # Atlas can take 60-90s to apply ~100k updates on a small cluster which
+    # can race with the readiness probe and cause CrashLoopBackOff. Skip the
+    # whole demo block when ENVIRONMENT == "production".
+    environment = (os.environ.get("ENVIRONMENT") or "").strip().lower()
+    is_production = environment == "production"
+
+    if is_production:
+        logger.info("ENVIRONMENT=production — skipping all demo seed/refresh routines.")
+        try:
+            start_scheduler()
+            logger.info("Background bootstrap complete (production mode).")
+        except Exception:
+            logger.exception("Failed to start intel scheduler")
+        return
+
     if await db.manufacturers.count_documents({}) == 0:
         logger.info("Empty manufacturer collection — auto-seeding from CSVs.")
         try:

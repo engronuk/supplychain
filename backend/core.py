@@ -20,7 +20,20 @@ DATA_DIR = ROOT_DIR / "data"
 load_dotenv(ROOT_DIR / ".env")
 
 mongo_url = os.environ["MONGO_URL"]
-client = AsyncIOMotorClient(mongo_url)
+# Atlas-friendly client tunings. Defaults (no timeout / 30s server selection)
+# can cause indefinite hangs and worker restarts on a slow write or a brief
+# network blip. These tighter, explicit limits surface failures fast and let
+# us retry at the application layer.
+client = AsyncIOMotorClient(
+    mongo_url,
+    serverSelectionTimeoutMS=10_000,
+    connectTimeoutMS=10_000,
+    socketTimeoutMS=45_000,
+    retryWrites=True,
+    retryReads=True,
+    maxPoolSize=50,
+    minPoolSize=2,
+)
 db = client[os.environ["DB_NAME"]]
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")

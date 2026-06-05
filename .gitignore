@@ -30,10 +30,13 @@ next-env.d.ts
 dist/
 dist
 
-# Environment files (comprehensive coverage)
-
+# Tokens / credentials
 *token.json*
 *credentials.json*
+credentials.json
+.credentials
+*.pem
+*.key
 
 # Logs and debug files
 npm-debug.log*
@@ -44,7 +47,6 @@ dump.rdb
 
 # System files
 .DS_Store
-*.pem
 
 # Python
 __pycache__/
@@ -76,82 +78,12 @@ agenthub/agents/youtube/db
 # Build caches
 .cache/
 
+# Test credentials (local-only)
 memory/test_credentials.md
 
+# Frontend CRA cache packs
+frontend/node_modules/.cache/
+
 # Mobile development
-android-sdk/frontend/node_modules/.cache/default-development/2.pack
-frontend/node_modules/.cache/default-development/5.pack
-frontend/node_modules/.cache/default-development/8.pack
-frontend/node_modules/.cache/default-development/0.pack
-frontend/node_modules/.cache/default-development/1.pack
-frontend/node_modules/.cache/default-development/6.pack
-frontend/node_modules/.cache/default-development/7.pack
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
-frontend/node_modules/.cache/default-development/10.pack
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
-frontend/node_modules/.cache/default-development/12.pack
-frontend/node_modules/.cache/default-development/13.pack
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
-frontend/node_modules/.cache/default-development/14.pack
-frontend/node_modules/.cache/default-development/2.pack
-frontend/node_modules/.cache/default-development/11.pack
-frontend/node_modules/.cache/default-development/3.pack
-frontend/node_modules/.cache/default-development/9.pack
-frontend/node_modules/.cache/default-development/17.pack
-frontend/node_modules/.cache/default-development/1.pack_
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
--e 
-# Environment and credential files
-.env
-.env.*
-*.env
-credentials.json
-*.pem
-*.key
-.credentials
-frontend/node_modules/.cache/default-development/15.pack
-frontend/node_modules/.cache/default-development/19.pack
-frontend/node_modules/.cache/default-development/22.pack
-frontend/node_modules/.cache/default-development/23.pack
+android-sdk/
 frontend/node_modules/.cache/default-development/28.pack
