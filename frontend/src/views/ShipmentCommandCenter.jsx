@@ -384,53 +384,222 @@ function PipelineFunnel({ pipeline }) {
 }
 
 // =============================================================================
-// REGIONAL PERFORMANCE
+// REGIONAL PERFORMANCE — Nigeria geopolitical-zone heatmap
 // =============================================================================
-function RegionalPerformance({ rows }) {
-  const sorted = [...rows].sort((a, b) => b.shipments - a.shipments);
+const ZONE_PATHS = {
+  // Stylized Nigeria divided into 6 geopolitical zones (viewBox: 0 0 320 290)
+  // Shared vertices ensure adjacent zones tile cleanly (no gaps).
+  "North West":
+    "M 18 58 L 70 32 L 150 22 Q 168 22 172 30 L 174 90 L 165 132 L 90 138 L 28 124 L 16 96 Z",
+  "North East":
+    "M 172 30 L 218 30 L 268 42 L 300 60 L 312 100 L 308 142 L 232 142 L 175 132 L 174 90 Z",
+  "North Central":
+    "M 16 96 L 28 124 L 90 138 L 165 132 L 175 132 L 232 142 L 308 142 L 300 180 L 250 198 L 168 204 L 90 200 L 26 184 L 14 152 Z",
+  "South West":
+    "M 14 152 L 26 184 L 90 200 L 128 210 L 130 248 L 96 270 L 38 268 L 14 240 L 10 200 Z",
+  "South East":
+    "M 128 210 L 168 204 L 230 208 L 240 240 L 222 262 L 170 268 L 130 248 Z",
+  "South South":
+    "M 38 268 L 96 270 L 130 248 L 170 268 L 222 262 L 270 258 L 300 240 Q 304 252 290 264 L 254 278 L 200 282 L 142 282 L 80 278 Z",
+};
+
+const ZONE_LABEL_POS = {
+  "North West":    { x: 90,  y: 88 },
+  "North East":    { x: 235, y: 96 },
+  "North Central": { x: 160, y: 168 },
+  "South West":    { x: 65,  y: 230 },
+  "South East":    { x: 188, y: 234 },
+  "South South":   { x: 168, y: 272 },
+};
+
+// Map a success rate to a purple shade (excellent → underperforming)
+function _zoneShade(rate) {
+  if (rate >= 95) return "#5B21B6";           // dark purple — excellent
+  if (rate >= 92) return "#7C3AED";           // medium-dark
+  if (rate >= 89) return "#A78BFA";           // medium-light
+  if (rate >= 85) return "#C4B5FD";           // light
+  return "#DDD6FE";                            // very light — underperforming
+}
+
+function RegionKpi({ row, align = "left" }) {
+  if (!row) return null;
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-[0_2px_8px_rgba(15,23,42,0.04)] border border-slate-100/70 h-full" data-testid="regional-shipment-performance">
-      <div className="flex items-center justify-between mb-3">
+    <div
+      className="space-y-1"
+      data-testid={`region-kpi-${row.region.toLowerCase().replace(/ /g, "-")}`}
+    >
+      <div className={`text-[11px] font-bold text-slate-800 ${align === "right" ? "text-right" : ""}`}>
+        {row.region}
+      </div>
+      <div className={`flex items-center gap-1.5 ${align === "right" ? "justify-end" : ""}`}>
+        <span
+          className="inline-block h-2 w-2 rounded-sm"
+          style={{ background: _zoneShade(row.success_rate) }}
+        />
+        <span className="text-[10.5px] text-slate-600 tabular-nums">
+          {row.shipments} Shipments
+        </span>
+      </div>
+      <div className={`flex items-center gap-1.5 ${align === "right" ? "justify-end" : ""}`}>
+        <span className="inline-block h-2 w-2 rounded-sm bg-violet-300" />
+        <span className="text-[10.5px] text-slate-600 tabular-nums">
+          {Math.round(row.success_rate || 0)}% Success
+        </span>
+      </div>
+      <div className={`flex items-center gap-1.5 ${align === "right" ? "justify-end" : ""}`}>
+        <span className="inline-block h-2 w-2 rounded-full bg-violet-600" />
+        <span className="text-[10.5px] text-slate-600 tabular-nums">
+          {row.avg_transit_days != null ? `${row.avg_transit_days} Days` : "—"}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function RegionalPerformance({ rows }) {
+  // Normalize: ensure every zone exists in the result with a default
+  const byRegion = Object.fromEntries(rows.map((r) => [r.region, r]));
+  const ensure = (name) =>
+    byRegion[name] || { region: name, shipments: 0, success_rate: 0, avg_transit_days: null, fill_rate: 0 };
+
+  const nw = ensure("North West");
+  const ne = ensure("North East");
+  const nc = ensure("North Central");
+  const sw = ensure("South West");
+  const se = ensure("South East");
+  const ss = ensure("South South");
+  const ordered = [nw, nc, sw, ne, se, ss];
+
+  // Summary indicators (data-driven, fall back to ordered list)
+  const valid = ordered.filter((r) => r.shipments > 0);
+  const totalShip = valid.reduce((acc, r) => acc + r.shipments, 0);
+  const transitWeighted =
+    valid.filter((r) => r.avg_transit_days != null)
+      .reduce((acc, r) => acc + r.avg_transit_days * r.shipments, 0);
+  const transitDenom = valid.filter((r) => r.avg_transit_days != null)
+      .reduce((acc, r) => acc + r.shipments, 0);
+  const avgTransit = transitDenom ? (transitWeighted / transitDenom).toFixed(1) : "—";
+  const best = valid.length ? [...valid].sort((a, b) => b.success_rate - a.success_rate)[0] : null;
+  const mostActive = valid.length ? [...valid].sort((a, b) => b.shipments - a.shipments)[0] : null;
+  const lowestTime = valid.filter((r) => r.avg_transit_days != null);
+  const fastest = lowestTime.length ? [...lowestTime].sort((a, b) => a.avg_transit_days - b.avg_transit_days)[0] : null;
+
+  return (
+    <div
+      className="bg-white rounded-2xl p-5 shadow-[0_2px_8px_rgba(15,23,42,0.04)] border border-slate-100/70 h-full"
+      data-testid="regional-shipment-performance"
+    >
+      <div className="flex items-center justify-between mb-2">
         <h3 className="text-[15px] font-semibold text-slate-900">Regional Shipment Performance</h3>
         <Info className="h-3.5 w-3.5 text-slate-300" />
       </div>
-      <div className="grid grid-cols-2 gap-2.5">
-        {sorted.map((r) => {
-          const successColor =
-            r.success_rate >= 90 ? "text-emerald-600 bg-emerald-50" :
-            r.success_rate >= 70 ? "text-amber-600 bg-amber-50" :
-            "text-rose-600 bg-rose-50";
-          return (
-            <div
-              key={r.region}
-              className="rounded-xl border border-slate-100 p-3 hover:border-slate-200 transition-colors"
-              data-testid={`region-card-${r.region.toLowerCase().replace(/ /g, "-")}`}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <div className="text-[12px] font-bold text-slate-900 leading-tight">{r.region}</div>
-                <span className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded-full ${successColor}`}>
-                  {r.success_rate || 0}%
-                </span>
-              </div>
-              <div className="grid grid-cols-3 gap-1 mt-2 text-center">
-                <div>
-                  <div className="text-[8.5px] text-slate-500 font-semibold uppercase tracking-wider">Shipments</div>
-                  <div className="text-[14px] font-bold text-slate-900 tabular-nums">{r.shipments}</div>
-                </div>
-                <div>
-                  <div className="text-[8.5px] text-slate-500 font-semibold uppercase tracking-wider">Avg Transit</div>
-                  <div className="text-[14px] font-bold text-slate-900 tabular-nums">
-                    {r.avg_transit_days != null ? `${r.avg_transit_days}d` : "—"}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[8.5px] text-slate-500 font-semibold uppercase tracking-wider">Fill</div>
-                  <div className="text-[14px] font-bold text-slate-900 tabular-nums">{r.fill_rate || 0}%</div>
-                </div>
-              </div>
-            </div>
-          );
-        })}
+
+      {/* Map row: left KPIs · Nigeria heatmap · right KPIs */}
+      <div className="grid grid-cols-12 gap-2 mt-3">
+        <div className="col-span-3 flex flex-col justify-between py-1">
+          <RegionKpi row={nw} />
+          <RegionKpi row={nc} />
+          <RegionKpi row={sw} />
+        </div>
+
+        <div className="col-span-6 flex items-center justify-center">
+          <svg
+            viewBox="0 0 320 300"
+            className="w-full h-auto max-h-[260px]"
+            data-testid="nigeria-zone-heatmap"
+          >
+            <defs>
+              <filter id="zone-shadow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#7C3AED" floodOpacity="0.18" />
+              </filter>
+            </defs>
+            {ordered.map((r) => (
+              <path
+                key={r.region}
+                d={ZONE_PATHS[r.region]}
+                fill={_zoneShade(r.success_rate)}
+                stroke="#ffffff"
+                strokeWidth="2.5"
+                strokeLinejoin="round"
+                filter="url(#zone-shadow)"
+                data-testid={`zone-shape-${r.region.toLowerCase().replace(/ /g, "-")}`}
+              >
+                <title>{`${r.region}: ${r.shipments} shipments · ${Math.round(r.success_rate)}% success`}</title>
+              </path>
+            ))}
+            {ordered.map((r) => {
+              const pos = ZONE_LABEL_POS[r.region];
+              const fill = r.success_rate >= 92 ? "#ffffff" : "#312E81";
+              return (
+                <text
+                  key={`lbl-${r.region}`}
+                  x={pos.x}
+                  y={pos.y}
+                  textAnchor="middle"
+                  fontSize="8.5"
+                  fontWeight="700"
+                  fill={fill}
+                  style={{ pointerEvents: "none", letterSpacing: 0.2 }}
+                >
+                  {r.region}
+                </text>
+              );
+            })}
+          </svg>
+        </div>
+
+        <div className="col-span-3 flex flex-col justify-between py-1">
+          <RegionKpi row={ne} align="right" />
+          <RegionKpi row={se} align="right" />
+          <RegionKpi row={ss} align="right" />
+        </div>
+      </div>
+
+      {/* Performance Index gradient */}
+      <div className="mt-4 px-1" data-testid="performance-index-scale">
+        <div className="flex items-center justify-between text-[9.5px] font-semibold uppercase tracking-wider text-slate-400 mb-1">
+          <span>Performance Index</span>
+          <span className="text-slate-300">Success Rate</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-semibold text-slate-500">Low</span>
+          <div
+            className="h-2 flex-1 rounded-full"
+            style={{
+              background:
+                "linear-gradient(90deg, #DDD6FE 0%, #C4B5FD 25%, #A78BFA 50%, #7C3AED 75%, #5B21B6 100%)",
+            }}
+          />
+          <span className="text-[10px] font-semibold text-slate-500">High</span>
+        </div>
+      </div>
+
+      {/* Summary indicators */}
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 mt-4 pt-3 border-t border-slate-100" data-testid="regional-summary">
+        <div className="flex items-center justify-between">
+          <span className="text-[10.5px] text-slate-500 font-medium">Average Transit Time</span>
+          <span className="text-[11px] font-bold text-slate-900 tabular-nums">
+            {avgTransit === "—" ? "—" : `${avgTransit} Days`}
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-[10.5px] text-slate-500 font-medium">Best Performing</span>
+          <span className="text-[11px] font-bold text-violet-700 truncate ml-2">
+            {best ? best.region : "—"}
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-[10.5px] text-slate-500 font-medium">Most Active</span>
+          <span className="text-[11px] font-bold text-violet-700 truncate ml-2">
+            {mostActive ? mostActive.region : "—"}
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-[10.5px] text-slate-500 font-medium">Lowest Delivery Time</span>
+          <span className="text-[11px] font-bold text-violet-700 truncate ml-2">
+            {fastest ? fastest.region : "—"}
+          </span>
+        </div>
       </div>
     </div>
   );
