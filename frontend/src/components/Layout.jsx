@@ -272,6 +272,9 @@ export default function Layout() {
                 <LogOut className="h-3.5 w-3.5" /> Return to admin
               </button>
             )}
+            {role === "manufacturer" && (
+              <ManufacturerLogo entity={entity} />
+            )}
             {role !== "super_admin" && (
               <NotificationsPopover role={role} entityId={entity?.id || ""} />
             )}
@@ -289,6 +292,40 @@ export default function Layout() {
           onUiAction={handleAssistantUiAction}
           onRefresh={handleAssistantRefresh}
         />
+      )}
+    </div>
+  );
+}
+
+
+// ---- Manufacturer Logo (topbar chip beside the bell) ----------------------
+const BRAND_LOGOS = {
+  unilever: "/brands/unilever.svg",
+};
+
+function _brandKey(name) {
+  return (name || "").toLowerCase().replace(/[^a-z0-9]/g, "").trim();
+}
+
+function ManufacturerLogo({ entity }) {
+  const name = entity?.name || "Manufacturer";
+  // Prefer an explicit logo_url on the entity, else lookup by brand key.
+  const explicit = entity?.logo_url;
+  const key = _brandKey(name);
+  const asset = explicit || BRAND_LOGOS[key] || null;
+
+  return (
+    <div
+      className="h-9 px-2.5 rounded-xl bg-white border border-slate-200 hover:border-slate-300 transition-colors flex items-center justify-center"
+      title={name}
+      data-testid="manufacturer-logo"
+    >
+      {asset ? (
+        <img src={asset} alt={`${name} logo`} className="h-6 w-auto object-contain" />
+      ) : (
+        <span className="text-[12px] font-bold text-violet-700 tracking-wide">
+          {(name[0] || "M").toUpperCase()}
+        </span>
       )}
     </div>
   );
