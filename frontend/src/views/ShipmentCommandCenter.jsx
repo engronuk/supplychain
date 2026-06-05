@@ -19,6 +19,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "@/context/SessionContext";
 import { Api } from "@/lib/api";
+import { STATE_PATHS, VIEWBOX as NG_VIEWBOX } from "@/lib/nigeriaStates";
 import {
   Search, Filter, Download, ChevronRight, ChevronLeft, Plus,
   Package, Truck, CheckCircle2, AlertTriangle, DollarSign, Shield,
@@ -384,33 +385,8 @@ function PipelineFunnel({ pipeline }) {
 }
 
 // =============================================================================
-// REGIONAL PERFORMANCE — Nigeria geopolitical-zone heatmap
+// REGIONAL PERFORMANCE — Nigeria geopolitical-zone heatmap (state-level)
 // =============================================================================
-const ZONE_PATHS = {
-  // Stylized Nigeria divided into 6 geopolitical zones (viewBox: 0 0 320 290)
-  // Shared vertices ensure adjacent zones tile cleanly (no gaps).
-  "North West":
-    "M 18 58 L 70 32 L 150 22 Q 168 22 172 30 L 174 90 L 165 132 L 90 138 L 28 124 L 16 96 Z",
-  "North East":
-    "M 172 30 L 218 30 L 268 42 L 300 60 L 312 100 L 308 142 L 232 142 L 175 132 L 174 90 Z",
-  "North Central":
-    "M 16 96 L 28 124 L 90 138 L 165 132 L 175 132 L 232 142 L 308 142 L 300 180 L 250 198 L 168 204 L 90 200 L 26 184 L 14 152 Z",
-  "South West":
-    "M 14 152 L 26 184 L 90 200 L 128 210 L 130 248 L 96 270 L 38 268 L 14 240 L 10 200 Z",
-  "South East":
-    "M 128 210 L 168 204 L 230 208 L 240 240 L 222 262 L 170 268 L 130 248 Z",
-  "South South":
-    "M 38 268 L 96 270 L 130 248 L 170 268 L 222 262 L 270 258 L 300 240 Q 304 252 290 264 L 254 278 L 200 282 L 142 282 L 80 278 Z",
-};
-
-const ZONE_LABEL_POS = {
-  "North West":    { x: 90,  y: 88 },
-  "North East":    { x: 235, y: 96 },
-  "North Central": { x: 160, y: 168 },
-  "South West":    { x: 65,  y: 230 },
-  "South East":    { x: 188, y: 234 },
-  "South South":   { x: 168, y: 272 },
-};
 
 // Map a success rate to a purple shade (excellent → underperforming)
 function _zoneShade(rate) {
@@ -418,7 +394,8 @@ function _zoneShade(rate) {
   if (rate >= 92) return "#7C3AED";           // medium-dark
   if (rate >= 89) return "#A78BFA";           // medium-light
   if (rate >= 85) return "#C4B5FD";           // light
-  return "#DDD6FE";                            // very light — underperforming
+  if (rate > 0)   return "#DDD6FE";           // very light — underperforming
+  return "#EDE9FE";                            // no data
 }
 
 function RegionKpi({ row, align = "left" }) {
@@ -504,47 +481,37 @@ function RegionalPerformance({ rows }) {
 
         <div className="col-span-6 flex items-center justify-center">
           <svg
-            viewBox="0 0 320 300"
-            className="w-full h-auto max-h-[260px]"
+            viewBox={`0 0 ${NG_VIEWBOX.w} ${NG_VIEWBOX.h}`}
+            className="w-full h-auto"
+            style={{ maxHeight: 280 }}
             data-testid="nigeria-zone-heatmap"
           >
             <defs>
-              <filter id="zone-shadow" x="-20%" y="-20%" width="140%" height="140%">
-                <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#7C3AED" floodOpacity="0.18" />
+              <filter id="zone-shadow" x="-5%" y="-5%" width="110%" height="110%">
+                <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="#7C3AED" floodOpacity="0.18" />
               </filter>
             </defs>
-            {ordered.map((r) => (
-              <path
-                key={r.region}
-                d={ZONE_PATHS[r.region]}
-                fill={_zoneShade(r.success_rate)}
-                stroke="#ffffff"
-                strokeWidth="2.5"
-                strokeLinejoin="round"
-                filter="url(#zone-shadow)"
-                data-testid={`zone-shape-${r.region.toLowerCase().replace(/ /g, "-")}`}
-              >
-                <title>{`${r.region}: ${r.shipments} shipments · ${Math.round(r.success_rate)}% success`}</title>
-              </path>
-            ))}
-            {ordered.map((r) => {
-              const pos = ZONE_LABEL_POS[r.region];
-              const fill = r.success_rate >= 92 ? "#ffffff" : "#312E81";
-              return (
-                <text
-                  key={`lbl-${r.region}`}
-                  x={pos.x}
-                  y={pos.y}
-                  textAnchor="middle"
-                  fontSize="8.5"
-                  fontWeight="700"
-                  fill={fill}
-                  style={{ pointerEvents: "none", letterSpacing: 0.2 }}
-                >
-                  {r.region}
-                </text>
-              );
-            })}
+            <g filter="url(#zone-shadow)">
+              {STATE_PATHS.map((state) => {
+                const zoneRow = byRegion[state.zone];
+                const rate = zoneRow ? zoneRow.success_rate : 0;
+                return (
+                  <path
+                    key={state.name}
+                    d={state.d}
+                    fill={_zoneShade(rate)}
+                    stroke="#ffffff"
+                    strokeWidth="0.8"
+                    strokeLinejoin="round"
+                    data-testid={`zone-state-${state.name.toLowerCase().replace(/ /g, "-")}`}
+                  >
+                    <title>
+                      {`${state.name} (${state.zone}) — ${zoneRow ? `${zoneRow.shipments} shipments · ${Math.round(rate)}% success` : "no data"}`}
+                    </title>
+                  </path>
+                );
+              })}
+            </g>
           </svg>
         </div>
 
