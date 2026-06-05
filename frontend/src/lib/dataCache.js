@@ -28,6 +28,8 @@ export function invalidate(prefix = "") {
  *  - `data` is the previously cached value (or null) on first paint.
  *  - `loading` is true only when there's no cached value AND we're fetching.
  *  - `refreshing` is true on every background refetch.
+ *  - If the response carries `_snapshot.computing === true`, the hook auto-
+ *    polls every 2.5 s until the snapshot is ready, then stops.
  */
 export function useCachedFetch(key, fetcher, deps = []) {
   const initial = key ? getCached(key) : null;
@@ -35,6 +37,14 @@ export function useCachedFetch(key, fetcher, deps = []) {
   const [loading, setLoading] = useState(!initial);
   const [refreshing, setRefreshing] = useState(false);
   const tick = useRef(0);
+  const pollTimer = useRef(null);
+
+  const stopPoll = () => {
+    if (pollTimer.current) {
+      clearInterval(pollTimer.current);
+      pollTimer.current = null;
+    }
+  };
 
   const run = async () => {
     if (!key) return;
@@ -46,6 +56,22 @@ export function useCachedFetch(key, fetcher, deps = []) {
       if (tick.current !== myTick) return;
       setCached(key, fresh);
       setData(fresh);
+      // If backend says it's still building, start a short poll loop.
+      const computing = fresh && fresh._snapshot && fresh._snapshot.computing;
+      if (computing && !pollTimer.current) {
+        pollTimer.current = setInterval(async () => {
+          try {
+            const next = await fetcher();
+            setCached(key, next);
+            setData(next);
+            if (!(next && next._snapshot && next._snapshot.computing)) {
+              stopPoll();
+            }
+          } catch (_) { /* keep polling */ }
+        }, 2500);
+      } else if (!computing) {
+        stopPoll();
+      }
     } finally {
       if (tick.current === myTick) {
         setLoading(false);
@@ -56,6 +82,7 @@ export function useCachedFetch(key, fetcher, deps = []) {
 
   useEffect(() => {
     run();
+    return stopPoll;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 

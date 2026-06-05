@@ -136,17 +136,24 @@ async def _background_bootstrap():
     # In production we never want to run demo seeding / mass date refreshes.
     # Atlas can take 60-90s to apply ~100k updates on a small cluster which
     # can race with the readiness probe and cause CrashLoopBackOff. Skip the
-    # whole demo block when ENVIRONMENT == "production".
+    # whole demo block when ENVIRONMENT == "production". We DO still start
+    # the intel scheduler AND pre-warm dashboard snapshots in production so
+    # the very first page hit returns < 1 s.
     environment = (os.environ.get("ENVIRONMENT") or "").strip().lower()
     is_production = environment == "production"
 
     if is_production:
-        logger.info("ENVIRONMENT=production — skipping all demo seed/refresh routines.")
+        logger.info("ENVIRONMENT=production — skipping demo seed/refresh routines.")
         try:
             start_scheduler()
-            logger.info("Background bootstrap complete (production mode).")
         except Exception:
             logger.exception("Failed to start intel scheduler")
+        # Pre-warm dashboard snapshots so the very first request is instant.
+        try:
+            await _prewarm_dashboard_snapshots()
+        except Exception:
+            logger.exception("Failed to pre-warm dashboard snapshots")
+        logger.info("Background bootstrap complete (production mode).")
         return
 
     if await db.manufacturers.count_documents({}) == 0:
@@ -211,6 +218,41 @@ async def _background_bootstrap():
         logger.info("Background bootstrap complete.")
     except Exception:
         logger.exception("Failed to start intel scheduler")
+
+
+async def _prewarm_dashboard_snapshots():
+    """Compute & store snapshots for every manufacturer so the first user
+    request hits a warm Mongo doc instead of paying the 20-60 s build cost.
+
+    Runs once during the production startup path. Errors per-tenant are
+    isolated so a single bad row can't block the rest.
+    """
+    from services.snapshots import get_snapshot, set_snapshot
+    from routes.manufacturer import _build_manufacturer_overview
+    from routes.product_intelligence import _build_product_intelligence
+    from routes.shipment_command import _build_shipment_command
+    from routes.distributor_network import _build_distributor_network
+
+    builders = {
+        "overview": _build_manufacturer_overview,
+        "product-intelligence": _build_product_intelligence,
+        "shipment-command": _build_shipment_command,
+        "distributor-network": _build_distributor_network,
+    }
+    cursor = db.manufacturers.find({}, {"_id": 0, "id": 1})
+    tenant_ids = [doc["id"] async for doc in cursor]
+    logger.info("Pre-warming dashboard snapshots for %d tenant(s)…", len(tenant_ids))
+    for mid in tenant_ids:
+        for kind, build in builders.items():
+            try:
+                existing = await get_snapshot(kind, mid)
+                if existing:
+                    continue
+                payload = await build(mid)
+                await set_snapshot(kind, mid, payload)
+                logger.info("Pre-warmed snapshot %s for %s", kind, mid)
+            except Exception:
+                logger.exception("Pre-warm failed for %s:%s", kind, mid)
 
 
 @app.on_event("shutdown")

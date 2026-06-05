@@ -87,8 +87,20 @@ async def _build_shipment_command(manufacturer_id: str):
     today = now.date()
 
     # ---- fetch shipments + the directories we need to denormalise them -----
+    # PERF: only pull the last 180 days. Older shipments are not surfaced
+    # anywhere on the command-center UI and dragging the entire history (often
+    # 10k+ docs on a mature tenant) makes the build take 30-60s on Atlas.
+    horizon_iso = (now - timedelta(days=180)).isoformat()
     shipments = await db.shipments.find(
-        {"manufacturer_id": manufacturer_id}, {"_id": 0},
+        {
+            "manufacturer_id": manufacturer_id,
+            "$or": [
+                {"created_at": {"$gte": horizon_iso}},
+                {"dispatched_at": {"$gte": horizon_iso}},
+                {"status": {"$in": ["pending", "in_transit"]}},
+            ],
+        },
+        {"_id": 0},
     ).to_list(None)
 
     # Directories
@@ -186,13 +198,30 @@ async def _build_shipment_command(manufacturer_id: str):
     prev_val = sum(r["value"] for r in enriched if cutoff_14 <= r.get("created_at", "") < cutoff_7)
     val_growth = _delta_pct(cur_val, prev_val)
 
-    # Daily-bucket sparklines for the last 30 days
+    # Daily-bucket sparklines for the last 30 days — single pass over enriched
+    # so we don't do 5 × 30 list comprehensions on big shipment sets.
     days = [(today - timedelta(days=i)).isoformat() for i in range(29, -1, -1)]
-    sp_pd = [sum(1 for r in enriched if r["bucket"] == "pending" and (r.get("created_at") or "").startswith(d)) for d in days]
-    sp_it = [sum(1 for r in enriched if r["bucket"] == "in_transit" and (r.get("dispatched_at") or "").startswith(d)) for d in days]
-    sp_dv = [sum(1 for r in enriched if r["bucket"] == "delivered" and (r.get("received_at") or "").startswith(d)) for d in days]
-    sp_dl = [sum(1 for r in enriched if r["bucket"] == "delayed" and (r.get("dispatched_at") or "").startswith(d)) for d in days]
-    sp_val = [sum(r["value"] for r in enriched if (r.get("created_at") or "").startswith(d)) for d in days]
+    day_idx = {d: i for i, d in enumerate(days)}
+    sp_pd = [0] * 30
+    sp_it = [0] * 30
+    sp_dv = [0] * 30
+    sp_dl = [0] * 30
+    sp_val = [0.0] * 30
+    for r in enriched:
+        c_idx = day_idx.get((r.get("created_at") or "")[:10])
+        if c_idx is not None:
+            sp_val[c_idx] += r["value"]
+            if r["bucket"] == "pending":
+                sp_pd[c_idx] += 1
+        d_idx = day_idx.get((r.get("dispatched_at") or "")[:10])
+        if d_idx is not None:
+            if r["bucket"] == "in_transit":
+                sp_it[d_idx] += 1
+            elif r["bucket"] == "delayed":
+                sp_dl[d_idx] += 1
+        rec_idx = day_idx.get((r.get("received_at") or "")[:10])
+        if rec_idx is not None and r["bucket"] == "delivered":
+            sp_dv[rec_idx] += 1
     sp_fill = [fill_rate + (i % 3 - 1) for i in range(12)]
 
     kpis = {
@@ -322,9 +351,9 @@ async def _build_shipment_command(manufacturer_id: str):
         "Review low-fill-rate shipments",
     ]
 
-    # ---- Table rows --------------------------------------------------------
+    # ---- Table rows (cap to the 200 most recent for a snappy response) ----
     table_rows = []
-    for r in sorted(enriched, key=lambda x: x.get("created_at", ""), reverse=True):
+    for r in sorted(enriched, key=lambda x: x.get("created_at", ""), reverse=True)[:200]:
         # Expected arrival = dispatched_at + 2 days, or created_at + 5 days for pending
         exp_arrival = None
         if r.get("dispatched_at"):
