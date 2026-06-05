@@ -165,41 +165,97 @@ async def _build_shipment_command(manufacturer_id: str):
             "products_count": len({it.get("product_id") for it in items}),
         })
 
-    # ---- KPIs --------------------------------------------------------------
-    pending_dispatch = sum(1 for r in enriched if r["bucket"] == "pending")
-    in_transit = sum(1 for r in enriched if r["bucket"] == "in_transit")
-    delivered = sum(1 for r in enriched if r["bucket"] == "delivered")
-    delayed = sum(1 for r in enriched if r["bucket"] == "delayed")
-    shipment_value_total = sum(r["value"] for r in enriched)
+    # ---- KPIs (source-of-truth: distributor_orders so numbers match the
+    # Order Fulfillment Queue exactly) -------------------------------------
+    # Fetch every order for the manufacturer and bucket by lifecycle state.
+    orders = await db.distributor_orders.find(
+        {"manufacturer_id": manufacturer_id}, {"_id": 0},
+    ).to_list(None)
 
-    # Fill rate — ordered vs shipped quantity. For received shipments we count
-    # full receipt; for in_transit/pending we assume the planned quantity.
-    ordered_units = sum(r["units"] for r in enriched)
-    fulfilled_units = sum(r["units"] for r in enriched if r["bucket"] != "pending")
-    fill_rate = round(fulfilled_units / max(ordered_units, 1) * 100, 1)
+    # Unit-price map for value rollups (items only carry product_id + qty).
+    prod_price = {p["id"]: float(p.get("unit_price") or 0)
+                  for p in await db.products.find(
+                      {"manufacturer_id": manufacturer_id},
+                      {"_id": 0, "id": 1, "unit_price": 1},
+                  ).to_list(None)}
+
+    def _order_value(o: dict) -> float:
+        return sum(
+            prod_price.get(it.get("product_id"), 0) * int(it.get("quantity") or 0)
+            for it in (o.get("items") or [])
+        )
+
+    order_count: dict[str, int] = {"pending": 0, "approved": 0, "dispatched": 0,
+                                   "delivered": 0, "rejected": 0}
+    order_value: dict[str, float] = {k: 0.0 for k in order_count}
+    for o in orders:
+        st = (o.get("status") or "pending").lower()
+        if st not in order_count:
+            order_count[st] = 0
+            order_value[st] = 0.0
+        order_count[st] += 1
+        order_value[st] += _order_value(o)
+
+    # An order is "pending dispatch" while it's still pending approval OR has
+    # been approved but not yet shipped — both cohorts await dispatch.
+    pending_dispatch = order_count["pending"] + order_count["approved"]
+    pending_dispatch_value = order_value["pending"] + order_value["approved"]
+    in_transit = order_count["dispatched"]
+    in_transit_value = order_value["dispatched"]
+    delivered = order_count["delivered"]
+    delivered_value = order_value["delivered"]
+    # Delayed is a *physical* state on the shipment, not an order status, so
+    # we still derive it from the shipments collection.
+    delayed = sum(1 for r in enriched if r["bucket"] == "delayed")
+    shipment_value_total = (pending_dispatch_value + in_transit_value + delivered_value)
+
+    # Fill rate — % of ordered units actually shipped (dispatched + delivered).
+    ordered_units_total = sum(
+        int(it.get("quantity") or 0) for o in orders for it in (o.get("items") or [])
+    )
+    fulfilled_units_total = sum(
+        int(it.get("quantity") or 0)
+        for o in orders if (o.get("status") or "").lower() in ("dispatched", "delivered")
+        for it in (o.get("items") or [])
+    )
+    fill_rate = round(fulfilled_units_total / max(ordered_units_total, 1) * 100, 1)
 
     # 7-day deltas — compare last 7 days against previous 7 days.
+    # 7-day deltas — orders is the source of truth for state-machine cohorts.
     cutoff_7 = (now - timedelta(days=7)).isoformat()
     cutoff_14 = (now - timedelta(days=14)).isoformat()
-    def _count(filter_fn, recent_field: str) -> tuple[int, int]:
-        cur = sum(1 for r in enriched if filter_fn(r) and (r.get(recent_field) or "") >= cutoff_7)
-        prev = sum(1 for r in enriched if filter_fn(r) and cutoff_14 <= (r.get(recent_field) or "") < cutoff_7)
+    def _orders_count(predicate, ts_field: str) -> tuple[int, int]:
+        cur, prev = 0, 0
+        for o in orders:
+            if not predicate(o):
+                continue
+            ts = (o.get(ts_field) or "")
+            if ts >= cutoff_7:
+                cur += 1
+            elif ts >= cutoff_14:
+                prev += 1
         return cur, prev
 
-    cur, prev = _count(lambda r: r["bucket"] == "pending", "created_at")
+    def _is_pending_dispatch(o):
+        s = (o.get("status") or "").lower()
+        return s in ("pending", "approved")
+
+    cur, prev = _orders_count(_is_pending_dispatch, "created_at")
     pd_growth = _delta_pct(cur, prev)
-    cur, prev = _count(lambda r: r["bucket"] == "in_transit", "dispatched_at")
+    cur, prev = _orders_count(lambda o: (o.get("status") or "") == "dispatched", "dispatched_at")
     it_growth = _delta_pct(cur, prev)
-    cur, prev = _count(lambda r: r["bucket"] == "delivered", "received_at")
+    cur, prev = _orders_count(lambda o: (o.get("status") or "") == "delivered", "delivered_at")
     dv_growth = _delta_pct(cur, prev)
-    cur, prev = _count(lambda r: r["bucket"] == "delayed", "dispatched_at")
+    # Delayed still derives from shipments
+    cur = sum(1 for r in enriched if r["bucket"] == "delayed" and (r.get("dispatched_at") or "") >= cutoff_7)
+    prev = sum(1 for r in enriched if r["bucket"] == "delayed" and cutoff_14 <= (r.get("dispatched_at") or "") < cutoff_7)
     dl_growth = _delta_pct(cur, prev)
-    cur_val = sum(r["value"] for r in enriched if (r.get("created_at") or "") >= cutoff_7)
-    prev_val = sum(r["value"] for r in enriched if cutoff_14 <= (r.get("created_at") or "") < cutoff_7)
+    cur_val = sum(_order_value(o) for o in orders if (o.get("created_at") or "") >= cutoff_7)
+    prev_val = sum(_order_value(o) for o in orders if cutoff_14 <= (o.get("created_at") or "") < cutoff_7)
     val_growth = _delta_pct(cur_val, prev_val)
 
-    # Daily-bucket sparklines for the last 30 days — single pass over enriched
-    # so we don't do 5 × 30 list comprehensions on big shipment sets.
+    # Daily sparklines for the last 30 days — orders feed the state-cohort
+    # series; shipments still feed the "delayed" series.
     days = [(today - timedelta(days=i)).isoformat() for i in range(29, -1, -1)]
     day_idx = {d: i for i, d in enumerate(days)}
     sp_pd = [0] * 30
@@ -207,21 +263,24 @@ async def _build_shipment_command(manufacturer_id: str):
     sp_dv = [0] * 30
     sp_dl = [0] * 30
     sp_val = [0.0] * 30
-    for r in enriched:
-        c_idx = day_idx.get((r.get("created_at") or "")[:10])
+    for o in orders:
+        status = (o.get("status") or "").lower()
+        c_idx = day_idx.get((o.get("created_at") or "")[:10])
         if c_idx is not None:
-            sp_val[c_idx] += r["value"]
-            if r["bucket"] == "pending":
+            sp_val[c_idx] += _order_value(o)
+            if status in ("pending", "approved"):
                 sp_pd[c_idx] += 1
-        d_idx = day_idx.get((r.get("dispatched_at") or "")[:10])
-        if d_idx is not None:
-            if r["bucket"] == "in_transit":
-                sp_it[d_idx] += 1
-            elif r["bucket"] == "delayed":
+        d_idx = day_idx.get((o.get("dispatched_at") or "")[:10])
+        if d_idx is not None and status == "dispatched":
+            sp_it[d_idx] += 1
+        del_idx = day_idx.get((o.get("delivered_at") or "")[:10])
+        if del_idx is not None and status == "delivered":
+            sp_dv[del_idx] += 1
+    for r in enriched:
+        if r["bucket"] == "delayed":
+            d_idx = day_idx.get((r.get("dispatched_at") or "")[:10])
+            if d_idx is not None:
                 sp_dl[d_idx] += 1
-        rec_idx = day_idx.get((r.get("received_at") or "")[:10])
-        if rec_idx is not None and r["bucket"] == "delivered":
-            sp_dv[rec_idx] += 1
     sp_fill = [fill_rate + (i % 3 - 1) for i in range(12)]
 
     kpis = {
@@ -231,6 +290,15 @@ async def _build_shipment_command(manufacturer_id: str):
         "delayed":          {"value": delayed,          "growth_pct": dl_growth, "spark": _spark(sp_dl)},
         "shipment_value":   {"value": shipment_value_total, "growth_pct": val_growth, "spark": _spark(sp_val)},
         "fill_rate":        {"value": fill_rate,        "growth_pct": 4.0,       "spark": _spark(sp_fill)},
+        # Order-state breakdown — surfaced so the frontend can match the
+        # numbers shown by the Order Fulfillment Queue exactly.
+        "order_breakdown": {
+            "pending":    order_count["pending"],
+            "approved":   order_count["approved"],
+            "dispatched": order_count["dispatched"],
+            "delivered":  order_count["delivered"],
+            "rejected":   order_count["rejected"],
+        },
     }
 
     # ---- Regional performance ---------------------------------------------
