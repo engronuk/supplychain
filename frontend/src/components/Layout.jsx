@@ -8,7 +8,6 @@ import {
   LayoutDashboard,
   Boxes,
   Truck,
-  MessageSquare,
   BarChart3,
   FileText,
   LogOut,
@@ -24,6 +23,7 @@ import {
   Receipt,
   BrainCircuit,
   Sparkles,
+  ShoppingCart,
 } from "lucide-react";
 
 const ROLE_ICON = {
@@ -55,11 +55,11 @@ function navForRole(role) {
   } else if (role === "distributor") {
     base.push({ to: "/intel", label: "Intelligence", icon: BrainCircuit });
     base.push({ to: "/network", label: "Retailers", icon: Network });
-    base.push({ to: "/requests", label: "Requests", icon: MessageSquare });
+    base.push({ to: "/procurement", label: "Procurement", icon: ShoppingCart });
   } else if (role === "retailer") {
     base.push({ to: "/intel", label: "Intelligence", icon: BrainCircuit });
     base.push({ to: "/sales", label: "Sales Book", icon: Receipt });
-    base.push({ to: "/requests", label: "Requests", icon: MessageSquare });
+    base.push({ to: "/procurement", label: "Procurement", icon: ShoppingCart });
   }
   base.push({ to: "/analytics", label: "Analytics", icon: BarChart3 });
   base.push({ to: "/reports", label: "Reports", icon: FileText });

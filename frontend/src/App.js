@@ -9,7 +9,8 @@ import DistributorDashboard from "@/views/DistributorDashboard";
 import RetailerDashboardV2 from "@/views/RetailerDashboardV2";
 import InventoryView from "@/views/InventoryView";
 import ShipmentTracker from "@/views/ShipmentTracker";
-import RequestsView from "@/views/RequestsView";
+import RetailerProcurement from "@/views/RetailerProcurement";
+import DistributorProcurementInbox from "@/views/DistributorProcurementInbox";
 import AnalyticsView from "@/views/AnalyticsView";
 import ReportsView from "@/views/ReportsView";
 import NetworkView from "@/views/NetworkView";
@@ -34,6 +35,15 @@ function RoleDashboard() {
   if (session.role === "manufacturer") return <ManufacturerDashboard />;
   if (session.role === "distributor") return <DistributorDashboard />;
   return <RetailerDashboardV2 />;
+}
+
+function ProcurementGate() {
+  const { session } = useSession();
+  if (!session) return null;
+  if (session.role === "distributor") return <DistributorProcurementInbox />;
+  if (session.role === "retailer") return <RetailerProcurement />;
+  // Other roles: redirect home.
+  return <Navigate to="/dashboard" replace />;
 }
 
 function BootGate({ children }) {
@@ -79,7 +89,8 @@ function App() {
               <Route path="/product-intelligence" element={<ProductIntelligenceCenter />} />
               <Route path="/inventory" element={<InventoryView />} />
               <Route path="/shipments" element={<ShipmentTracker />} />
-              <Route path="/requests" element={<RequestsView />} />
+              <Route path="/requests" element={<Navigate to="/procurement" replace />} />
+              <Route path="/procurement" element={<ProcurementGate />} />
               <Route path="/network" element={<NetworkView />} />
               <Route path="/network/retailer/:retailerId" element={<DistributorRetailerDetail />} />
               <Route path="/inventory/product/:productId" element={<DistributorProductDetail />} />

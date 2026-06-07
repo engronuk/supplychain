@@ -41,6 +41,11 @@ logger = logging.getLogger("tradekonekt")
 
 ShipmentStatus = Literal["pending", "in_transit", "received"]
 RequestStatus = Literal["pending", "approved", "rejected", "fulfilled"]
+POStatus = Literal[
+    "draft", "submitted", "approved", "processing",
+    "shipped", "delivered", "cancelled", "rejected",
+]
+QuoteStatus = Literal["open", "responded", "closed", "expired"]
 PartyRole = Literal["manufacturer", "distributor", "retailer"]
 
 

@@ -26,6 +26,7 @@ from routes import (
     inventory,
     manufacturer,
     notifications,
+    procurement,
     product_detail,
     product_intelligence,
     reports,
@@ -42,6 +43,7 @@ from services.seed import seed_from_csv
 from services.seed_batches import seed_batches
 from services.seed_demo_users import seed_demo_users
 from services.seed_distributor_orders import seed_distributor_orders
+from services.seed_procurement import seed_procurement
 from services.refresh_demo_dates import refresh_demo_dates
 
 app = FastAPI(title="TradeKonekt API")
@@ -54,6 +56,7 @@ for r in (
     inventory.router,
     shipments.router,
     stock_requests.router,
+    procurement.router,
     notifications.router,
     analytics.router,
     reports.router,
@@ -197,6 +200,14 @@ async def _background_bootstrap():
             logger.info("Distributor orders seeded: %s", result)
     except Exception:
         logger.exception("Distributor order seed failed (continuing)")
+
+    # Retailer Procurement workspace (POs + supplier quotes).
+    try:
+        result = await seed_procurement()
+        if result.get("created_pos") or result.get("created_quotes"):
+            logger.info("Procurement seeded: %s", result)
+    except Exception:
+        logger.exception("Procurement seed failed (continuing)")
 
     # Refresh seeded date fields so the demo always looks "actively used
     # today". Skipped immediately after a fresh seed (data is already

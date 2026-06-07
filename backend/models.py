@@ -186,3 +186,127 @@ class SaleCreate(BaseModel):
 
 class SaleMarkPaid(BaseModel):
     payment_method: Literal["cash", "transfer", "pos"] = "cash"
+
+
+
+# ---- Procurement (Cart, Purchase Orders, Quotes) ----------------------------
+from core import POStatus, QuoteStatus  # noqa: E402
+
+
+class CartItem(BaseModel):
+    product_id: str
+    distributor_id: str
+    quantity: int
+    unit_cost: float
+
+
+class Cart(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=new_id)
+    retailer_id: str
+    items: List[CartItem] = Field(default_factory=list)
+    note: Optional[str] = None
+    updated_at: str = Field(default_factory=now_iso)
+
+
+class CartItemUpsert(BaseModel):
+    product_id: str
+    distributor_id: str
+    quantity: int = Field(ge=1)
+    unit_cost: float = Field(ge=0)
+
+
+class CartItemUpdate(BaseModel):
+    quantity: int = Field(ge=1)
+
+
+class POLine(BaseModel):
+    product_id: str
+    quantity: int
+    unit_cost: float = 0.0
+    line_total: float = 0.0
+
+
+class StatusEvent(BaseModel):
+    status: POStatus
+    at: str = Field(default_factory=now_iso)
+    by: Optional[str] = None
+    note: Optional[str] = None
+
+
+class PurchaseOrder(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=new_id)
+    po_number: str
+    retailer_id: str
+    distributor_id: str
+    items: List[POLine]
+    total_amount: float = 0.0
+    status: POStatus = "draft"
+    note: Optional[str] = None
+    cancel_reason: Optional[str] = None
+    reject_reason: Optional[str] = None
+    shipment_id: Optional[str] = None
+    duplicate_of: Optional[str] = None
+    status_history: List[StatusEvent] = Field(default_factory=list)
+    created_at: str = Field(default_factory=now_iso)
+    updated_at: str = Field(default_factory=now_iso)
+    submitted_at: Optional[str] = None
+    approved_at: Optional[str] = None
+    processed_at: Optional[str] = None
+    shipped_at: Optional[str] = None
+    delivered_at: Optional[str] = None
+    cancelled_at: Optional[str] = None
+
+
+class PurchaseOrderCreate(BaseModel):
+    retailer_id: str
+    distributor_id: str
+    items: List[CartItemUpsert]
+    note: Optional[str] = None
+
+
+class POAction(BaseModel):
+    reason: Optional[str] = None
+
+
+class QuoteResponse(BaseModel):
+    distributor_id: str
+    unit_price: float
+    lead_time_days: int
+    moq: int
+    valid_until: str
+    notes: Optional[str] = None
+    responded_at: str = Field(default_factory=now_iso)
+
+
+class SupplierQuote(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=new_id)
+    quote_number: str
+    retailer_id: str
+    product_id: str
+    quantity: int
+    distributor_ids: List[str]
+    responses: List[QuoteResponse] = Field(default_factory=list)
+    status: QuoteStatus = "open"
+    note: Optional[str] = None
+    created_at: str = Field(default_factory=now_iso)
+    closed_at: Optional[str] = None
+
+
+class QuoteCreate(BaseModel):
+    retailer_id: str
+    product_id: str
+    quantity: int = Field(ge=1)
+    distributor_ids: List[str] = Field(min_length=1)
+    note: Optional[str] = None
+
+
+class QuoteRespondPayload(BaseModel):
+    distributor_id: str
+    unit_price: float = Field(ge=0)
+    lead_time_days: int = Field(ge=0)
+    moq: int = Field(ge=1)
+    valid_until: str  # ISO date
+    notes: Optional[str] = None

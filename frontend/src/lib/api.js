@@ -167,6 +167,45 @@ export const Api = {
   refreshDistributorOps: (distributor_id) =>
     api.post(`/distributor/${distributor_id}/operations-intelligence/refresh`).then((r) => r.data),
 
+  // Procurement (Cart · POs · Quotes · AI)
+  cart: (retailer_id) =>
+    api.get(`/procurement/cart/${retailer_id}`).then((r) => r.data),
+  cartAddItem: (retailer_id, payload) =>
+    api.post(`/procurement/cart/${retailer_id}/items`, payload).then((r) => r.data),
+  cartUpdateItem: (retailer_id, product_id, payload, distributor_id) =>
+    api.patch(`/procurement/cart/${retailer_id}/items/${product_id}`, payload,
+      { params: distributor_id ? { distributor_id } : {} }).then((r) => r.data),
+  cartRemoveItem: (retailer_id, product_id, distributor_id) =>
+    api.delete(`/procurement/cart/${retailer_id}/items/${product_id}`,
+      { params: distributor_id ? { distributor_id } : {} }).then((r) => r.data),
+  cartClear: (retailer_id) =>
+    api.delete(`/procurement/cart/${retailer_id}`).then((r) => r.data),
+  cartSubmit: (retailer_id, payload = {}) =>
+    api.post(`/procurement/cart/${retailer_id}/submit`, payload).then((r) => r.data),
+
+  purchaseOrders: (params) =>
+    api.get(`/procurement/purchase-orders`, { params }).then((r) => r.data),
+  purchaseOrder: (po_id) =>
+    api.get(`/procurement/purchase-orders/${po_id}`).then((r) => r.data),
+  createPurchaseOrder: (payload, submit = false) =>
+    api.post(`/procurement/purchase-orders`, payload, { params: { submit } }).then((r) => r.data),
+  poAction: (po_id, action, payload = {}) =>
+    api.post(`/procurement/purchase-orders/${po_id}/${action}`, payload).then((r) => r.data),
+
+  quotes: (params) =>
+    api.get(`/procurement/quotes`, { params }).then((r) => r.data),
+  quote: (quote_id) =>
+    api.get(`/procurement/quotes/${quote_id}`).then((r) => r.data),
+  createQuote: (payload) =>
+    api.post(`/procurement/quotes`, payload).then((r) => r.data),
+  respondQuote: (quote_id, payload) =>
+    api.post(`/procurement/quotes/${quote_id}/respond`, payload).then((r) => r.data),
+  closeQuote: (quote_id) =>
+    api.post(`/procurement/quotes/${quote_id}/close`).then((r) => r.data),
+
+  aiRecommendations: (retailer_id) =>
+    api.get(`/procurement/ai-recommendations/${retailer_id}`).then((r) => r.data),
+
   // Snapshot recompute (force fresh data — same pattern as Intelligence module)
   refreshOverview: (manufacturer_id) =>
     api.post(`/manufacturer/${manufacturer_id}/overview/refresh`).then((r) => r.data),
