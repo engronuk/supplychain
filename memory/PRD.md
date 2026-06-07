@@ -404,3 +404,22 @@ Manufacturer can see all 91 distributors; Distributor sees all its retailers.
 - **Frontend** complete rewrite of `views/DistributorDashboard.jsx` — Executive Hero (purple gradient · AI Operations Summary · Network Health gauge), KPI strip (6 cards with sparklines + deltas), Revenue Trend (SVG area chart), Inventory Health donut, Retailer Performance Matrix (2×2 BCG scatter), Regional Coverage + Category Performance progress bars, Top Retailers + Attention Retailers (clickable rows → `/network/retailer/{id}`), Order Pipeline funnel. Uses the existing `useCachedFetch` + `RefreshPill` SWR-like pattern.
 - **API client**: `Api.distributorOps` + `Api.refreshDistributorOps` added to `frontend/src/lib/api.js`.
 - **Tested**: pytest 13/13 in new `tests/test_distributor_os.py` · `testing_agent_v3_fork` E2E iteration_10.json reports 100% pass on backend (13/13) and frontend (all 26 test-ids + navigation + refresh integration). User chose Phase 1 (Distributor) only; Gemini 2.5 Flash earmarked for future AI brief LLM call (currently deterministic).
+
+
+## Updates (2026-06-07 — Retailer Procurement Module · replaces legacy "Requests")
+- **Renamed** the retailer/distributor sidebar entry from "Requests" → "Procurement" (icon: ShoppingCart). `/requests` now redirects to `/procurement`. Legacy `views/RequestsView.jsx` is no longer referenced from `App.js`.
+- **Backend (`routes/procurement.py`, 745 lines, 22 endpoints)**: full procurement lifecycle —
+  - Cart: `GET/POST/PATCH/DELETE /api/procurement/cart/{retailer_id}[/items[/{product_id}]]` and `/cart/{rid}/submit` which splits the cart by supplier and creates one PO per supplier
+  - Purchase Orders: `GET /procurement/purchase-orders` (filters: retailer_id/distributor_id/status/statuses/date_from/date_to/product_id/q) · `POST /purchase-orders` (?submit=true) · lifecycle actions submit/approve/reject/process/ship/deliver/cancel/duplicate
+  - Quotes: `GET/POST /procurement/quotes` · `POST /quotes/{id}/respond` (only invited distributors, replaces existing response) · `/close`
+  - AI Reorder Recommendations: `GET /procurement/ai-recommendations/{retailer_id}` returning ranked suggestions w/ severity (critical/high/medium/low), days-to-stockout, recommended qty, expected lost revenue, suggested supplier, headline + rationale
+- **PO numbering**: atomic per-year counter `PO-YYYY-NNNNN` (and `QT-YYYY-NNNN` for quotes) via `db.counters` collection.
+- **Seed**: `services/seed_procurement.py` boots ~200 POs across all 8 statuses + 48 quotes (mix of open / responded / closed) idempotently.
+- **Frontend** (new):
+  - `views/RetailerProcurement.jsx` — tabbed workspace (Cart / Purchase Orders / Order History / Supplier Quotes) + sticky right-rail **AI Procurement Assistant**
+  - `views/DistributorProcurementInbox.jsx` — distributor side with PO inbox + RFQ response dialog
+  - `components/procurement/` — CartTab, PurchaseOrdersTab, OrderHistoryTab, SupplierQuotesTab, AIProcurementAssistant, PODetailDrawer (lifecycle timeline, manifest, client-side print-to-PDF), POStatusBadge, AddCartItemDialog
+- **API client**: 17 new methods on `Api` (cart/POs/quotes/AI reco).
+- **Tested**: pytest **19/19** PASS in `tests/test_procurement.py` (cart CRUD + submit, PO lifecycle, cancel/duplicate, invalid-transition 400, quote create/respond/replace/uninvited-403/close, AI reco + 404). `testing_agent_v3_fork` iteration_11.json reports **100% PASS** on backend + frontend across all listed test-ids.
+- **PDF**: Per user choice, "Download PDF" uses browser print-to-PDF (`window.open` + `print()`), no server PDF dependency.
+- **Models**: New `POStatus` (8 statuses) + `QuoteStatus` literals in `core.py`; new Pydantic models `Cart`, `PurchaseOrder`, `POLine`, `StatusEvent`, `SupplierQuote`, `QuoteResponse`, etc. in `models.py`.
