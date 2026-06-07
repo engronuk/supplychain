@@ -201,6 +201,11 @@ export default function PODetailDrawer({ poId, open, onOpenChange, role = "retai
                       data-testid="po-submit"
                     >Submit</Button>
                   )}
+                  {po.status === "shipped" && (
+                    <Button disabled={busy} onClick={() => act("deliver")}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                            data-testid="po-deliver"><CheckCircle2 className="h-4 w-4 mr-1.5" /> Confirm Delivery</Button>
+                  )}
                   {["draft", "submitted", "approved", "processing"].includes(po.status) && (
                     <Button
                       variant="outline" disabled={busy}
@@ -235,9 +240,9 @@ export default function PODetailDrawer({ poId, open, onOpenChange, role = "retai
                             data-testid="po-ship"><Truck className="h-4 w-4 mr-1.5" /> Ship</Button>
                   )}
                   {po.status === "shipped" && (
-                    <Button disabled={busy} onClick={() => act("deliver")}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                            data-testid="po-deliver"><CheckCircle2 className="h-4 w-4 mr-1.5" /> Mark Delivered</Button>
+                    <div className="text-[12px] text-slate-500 italic">
+                      Awaiting retailer confirmation of delivery…
+                    </div>
                   )}
                 </>
               )}

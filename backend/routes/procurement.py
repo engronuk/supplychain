@@ -456,6 +456,7 @@ async def ship_po(po_id: str):
 
 @router.post("/procurement/purchase-orders/{po_id}/deliver")
 async def deliver_po(po_id: str):
+    """Retailer confirms receipt of the shipment — closes the loop."""
     po = await db.purchase_orders.find_one({"id": po_id})
     if not po:
         raise HTTPException(404, "PO not found")
@@ -463,8 +464,8 @@ async def deliver_po(po_id: str):
         raise HTTPException(400, "PO must be shipped before delivery")
     await _push_status_event(po_id, "delivered", extra={"delivered_at": now_iso()})
     await push_notification(
-        "retailer", po["retailer_id"], "PO Delivered",
-        f"PO {po['po_number']} marked delivered.", "order",
+        "distributor", po["distributor_id"], "Delivery Confirmed",
+        f"Retailer confirmed delivery of PO {po['po_number']}.", "order",
     )
     return await get_purchase_order(po_id)
 
