@@ -65,7 +65,15 @@ class InventoryItem(BaseModel):
     quantity: int
     reorder_level: int = 10
     velocity: float = 0.0
+    retail_price: Optional[float] = None      # retailer's own selling price (₦)
+    notes: Optional[str] = None
     updated_at: str = Field(default_factory=now_iso)
+
+
+class InventoryPricingUpdate(BaseModel):
+    retail_price: Optional[float] = Field(default=None, ge=0)
+    reorder_level: Optional[int] = Field(default=None, ge=0)
+    notes: Optional[str] = None
 
 
 class ShipmentLine(BaseModel):

@@ -209,6 +209,10 @@ export const Api = {
   // Retailer Inventory Command Center
   retailerInventoryCommand: (retailer_id) =>
     api.get(`/retailer/${retailer_id}/inventory-command-center`).then((r) => r.data),
+  retailerProductDetail: (retailer_id, product_id) =>
+    api.get(`/retailer/${retailer_id}/product/${product_id}`).then((r) => r.data),
+  updateRetailerPricing: (retailer_id, product_id, payload) =>
+    api.patch(`/retailer/${retailer_id}/product/${product_id}/pricing`, payload).then((r) => r.data),
 
   // Snapshot recompute (force fresh data — same pattern as Intelligence module)
   refreshOverview: (manufacturer_id) =>

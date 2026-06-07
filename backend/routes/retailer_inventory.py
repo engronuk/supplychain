@@ -25,6 +25,7 @@ from typing import Any, Dict, List
 from fastapi import APIRouter, HTTPException
 
 from core import db, now_iso
+from models import InventoryPricingUpdate
 
 router = APIRouter()
 
@@ -390,3 +391,174 @@ def _ai_insights(
             "actions": [],
         })
     return insights[:6]
+
+
+# ---------------------------------------------------------------------------
+# Retailer Product Detail (drill-down from inventory row)
+# ---------------------------------------------------------------------------
+@router.get("/retailer/{retailer_id}/product/{product_id}")
+async def retailer_product_detail(retailer_id: str, product_id: str):
+    """Rich product view for the retailer: overview · pricing · sales · supply."""
+    retailer = await db.retailers.find_one({"id": retailer_id}, {"_id": 0})
+    if not retailer:
+        raise HTTPException(404, "Retailer not found")
+    product = await db.products.find_one({"id": product_id}, {"_id": 0})
+    if not product:
+        raise HTTPException(404, "Product not found")
+
+    inv = await db.inventory.find_one(
+        {"owner_type": "retailer", "owner_id": retailer_id, "product_id": product_id},
+        {"_id": 0},
+    )
+    quantity = int((inv or {}).get("quantity", 0))
+    reorder_level = int((inv or {}).get("reorder_level", 10))
+    retail_price = (inv or {}).get("retail_price")
+    notes = (inv or {}).get("notes")
+    cost_price = float(product.get("unit_price", 0))
+    margin_pct = None
+    if retail_price and cost_price > 0:
+        margin_pct = round((retail_price - cost_price) / cost_price * 100, 1)
+
+    manufacturer = None
+    if product.get("manufacturer_id"):
+        manufacturer = await db.manufacturers.find_one(
+            {"id": product["manufacturer_id"]}, {"_id": 0},
+        )
+
+    today = datetime.now(timezone.utc).date()
+    start_30 = (today - timedelta(days=30)).isoformat()
+    start_90 = (today - timedelta(days=90)).isoformat()
+
+    # ---- sales rollups ----------------------------------------------------
+    daily: Dict[str, dict] = {}
+    units_30 = revenue_30 = 0
+    units_90 = revenue_90 = 0
+    last_sale = None
+    async for s in db.daily_sales.find(
+        {"retailer_id": retailer_id, "product_id": product_id,
+         "date": {"$gte": start_90}},
+        {"_id": 0, "date": 1, "units": 1, "quantity_sold": 1, "revenue": 1},
+    ):
+        u = int(s.get("units", s.get("quantity_sold", 0)))
+        r = float(s.get("revenue", 0))
+        d = s["date"]
+        units_90 += u
+        revenue_90 += r
+        if d >= start_30:
+            units_30 += u
+            revenue_30 += r
+        if not last_sale or d > last_sale:
+            last_sale = d
+        daily.setdefault(d, {"units": 0, "revenue": 0.0})
+        daily[d]["units"] += u
+        daily[d]["revenue"] += r
+
+    velocity_30 = round(units_30 / 30, 2)
+    days_remaining = round(quantity / velocity_30, 1) if velocity_30 > 0 else None
+    status = (
+        "critical" if quantity <= 0 else
+        "low" if quantity <= reorder_level else
+        "healthy"
+    )
+
+    # 30-day daily chart
+    trend = []
+    for i in range(30):
+        d = (today - timedelta(days=29 - i)).isoformat()
+        row = daily.get(d, {"units": 0, "revenue": 0.0})
+        trend.append({"date": d, "units": row["units"], "revenue": round(row["revenue"], 2)})
+
+    # ---- recent supply (Procurement POs that include this product) -------
+    supply: List[dict] = []
+    async for po in db.purchase_orders.find(
+        {"retailer_id": retailer_id, "items.product_id": product_id},
+        {"_id": 0, "po_number": 1, "status": 1, "created_at": 1,
+         "items": 1, "distributor_id": 1, "total_amount": 1},
+    ).sort("created_at", -1).limit(5):
+        line = next((x for x in po.get("items", []) if x["product_id"] == product_id), None)
+        if not line:
+            continue
+        dist = await db.distributors.find_one(
+            {"id": po["distributor_id"]}, {"_id": 0, "name": 1},
+        )
+        supply.append({
+            "po_number": po.get("po_number"),
+            "status": po.get("status"),
+            "date": po.get("created_at"),
+            "supplier": dist.get("name") if dist else "—",
+            "quantity": line.get("quantity", 0),
+            "unit_cost": line.get("unit_cost", 0),
+            "line_total": line.get("line_total", 0),
+        })
+
+    return {
+        "as_of": now_iso(),
+        "product": product,
+        "manufacturer": manufacturer or {},
+        "retailer": {"id": retailer["id"], "name": retailer.get("name")},
+        "inventory": {
+            "quantity": quantity,
+            "reorder_level": reorder_level,
+            "retail_price": retail_price,
+            "cost_price": cost_price,
+            "margin_pct": margin_pct,
+            "status": status,
+            "velocity_30d": velocity_30,
+            "days_remaining": days_remaining,
+            "last_sale": last_sale,
+            "notes": notes,
+            "updated_at": (inv or {}).get("updated_at"),
+        },
+        "performance": {
+            "units_30d": units_30,
+            "revenue_30d": round(revenue_30, 2),
+            "units_90d": units_90,
+            "revenue_90d": round(revenue_90, 2),
+        },
+        "trend_30d": trend,
+        "recent_supply": supply,
+    }
+
+
+@router.patch("/retailer/{retailer_id}/product/{product_id}/pricing")
+async def update_retailer_pricing(
+    retailer_id: str, product_id: str, payload: InventoryPricingUpdate,
+):
+    """Update the retailer-side fields on their inventory row.
+
+    Pricing (retail_price), reorder_level and free-text notes can be changed
+    independently. Returns the refreshed product-detail payload.
+    """
+    inv = await db.inventory.find_one(
+        {"owner_type": "retailer", "owner_id": retailer_id, "product_id": product_id},
+    )
+    update: Dict[str, Any] = {"updated_at": now_iso()}
+    if payload.retail_price is not None:
+        update["retail_price"] = float(payload.retail_price)
+    if payload.reorder_level is not None:
+        update["reorder_level"] = int(payload.reorder_level)
+    if payload.notes is not None:
+        update["notes"] = payload.notes
+    if len(update) == 1:
+        raise HTTPException(400, "Nothing to update")
+
+    if inv:
+        await db.inventory.update_one({"id": inv["id"]}, {"$set": update})
+    else:
+        # Create a zero-quantity inventory row if the retailer is setting
+        # retail price for a SKU they don't yet stock.
+        from core import new_id  # local import to avoid top-level churn
+        await db.inventory.insert_one({
+            "id": new_id(),
+            "owner_type": "retailer",
+            "owner_id": retailer_id,
+            "product_id": product_id,
+            "quantity": 0,
+            "reorder_level": update.get("reorder_level", 10),
+            "velocity": 0.0,
+            "retail_price": update.get("retail_price"),
+            "notes": update.get("notes"),
+            "updated_at": update["updated_at"],
+        })
+    return await retailer_product_detail(retailer_id, product_id)
+

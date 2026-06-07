@@ -77,3 +77,48 @@ class TestInventoryCommand:
             timeout=10,
         )
         assert r.status_code == 404
+
+
+
+class TestProductDetail:
+    def test_product_detail_200(self, s):
+        ps = requests.get(f"{BASE_URL}/api/products", timeout=10).json()
+        pid = ps[0]["id"]
+        r = s.get(f"{BASE_URL}/api/retailer/{RETAILER_ID}/product/{pid}", timeout=15)
+        assert r.status_code == 200
+        body = r.json()
+        for k in ("product", "manufacturer", "inventory", "performance",
+                  "trend_30d", "recent_supply"):
+            assert k in body
+        assert len(body["trend_30d"]) == 30
+        assert body["inventory"]["status"] in ("healthy", "low", "critical")
+
+    def test_unknown_product_404(self, s):
+        r = s.get(f"{BASE_URL}/api/retailer/{RETAILER_ID}/product/00000000-0000-0000-0000-000000000000", timeout=10)
+        assert r.status_code == 404
+
+    def test_patch_pricing(self, s):
+        ps = requests.get(f"{BASE_URL}/api/products", timeout=10).json()
+        pid = ps[1]["id"]  # different SKU than the other test
+        r = s.patch(
+            f"{BASE_URL}/api/retailer/{RETAILER_ID}/product/{pid}/pricing",
+            json={"retail_price": 1850.50, "reorder_level": 40, "notes": "kpi test"},
+            timeout=10,
+        )
+        assert r.status_code == 200
+        inv = r.json()["inventory"]
+        assert inv["retail_price"] == 1850.50
+        assert inv["reorder_level"] == 40
+        assert inv["notes"] == "kpi test"
+        if inv["cost_price"] > 0:
+            assert inv["margin_pct"] is not None
+
+    def test_patch_pricing_empty_400(self, s):
+        ps = requests.get(f"{BASE_URL}/api/products", timeout=10).json()
+        pid = ps[0]["id"]
+        r = s.patch(
+            f"{BASE_URL}/api/retailer/{RETAILER_ID}/product/{pid}/pricing",
+            json={},
+            timeout=10,
+        )
+        assert r.status_code == 400

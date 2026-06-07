@@ -10,6 +10,7 @@ import RetailerDashboardV2 from "@/views/RetailerDashboardV2";
 import InventoryView from "@/views/InventoryView";
 import ShipmentTracker from "@/views/ShipmentTracker";
 import RetailerProcurement from "@/views/RetailerProcurement";
+import RetailerProductDetail from "@/views/RetailerProductDetail";
 import DistributorProcurementInbox from "@/views/DistributorProcurementInbox";
 import AnalyticsView from "@/views/AnalyticsView";
 import ReportsView from "@/views/ReportsView";
@@ -44,6 +45,13 @@ function ProcurementGate() {
   if (session.role === "retailer") return <RetailerProcurement />;
   // Other roles: redirect home.
   return <Navigate to="/dashboard" replace />;
+}
+
+function InventoryProductGate() {
+  const { session } = useSession();
+  if (!session) return null;
+  if (session.role === "retailer") return <RetailerProductDetail />;
+  return <DistributorProductDetail />;
 }
 
 function BootGate({ children }) {
@@ -93,7 +101,7 @@ function App() {
               <Route path="/procurement" element={<ProcurementGate />} />
               <Route path="/network" element={<NetworkView />} />
               <Route path="/network/retailer/:retailerId" element={<DistributorRetailerDetail />} />
-              <Route path="/inventory/product/:productId" element={<DistributorProductDetail />} />
+              <Route path="/inventory/product/:productId" element={<InventoryProductGate />} />
               <Route path="/products/:productId" element={<ProductCommandCenter />} />
               <Route path="/products/:productId/legacy" element={<ManufacturerProductDetail />} />
               <Route path="/distributors/:distributorId" element={<ManufacturerDistributorDetail />} />

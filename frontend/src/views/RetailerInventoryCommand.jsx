@@ -536,6 +536,7 @@ function MoversCard({ title, rows, variant }) {
 
 /* ---------- Full Inventory Table ---------- */
 function FullInventoryTable({ inventory, search, setSearch }) {
+  const nav = useNavigate();
   const q = search.trim().toLowerCase();
   const rows = q
     ? inventory.filter((i) =>
@@ -594,7 +595,12 @@ function FullInventoryTable({ inventory, search, setSearch }) {
               </TableRow>
             )}
             {rows.map((i) => (
-              <TableRow key={i.id} data-testid={`inventory-row-${i.product?.sku}`}>
+              <TableRow
+                key={i.id}
+                onClick={() => nav(`/inventory/product/${i.product_id}`)}
+                className="cursor-pointer hover:bg-violet-50/40 transition-colors"
+                data-testid={`inventory-row-${i.product?.sku}`}
+              >
                 <TableCell className="font-mono text-xs text-slate-500">{i.product?.sku}</TableCell>
                 <TableCell className="font-medium text-slate-900">{i.product?.name}</TableCell>
                 <TableCell className="text-slate-600">{i.product?.category}</TableCell>

@@ -436,3 +436,19 @@ Manufacturer can see all 91 distributors; Distributor sees all its retailers.
    - Full enriched `inventory` array (status / value / velocity / last_sale)
 - **Frontend** new `views/RetailerInventoryCommand.jsx` rendered when retailer hits `/inventory` (distributor still uses the legacy table; manufacturer redirects to Product Intelligence). Sections in order: Header → 7 KPI cards → Stock Health donut + AI Insights (purple gradient panel) → Low Stock Center table → Value-by-Category bars + 30-day Inventory Trend (SVG area chart) → Fast/Slow movers → Full inventory table (moved below strategic insights as requested). AI insight buttons wire `Reorder` to Procurement Cart, `Review` to product detail.
 - **Tested**: pytest **9/9** PASS in new `tests/test_retailer_inventory.py` covering payload shape, KPIs, donut totals, 30-pt trend, insight types, low-stock columns, inventory row validity, and 404 on unknown retailer.
+
+
+## Updates (2026-06-07 — Retailer Product Drill-Down)
+- **Backend**: New endpoints in `routes/retailer_inventory.py`:
+  - `GET /api/retailer/{retailer_id}/product/{product_id}` — full drill-down payload (product, manufacturer, inventory w/ status/velocity/days-of-cover/last-sale, 30d & 90d performance, 30-day demand trend, recent purchase orders for the SKU)
+  - `PATCH /api/retailer/{retailer_id}/product/{product_id}/pricing` — retailer-owned fields: `retail_price` (their selling price), `reorder_level`, free-text `notes`. Auto-creates an inventory row if the retailer is setting a price for a SKU they don't yet stock. Returns the refreshed product payload with `margin_pct` auto-computed.
+- **Model**: `InventoryItem` now carries optional `retail_price` and `notes`. New `InventoryPricingUpdate` payload model.
+- **Frontend**: New `views/RetailerProductDetail.jsx` rendered at `/inventory/product/:productId` for retailers (distributor users still see the legacy `DistributorProductDetail`). Sections:
+  - Header with product image, SKU/barcode/category/manufacturer chips + Reorder shortcut to Procurement
+  - 5-KPI strip (On Hand · Reorder Level · Velocity/day · Days of Cover · Last Sale)
+  - **Editable** "Retailer pricing & reorder rule" card with live Margin % preview (color-coded: ≥20% green, ≥0% violet, negative rose)
+  - Read-only "Product overview" card for manufacturer-set fields (SKU, barcode, category, manufacturer, cost price, shelf-life, expiry) with a helpful hint when the manufacturer hasn't enriched the catalog
+  - Sales performance table (30d/90d units + revenue + avg sell price) and 30-day demand bar chart
+  - Procurement history table — last 5 POs for this SKU with PO status badges
+- **Wiring**: Full Inventory table rows are now clickable (cursor pointer + violet hover) and navigate to `/inventory/product/{id}`.
+- **Tested**: pytest **13/13** PASS in `tests/test_retailer_inventory.py` (9 existing + 4 new for product detail: GET 200/payload, 404 unknown product, PATCH pricing with margin computation, PATCH with empty body returns 400).
