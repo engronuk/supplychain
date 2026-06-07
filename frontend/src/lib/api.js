@@ -206,6 +206,10 @@ export const Api = {
   aiRecommendations: (retailer_id) =>
     api.get(`/procurement/ai-recommendations/${retailer_id}`).then((r) => r.data),
 
+  // Retailer Inventory Command Center
+  retailerInventoryCommand: (retailer_id) =>
+    api.get(`/retailer/${retailer_id}/inventory-command-center`).then((r) => r.data),
+
   // Snapshot recompute (force fresh data — same pattern as Intelligence module)
   refreshOverview: (manufacturer_id) =>
     api.post(`/manufacturer/${manufacturer_id}/overview/refresh`).then((r) => r.data),

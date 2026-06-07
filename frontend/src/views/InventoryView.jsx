@@ -10,6 +10,7 @@ import { Search, AlertTriangle, ArrowUpRight } from "lucide-react";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import RetailerInventoryCommand from "@/views/RetailerInventoryCommand";
 
 export default function InventoryView() {
   const { session } = useSession();
@@ -17,6 +18,7 @@ export default function InventoryView() {
   // Manufacturers were moved off the raw inventory ledger; any stale link or
   // bookmark should land them on Product Intelligence instead.
   if (role === "manufacturer") return <Navigate to="/product-intelligence" replace />;
+  if (role === "retailer") return <RetailerInventoryCommand retailerId={session.entity.id} />;
   return <DistributorRetailerInventory session={session} role={role} />;
 }
 

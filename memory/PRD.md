@@ -423,3 +423,16 @@ Manufacturer can see all 91 distributors; Distributor sees all its retailers.
 - **Tested**: pytest **19/19** PASS in `tests/test_procurement.py` (cart CRUD + submit, PO lifecycle, cancel/duplicate, invalid-transition 400, quote create/respond/replace/uninvited-403/close, AI reco + 404). `testing_agent_v3_fork` iteration_11.json reports **100% PASS** on backend + frontend across all listed test-ids.
 - **PDF**: Per user choice, "Download PDF" uses browser print-to-PDF (`window.open` + `print()`), no server PDF dependency.
 - **Models**: New `POStatus` (8 statuses) + `QuoteStatus` literals in `core.py`; new Pydantic models `Cart`, `PurchaseOrder`, `POLine`, `StatusEvent`, `SupplierQuote`, `QuoteResponse`, etc. in `models.py`.
+
+
+## Updates (2026-06-07 — Retailer Inventory Command Center)
+- **Backend** new aggregator `routes/retailer_inventory.py` exposing `GET /api/retailer/{retailer_id}/inventory-command-center` — single fat payload powering the full cockpit:
+   - **7 KPI cards**: inventory_value, total_skus, inventory_units, low_stock, critical_stock, expiring_soon (aging), dead_stock
+   - **stock_health**: healthy / low / critical counts + donut data
+   - **ai_insights**: 4 insight types (stockout · trending_up · slow_mover · all_clear) with deterministic detail + actions array (`reorder` / `transfer` / `review`)
+   - **low_stock_center**: products with `current_stock`, `reorder_level`, `days_remaining`, `recommended_qty`, sorted by urgency
+   - **value_by_category** · **inventory_trend** (30 daily points projected backwards from sales) · **fast_moving** / **slow_moving** (top 5 each)
+   - **expiring_soon** (heuristic — items with stock + no sale 60d+) and **dead_stock** (90d+ no sale)
+   - Full enriched `inventory` array (status / value / velocity / last_sale)
+- **Frontend** new `views/RetailerInventoryCommand.jsx` rendered when retailer hits `/inventory` (distributor still uses the legacy table; manufacturer redirects to Product Intelligence). Sections in order: Header → 7 KPI cards → Stock Health donut + AI Insights (purple gradient panel) → Low Stock Center table → Value-by-Category bars + 30-day Inventory Trend (SVG area chart) → Fast/Slow movers → Full inventory table (moved below strategic insights as requested). AI insight buttons wire `Reorder` to Procurement Cart, `Review` to product detail.
+- **Tested**: pytest **9/9** PASS in new `tests/test_retailer_inventory.py` covering payload shape, KPIs, donut totals, 30-pt trend, insight types, low-stock columns, inventory row validity, and 404 on unknown retailer.
