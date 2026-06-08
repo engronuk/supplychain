@@ -87,6 +87,15 @@ INDEX_SPECS: List[Tuple[str, list, dict]] = [
     ("dashboard_snapshots", [("key", ASCENDING)], {"unique": True, "name": "uniq_key"}),
     ("dashboard_snapshots", [("manufacturer_id", ASCENDING), ("kind", ASCENDING)],
      {"name": "by_manufacturer_kind"}),
+
+    # Universal organizations + cross-tier relationships
+    ("organizations", [("id", ASCENDING)], {"unique": True, "name": "uniq_id"}),
+    ("organizations", [("organization_code", ASCENDING)], {"unique": True, "name": "uniq_code"}),
+    ("organizations", [("organization_type", ASCENDING)], {"name": "by_type"}),
+    ("organizations", [("parent_organization_id", ASCENDING)], {"name": "by_parent"}),
+    ("organization_relationships", [("id", ASCENDING)], {"unique": True, "name": "uniq_id"}),
+    ("organization_relationships", [("from_organization_id", ASCENDING), ("relationship_type", ASCENDING)], {"name": "by_from_type"}),
+    ("organization_relationships", [("to_organization_id", ASCENDING), ("relationship_type", ASCENDING)], {"name": "by_to_type"}),
 ]
 
 

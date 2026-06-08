@@ -11,6 +11,7 @@ import InventoryView from "@/views/InventoryView";
 import ShipmentTracker from "@/views/ShipmentTracker";
 import RetailerProcurement from "@/views/RetailerProcurement";
 import RetailerProductDetail from "@/views/RetailerProductDetail";
+import OrganizationManagement from "@/views/OrganizationManagement";
 import DistributorProcurementInbox from "@/views/DistributorProcurementInbox";
 import AnalyticsView from "@/views/AnalyticsView";
 import ReportsView from "@/views/ReportsView";
@@ -99,6 +100,7 @@ function App() {
               <Route path="/shipments" element={<ShipmentTracker />} />
               <Route path="/requests" element={<Navigate to="/procurement" replace />} />
               <Route path="/procurement" element={<ProcurementGate />} />
+              <Route path="/organizations" element={<OrganizationManagement />} />
               <Route path="/network" element={<NetworkView />} />
               <Route path="/network/retailer/:retailerId" element={<DistributorRetailerDetail />} />
               <Route path="/inventory/product/:productId" element={<InventoryProductGate />} />

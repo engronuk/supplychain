@@ -311,6 +311,106 @@ class QuoteCreate(BaseModel):
     note: Optional[str] = None
 
 
+
+
+# ---- Universal Organization architecture (foundation refactor) -------------
+from core import OrganizationType, OrganizationStatus  # noqa: E402
+
+
+class Organization(BaseModel):
+    """Universal organization entity (manufacturer / warehouse / distributor /
+    wholesaler / retailer / logistics_provider)."""
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=new_id)
+    organization_code: str                       # e.g. MFR-0001, DST-0002
+    organization_name: str
+    organization_type: OrganizationType
+    parent_organization_id: Optional[str] = None
+    status: OrganizationStatus = "active"
+    region: Optional[str] = None
+    state: Optional[str] = None
+    city: Optional[str] = None
+    address: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    contact_name: Optional[str] = None
+    metadata: dict = Field(default_factory=dict)
+    legacy_collection: Optional[str] = None      # backfill bookkeeping
+    created_at: str = Field(default_factory=now_iso)
+    updated_at: str = Field(default_factory=now_iso)
+
+
+class OrganizationCreate(BaseModel):
+    organization_name: str = Field(min_length=2, max_length=200)
+    organization_type: OrganizationType
+    parent_organization_id: Optional[str] = None
+    region: Optional[str] = None
+    state: Optional[str] = None
+    city: Optional[str] = None
+    address: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    contact_name: Optional[str] = None
+    status: OrganizationStatus = "active"
+
+
+class OrganizationUpdate(BaseModel):
+    organization_name: Optional[str] = None
+    organization_type: Optional[OrganizationType] = None
+    parent_organization_id: Optional[str] = None
+    status: Optional[OrganizationStatus] = None
+    region: Optional[str] = None
+    state: Optional[str] = None
+    city: Optional[str] = None
+    address: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    contact_name: Optional[str] = None
+
+
+# ---- Cross-tier (many-to-many) Organization Relationships ----------------
+# `parent_organization_id` on Organization captures the canonical
+# hierarchy (1-to-many). This collection captures additional N-to-N links
+# that don't fit a strict tree — e.g. a distributor that sources from
+# multiple manufacturers, or a logistics provider that serves multiple
+# distributors. The hierarchy tree stays the source of truth for
+# scoping/permissions; relationships are an additive overlay.
+from core import OrganizationRelationshipType, OrganizationRelationshipStatus  # noqa: E402
+
+
+class OrganizationRelationship(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=new_id)
+    from_organization_id: str
+    to_organization_id: str
+    relationship_type: OrganizationRelationshipType
+    status: OrganizationRelationshipStatus = "active"
+    started_at: Optional[str] = None
+    ended_at: Optional[str] = None
+    metadata: dict = Field(default_factory=dict)
+    note: Optional[str] = None
+    created_at: str = Field(default_factory=now_iso)
+    updated_at: str = Field(default_factory=now_iso)
+
+
+class OrganizationRelationshipCreate(BaseModel):
+    from_organization_id: str
+    to_organization_id: str
+    relationship_type: OrganizationRelationshipType
+    status: OrganizationRelationshipStatus = "active"
+    started_at: Optional[str] = None
+    metadata: dict = Field(default_factory=dict)
+    note: Optional[str] = None
+
+
+class OrganizationRelationshipUpdate(BaseModel):
+    relationship_type: Optional[OrganizationRelationshipType] = None
+    status: Optional[OrganizationRelationshipStatus] = None
+    started_at: Optional[str] = None
+    ended_at: Optional[str] = None
+    metadata: Optional[dict] = None
+    note: Optional[str] = None
+
 class QuoteRespondPayload(BaseModel):
     distributor_id: str
     unit_price: float = Field(ge=0)

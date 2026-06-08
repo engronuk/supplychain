@@ -48,6 +48,40 @@ POStatus = Literal[
 QuoteStatus = Literal["open", "responded", "closed", "expired"]
 PartyRole = Literal["manufacturer", "distributor", "retailer"]
 
+# Universal organization architecture.
+# Order matters in this list — it follows the natural supply-chain hierarchy
+# (manufacturer → warehouse → distributor → wholesaler → retailer)
+# with logistics_provider as a cross-cutting partner type.
+OrganizationType = Literal[
+    "manufacturer", "warehouse", "distributor",
+    "wholesaler", "retailer", "logistics_provider",
+]
+OrganizationStatus = Literal["active", "inactive", "suspended"]
+
+# Cross-tier supply-chain relationships (in addition to the canonical
+# `parent_organization_id` hierarchy). These power many-to-many links —
+# e.g. one distributor serving multiple manufacturers, or a logistics
+# provider serving multiple distributors.
+OrganizationRelationshipType = Literal[
+    "supplies",          # from supplies products to → to
+    "distributes_for",   # from (distributor) distributes for → to (manufacturer)
+    "warehouses_for",    # from (warehouse) stores goods for → to
+    "logistics_for",     # from (logistics_provider) ships for → to
+    "partner",           # generic partnership
+]
+OrganizationRelationshipStatus = Literal["active", "pending", "ended"]
+
+# Allowed parent/child relationships per type — used by the API to validate
+# hierarchy edits and to derive what each role can create.
+ORG_CHILDREN_ALLOWED: dict[str, list[str]] = {
+    "manufacturer":      ["warehouse", "distributor"],
+    "warehouse":         [],
+    "distributor":       ["wholesaler"],
+    "wholesaler":        ["retailer"],
+    "retailer":          [],
+    "logistics_provider": [],
+}
+
 
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()

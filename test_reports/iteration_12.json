@@ -1,0 +1,69 @@
+{
+  "summary": "Full regression of the Universal Organization Architecture refactor. Backend pytest: 10/10 PASS on /app/backend/tests/test_organizations.py + 21/21 PASS on the NEW /app/backend/tests/test_organizations_extended.py (covers my/network, per-role permissions, all 4 hierarchy paths, cycle prevention, relationships CRUD + 409 duplicate + scope, and legacy supply-chain regression). Frontend smoke verified: /organizations renders for super_admin (3,180 orgs in scope, type-chips, List+Hierarchy tabs, Create button), scope-limits correctly for retailer (1 org, no create button). Sidebar visibility: manufacturer + distributor SEE the 'Organizations' entry; retailer does NOT (correct). ONE BUG FOUND: super_admin role does NOT see the 'Organizations' sidebar entry despite the rule at Layout.jsx line 70 listing 'super_admin' — caused by an early return at lines 38-42 in navForRole().",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Layout.jsx -> navForRole()",
+        "issue": "super_admin sidebar is hard-coded to only ['/dashboard'] (early return at lines 38-42) so the universal '/organizations' nav entry at line 70 is NEVER added for super_admin. Review request explicitly requires: 'Login as admin@tradekonekt.io -> sidebar shows Organizations nav item'. Currently the admin can only reach /organizations by URL. Manufacturer + distributor sidebars show it correctly; retailer correctly hides it.",
+        "selector": "[data-testid=\"sidebar\"] a[href=\"/organizations\"]",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_scenarios_executed": [
+    {"name": "Backend pytest test_organizations.py (10 tests)", "result": "10/10 PASS"},
+    {"name": "Backend pytest test_organizations_extended.py (21 tests)", "result": "21/21 PASS"},
+    {"name": "GET /api/organizations as super_admin returns full list (3,180 orgs)", "result": "PASS"},
+    {"name": "GET /api/organizations/me/permissions per role (super_admin=6 types, manufacturer={warehouse,distributor}, distributor=[wholesaler], retailer=[] can_manage=false)", "result": "PASS"},
+    {"name": "GET /api/organizations/me/network super_admin returns virtual __root__ with all top-level orgs; non-admin returns own subtree", "result": "PASS"},
+    {"name": "Hierarchy enforcement: POST rejects illegal parent->child (manufacturer under retailer = 400, retailer under distributor = 400)", "result": "PASS"},
+    {"name": "All 4 hierarchy paths CREATED end-to-end via POST and visible via GET /api/organizations/{root}/hierarchy: manufacturer->warehouse, manufacturer->distributor, distributor->wholesaler, wholesaler->retailer (codes WHR-/DST-/WHO-/RTL-)", "result": "PASS"},
+    {"name": "Cycle prevention on PATCH (setting parent to a descendant returns 400)", "result": "PASS"},
+    {"name": "OrganizationRelationship CRUD: POST creates 'distributes_for' link; duplicate active link returns 409; self-relationship returns 400; PATCH ends; DELETE works; retailer scope blocked", "result": "PASS"},
+    {"name": "GET /api/organizations/{id}/relationships inlines counterpart org with direction=incoming/outgoing", "result": "PASS"},
+    {"name": "Legacy regression: /api/inventory (with owner_type/owner_id), /api/shipments, /api/procurement/purchase-orders, /api/procurement/quotes all 200", "result": "PASS"},
+    {"name": "Dashboard regression: /api/manufacturer/{id}/overview, /api/distributor/{id}/operations-intelligence, /api/retailer/{id}/inventory-command-center all 200 with non-empty payload", "result": "PASS"},
+    {"name": "Frontend: super_admin /organizations renders with org-management, both tabs (orgs-tab-list, orgs-tab-tree), filters, '3,180 organizations in scope', type-chips (Mfr:1, Wh:1, Dist:92, Wholesaler:3, Retailer:3081, Logistics:2), and open-create-org button", "result": "PASS"},
+    {"name": "Frontend: retailer /organizations renders header + scoped to single org (Best Supermarket) with NO open-create-org button (perms.can_manage=false)", "result": "PASS"},
+    {"name": "Sidebar visibility: manufacturer + distributor show 'Organizations' entry; retailer does NOT", "result": "PASS"},
+    {"name": "Sidebar visibility: super_admin should show 'Organizations' but DOES NOT (only shows 'Console')", "result": "FAIL - bug reported"}
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_organizations.py",
+    "/app/backend/tests/test_organizations_extended.py",
+    "/app/test_reports/pytest/organizations_iter12.xml",
+    "/app/test_reports/pytest/organizations_extended_iter12.xml"
+  ],
+  "action_items": [
+    "FIX (Layout.jsx, lines 37-42): Remove the early return for super_admin OR add the '/organizations' entry inside the super_admin branch so the universal Organization Management page is reachable from the sidebar for super_admin (the spec explicitly calls this out). Currently the rule at line 70 is dead code for super_admin because the function already returned.",
+    "DATA NOTE for next phase: the 3,080 existing retailers are parented directly to distributors (not via a wholesaler). The strict ORG_CHILDREN_ALLOWED rule means a distributor-logged user can no longer CREATE new retailers (only wholesalers). This is the intended behaviour but the existing data still violates the new rule; consider whether the migration should backfill a wholesaler tier or whether ORG_CHILDREN_ALLOWED should accept retailer as a legacy child of distributor.",
+    "OPTIONAL: /api/organizations soft-delete only (no DELETE endpoint) — fine, but tests have to PATCH status=inactive for cleanup; document this in the API."
+  ],
+  "critical_code_review_comments": [
+    "Layout.jsx navForRole() has dead code: line 70 condition includes 'super_admin' but lines 38-42 return early, so 'Organizations' nav item is never added for super_admin. Either drop 'super_admin' from line 70 (and document) or fix the early return.",
+    "routes/organizations.py /organizations endpoint returns up to 5000 docs (.to_list(5000)) but seed already has 3,180. Plan for pagination before the network scales past 5,000 orgs.",
+    "_descendants() has a hard depth cap of 8 and per-frontier limit of 2000 — fine today but should be documented; a single distributor with 3000+ retailers (current data) is right at that 2000 limit and would silently truncate if it grew.",
+    "OrganizationRelationship list endpoint applies scope by post-filter (in-memory) rather than in the Mongo query — fine at current volume but inefficient at scale; consider $or query on scope set.",
+    "OrganizationCreate hierarchy validation happens AFTER _can_manage; that's correct, but the duplicate parent existence check could be wrapped into a single aggregation to halve the round-trips.",
+    "Hierarchy cycle check (_is_self_or_ancestor) walks the WHOLE org collection (find {} .to_list(20000)) on every PATCH that changes parent — switch to walking only upward from candidate_parent_id by ID to avoid the full scan."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_organizations_extended.py (NEW — 21 tests)"
+  ],
+  "success_rate": {
+    "backend": "100% (31/31 pytest across both org test files + legacy regression)",
+    "frontend": "~93% (super_admin sidebar nav for /organizations is missing — 1 UI rule violated; everything else works)"
+  },
+  "test_credentials": "admin@tradekonekt.io, unilever@tradekonekt.io, lagos.distributor@tradekonekt.io, retailer1@tradekonekt.io — all login with TradeKonekt2026!",
+  "seed_data_creation": "Created 4 TEST_ orgs (warehouse/distributor/wholesaler/retailer) under the existing Unilever manufacturer to verify all 4 hierarchy paths; teardown sets them to status='inactive'. Also creates/PATCHes/DELETEs one distributes_for relationship between Lagos distributor and Unilever.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Universal Organization architecture is GA-ready except for the super_admin sidebar gap. Backend code: /app/backend/routes/organizations.py + /app/backend/core.py (ORG_CHILDREN_ALLOWED). Frontend: /app/frontend/src/views/OrganizationManagement.jsx + /app/frontend/src/components/Layout.jsx (sidebar rule lines 67-72). Pytest entry-points: /app/backend/tests/test_organizations.py (10) + /app/backend/tests/test_organizations_extended.py (21). Org codes are prefix-numbered per type (MFR/WHR/DST/WHO/RTL/LOG) via db.counters. Cross-tier many-to-many lives in db.organization_relationships with 409 dedup on (from,to,type,active).",
+  "rca of the issue": "Sidebar bug RCA: navForRole() in Layout.jsx returns [{label:'Console'}] inside the 'if (role===\"super_admin\")' block at lines 38-42, short-circuiting before the universal block at lines 67-72. The rule at line 70 lists 'super_admin' so the author's intent was clearly for the entry to appear, but the early return makes that branch unreachable. Fix: either (a) drop the early return and let super_admin go through the base flow + universal block (preferred; matches the spec), or (b) push the entry inside the super_admin branch."
+}

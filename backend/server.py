@@ -26,6 +26,7 @@ from routes import (
     inventory,
     manufacturer,
     notifications,
+    organizations,
     procurement,
     retailer_inventory,
     product_detail,
@@ -45,6 +46,7 @@ from services.seed_batches import seed_batches
 from services.seed_demo_users import seed_demo_users
 from services.seed_distributor_orders import seed_distributor_orders
 from services.seed_procurement import seed_procurement
+from services.migrate_organizations import migrate_organizations
 from services.refresh_demo_dates import refresh_demo_dates
 
 app = FastAPI(title="TradeKonekt API")
@@ -60,6 +62,7 @@ for r in (
     procurement.router,
     retailer_inventory.router,
     notifications.router,
+    organizations.router,
     analytics.router,
     reports.router,
     hierarchy.router,
@@ -210,6 +213,14 @@ async def _background_bootstrap():
             logger.info("Procurement seeded: %s", result)
     except Exception:
         logger.exception("Procurement seed failed (continuing)")
+
+    # Universal organizations backfill (foundation refactor — additive).
+    try:
+        result = await migrate_organizations()
+        if result.get("created"):
+            logger.info("Organizations backfilled: %s", result)
+    except Exception:
+        logger.exception("Organization migration failed (continuing)")
 
     # Refresh seeded date fields so the demo always looks "actively used
     # today". Skipped immediately after a fresh seed (data is already

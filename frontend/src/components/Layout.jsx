@@ -24,6 +24,7 @@ import {
   BrainCircuit,
   Sparkles,
   ShoppingCart,
+  Network as NetworkIcon,
 } from "lucide-react";
 
 const ROLE_ICON = {
@@ -63,6 +64,12 @@ function navForRole(role) {
   }
   base.push({ to: "/analytics", label: "Analytics", icon: BarChart3 });
   base.push({ to: "/reports", label: "Reports", icon: FileText });
+  // Universal Organization Management — visible to super_admin + supply-chain
+  // participants who can manage downstream (manufacturer/distributor/wholesaler).
+  // Retailer & logistics_provider don't see it (no management rights yet).
+  if (["super_admin", "manufacturer", "distributor", "wholesaler"].includes(role)) {
+    base.push({ to: "/organizations", label: "Organizations", icon: NetworkIcon });
+  }
   return base;
 }
 

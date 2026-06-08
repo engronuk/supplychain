@@ -214,6 +214,28 @@ export const Api = {
   updateRetailerPricing: (retailer_id, product_id, payload) =>
     api.patch(`/retailer/${retailer_id}/product/${product_id}/pricing`, payload).then((r) => r.data),
 
+  // Universal Organizations (foundation refactor)
+  organizations: (params) => api.get(`/organizations`, { params }).then((r) => r.data),
+  organization: (id) => api.get(`/organizations/${id}`).then((r) => r.data),
+  createOrganization: (payload) => api.post(`/organizations`, payload).then((r) => r.data),
+  updateOrganization: (id, payload) => api.patch(`/organizations/${id}`, payload).then((r) => r.data),
+  orgHierarchy: (id) => api.get(`/organizations/${id}/hierarchy`).then((r) => r.data),
+  orgChildren: (id) => api.get(`/organizations/${id}/children`).then((r) => r.data),
+  myOrgNetwork: () => api.get(`/organizations/me/network`).then((r) => r.data),
+  myOrgPermissions: () => api.get(`/organizations/me/permissions`).then((r) => r.data),
+
+  // Cross-tier many-to-many organization relationships
+  orgRelationships: (params) =>
+    api.get(`/organization-relationships`, { params }).then((r) => r.data),
+  orgRelationshipsFor: (org_id) =>
+    api.get(`/organizations/${org_id}/relationships`).then((r) => r.data),
+  createOrgRelationship: (payload) =>
+    api.post(`/organization-relationships`, payload).then((r) => r.data),
+  updateOrgRelationship: (rel_id, payload) =>
+    api.patch(`/organization-relationships/${rel_id}`, payload).then((r) => r.data),
+  deleteOrgRelationship: (rel_id) =>
+    api.delete(`/organization-relationships/${rel_id}`).then((r) => r.data),
+
   // Snapshot recompute (force fresh data — same pattern as Intelligence module)
   refreshOverview: (manufacturer_id) =>
     api.post(`/manufacturer/${manufacturer_id}/overview/refresh`).then((r) => r.data),
