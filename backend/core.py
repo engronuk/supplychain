@@ -73,9 +73,15 @@ OrganizationRelationshipStatus = Literal["active", "pending", "ended"]
 
 # Allowed parent/child relationships per type — used by the API to validate
 # hierarchy edits and to derive what each role can create.
+#
+# The full supply-chain tree is:
+#   Manufacturer → Warehouse → Distributor → Wholesaler → Retailer
+# We also keep `manufacturer → distributor` as a legal direct path so that
+# small operators / pilot tenants who don't (yet) run their own warehouse
+# network can still onboard distributors directly.
 ORG_CHILDREN_ALLOWED: dict[str, list[str]] = {
     "manufacturer":      ["warehouse", "distributor"],
-    "warehouse":         [],
+    "warehouse":         ["distributor"],
     "distributor":       ["wholesaler"],
     "wholesaler":        ["retailer"],
     "retailer":          [],

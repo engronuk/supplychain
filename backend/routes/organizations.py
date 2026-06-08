@@ -78,9 +78,11 @@ async def _descendants(root_id: str, max_depth: int = 8) -> List[str]:
     seen = {root_id}
     depth = 0
     while frontier and depth < max_depth:
+        # Large enough to fit every retailer level even in big tenants;
+        # the BFS frontier is chunked by parent ids, not absolute size.
         children = await db.organizations.find(
             {"parent_organization_id": {"$in": frontier}}, {"_id": 0, "id": 1},
-        ).to_list(2000)
+        ).to_list(50000)
         next_frontier = [c["id"] for c in children if c["id"] not in seen]
         for c in next_frontier:
             seen.add(c)
@@ -281,7 +283,7 @@ async def get_hierarchy(org_id: str, user: dict = Depends(get_current_user),
     desc_ids = await _descendants(org_id, max_depth=max_depth)
     docs = await db.organizations.find(
         {"id": {"$in": desc_ids}}, {"_id": 0},
-    ).to_list(20000)
+    ).to_list(50000)
     by_id = {d["id"]: {**d, "children": []} for d in docs}
     tree = None
     for d in docs:

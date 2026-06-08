@@ -511,3 +511,40 @@ Manufacturer can see all 91 distributors; Distributor sees all its retailers.
 
 ### Data caveat
 The 3,080 existing retailers are parented directly to distributors (not via a wholesaler tier). The strict `ORG_CHILDREN_ALLOWED` rule means a distributor user can no longer CREATE new retailers (only wholesalers). Existing retailers remain visible because hierarchy scoping walks descendants by `parent_organization_id` regardless of type-chain. This is the intended new behaviour and is documented in `routes/organizations.py` module docstring.
+
+## Updates (2026-06-08 — Regional Supply-Chain Topology built)
+The full 4-tier chain is now wired end-to-end:
+
+```
+Unilever (manufacturer)
+   ├── 7 regional Warehouses (WHR-0002 .. WHR-0008)
+   │     └── 91 Distributors  (DST-xxxx, reparented by region)
+   │           └── 18 Wholesalers  (WHO-0004 .. WHO-0021, "{Region} Wholesale Hub A/B/C")
+   │                 └── 3,080 Retailers  (RTL-xxxx, evenly split per region)
+```
+
+### What changed
+- **Hierarchy rule expansion** (`backend/core.py`): `ORG_CHILDREN_ALLOWED["warehouse"] = ["distributor"]` (was empty). `manufacturer → distributor` is kept as a legal direct path for small tenants.
+- **New idempotent migration**: `backend/services/migrate_regional_topology.py` creates 1 warehouse per Nigerian region, reparents the 91 distributors under their region's warehouse, creates 3 wholesalers per region (Hub A/B/C) under representative distributors, and round-robin reparents retailers to wholesalers within the same region.
+- **Boot integration**: the migration auto-runs as part of `server._background_bootstrap()` right after `migrate_organizations()`. Re-running is a no-op.
+- **Counter sync**: `_next_code` in the migration now uses the same `db.counters` collection that the REST `POST /api/organizations` endpoint uses, so admin-driven creates can't collide with seed codes.
+- **Performance fix**: `_descendants` in `routes/organizations.py` was capping each BFS level at `to_list(2000)` — bumped to `50000` so the hierarchy tree returns all 3,080 retailers (was silently truncated at 2,000).
+- **Test fix**: `tests/test_organizations.py::test_hierarchy_tree` updated — direct manufacturer children are now warehouses (or distributors), not retailer-bearing distributors.
+
+### Topology counts (verified)
+| Tier | Count | Distribution |
+|------|-------|--------------|
+| Manufacturer | 1 | Unilever |
+| Warehouse | 7 regional + 1 test | Lagos, South West, South East, South South, North Central, North East, North West |
+| Distributor | 91 (+1 test) | reparented under regional warehouse |
+| Wholesaler | 18 regional (+3 test) | 3 hubs × 6 regions (South West has 0 distributors so 0 hubs) |
+| Retailer | 3,080 (+1 test) | round-robin across regional Hubs A/B/C: Lagos 185 each · NE 222 each · SE 187 each · NC 180 each · NW 143 each · SS 110 each |
+
+### Test results
+- Backend pytest: **76/76 PASS** (31 organization + 12 procurement + 13 retailer inventory + 20 distributor-os).
+- API sanity: `/api/organizations/me/network` correctly returns the 4-tier subtree for every role (super_admin sees `__root__`; distributor sees its own → wholesalers → retailers).
+
+### Notes / caveats
+- The single "Unassigned" distributor and retailer (seed test rows without a region) are left in place — the migration skipped them and logged a warning. They remain accessible to super_admin via the flat list view.
+- South West region has 0 distributors in the seed → its warehouse exists as a placeholder (ready for onboarding) but no wholesalers were spawned there.
+

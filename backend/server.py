@@ -222,6 +222,22 @@ async def _background_bootstrap():
     except Exception:
         logger.exception("Organization migration failed (continuing)")
 
+    # Regional topology — warehouses per region, wholesalers under
+    # distributors, retailers under wholesalers. Idempotent (no-op once the
+    # network has been built).
+    try:
+        from services.migrate_regional_topology import run as run_regional
+        result = await run_regional()
+        if result.get("distributors_reparented") or result.get("retailers_reparented"):
+            logger.info("Regional topology applied: %s", {
+                "wh": len(result.get("warehouses", {})),
+                "who": sum(len(v) for v in result.get("wholesalers", {}).values()),
+                "dists_moved": result.get("distributors_reparented"),
+                "retailers_moved": result.get("retailers_reparented"),
+            })
+    except Exception:
+        logger.exception("Regional topology migration failed (continuing)")
+
     # Refresh seeded date fields so the demo always looks "actively used
     # today". Skipped immediately after a fresh seed (data is already
     # current). Idempotent — safe to run on every subsequent boot.

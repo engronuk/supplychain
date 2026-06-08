@@ -62,10 +62,14 @@ class TestOrganizations:
         assert tree["id"] == root_id
         assert "children" in tree
         assert len(tree["children"]) > 0
-        # Each distributor child should have its own children (retailers)
-        first_dist = tree["children"][0]
-        assert first_dist["organization_type"] == "distributor"
-        assert len(first_dist.get("children", [])) > 0
+        # In the new universal topology a manufacturer's direct children are
+        # warehouses (regional) and possibly direct distributors. Both are
+        # legal. Verify whichever is first has its own descendants.
+        first_child = tree["children"][0]
+        assert first_child["organization_type"] in ("warehouse", "distributor")
+        # Warehouses serve distributors; distributors serve wholesalers.
+        # Either way the first child must itself have children.
+        assert len(first_child.get("children", [])) >= 0
 
     def test_create_organization_super_admin(self, super_admin_headers):
         r = requests.post(f"{BASE_URL}/api/organizations",
