@@ -406,16 +406,53 @@ async def list_demo_accounts():
         if r["role"] == "manufacturer":
             m = await db.manufacturers.find_one({"id": r["entity_id"]}, {"_id": 0, "name": 1})
             entity_name = (m or {}).get("name", "")
+            if not entity_name:
+                # New tenants live in `organizations` only.
+                o = await db.organizations.find_one(
+                    {"id": r["entity_id"]}, {"_id": 0, "organization_name": 1},
+                )
+                entity_name = (o or {}).get("organization_name", "")
         elif r["role"] == "distributor":
             d = await db.distributors.find_one({"id": r["entity_id"]},
                                                  {"_id": 0, "name": 1, "region": 1})
             entity_name = f"{(d or {}).get('name','')} · {(d or {}).get('region','')}".strip(" ·")
+            if not entity_name:
+                o = await db.organizations.find_one(
+                    {"id": r["entity_id"]}, {"_id": 0, "organization_name": 1, "region": 1},
+                )
+                if o:
+                    entity_name = f"{o.get('organization_name','')} · {o.get('region','')}".strip(" ·")
         elif r["role"] == "retailer":
             x = await db.retailers.find_one({"id": r["entity_id"]},
                                               {"_id": 0, "name": 1, "city": 1})
             entity_name = f"{(x or {}).get('name','')} · {(x or {}).get('city','')}".strip(" ·")
+            if not entity_name:
+                o = await db.organizations.find_one(
+                    {"id": r["entity_id"]}, {"_id": 0, "organization_name": 1, "city": 1},
+                )
+                if o:
+                    entity_name = f"{o.get('organization_name','')} · {o.get('city','')}".strip(" ·")
+        elif r["role"] in ("warehouse", "wholesaler"):
+            # These tiers live only in the unified `organizations` collection.
+            o = await db.organizations.find_one(
+                {"id": r["entity_id"]},
+                {"_id": 0, "organization_name": 1, "region": 1, "city": 1},
+            )
+            if o:
+                loc = o.get("city") or o.get("region") or ""
+                entity_name = f"{o.get('organization_name','')} · {loc}".strip(" ·")
         out.append({**r, "entity_name": entity_name})
-    # Stable order: super_admin first, then mfg, dist, retailer
-    role_order = {"super_admin": 0, "manufacturer": 1, "distributor": 2, "retailer": 3}
-    out.sort(key=lambda x: (role_order.get(x.get("role"), 9), x.get("email", "")))
+    # Stable order: super_admin first, then walk down the supply chain.
+    role_order = {
+        "super_admin": 0, "manufacturer": 1, "warehouse": 2,
+        "distributor": 3, "wholesaler": 4, "retailer": 5,
+    }
+    # Group demo accounts by tenant so users see Unilever first, then Flour
+    # Mills, etc. — keyed by manufacturer_id, with empty-string (super_admin)
+    # sorted first.
+    out.sort(key=lambda x: (
+        x.get("manufacturer_id", ""),
+        role_order.get(x.get("role"), 9),
+        x.get("email", ""),
+    ))
     return out

@@ -12,6 +12,8 @@ import {
   Warehouse,
   Store,
   ShieldCheck,
+  Truck,
+  PackageOpen,
   Loader2,
   Sparkles,
 } from "lucide-react";
@@ -19,9 +21,16 @@ import {
 const ROLE_META = {
   super_admin: { Icon: ShieldCheck, label: "Super Admin", tone: "amber" },
   manufacturer: { Icon: Building2, label: "Manufacturer", tone: "indigo" },
-  distributor: { Icon: Warehouse, label: "Distributor", tone: "moss" },
+  warehouse: { Icon: Warehouse, label: "Warehouse", tone: "moss" },
+  distributor: { Icon: Truck, label: "Distributor", tone: "moss" },
+  wholesaler: { Icon: PackageOpen, label: "Wholesaler", tone: "indigo" },
   retailer: { Icon: Store, label: "Retailer", tone: "amber" },
 };
+
+const ROLE_ORDER = [
+  "super_admin", "manufacturer", "warehouse",
+  "distributor", "wholesaler", "retailer",
+];
 
 const DEMO_PASSWORD = "TradeKonekt2026!";
 
@@ -98,7 +107,7 @@ export default function DemoAccountsPage() {
             </h1>
             <p className="text-graphite text-base mt-4 max-w-2xl leading-relaxed">
               The 500-retailer pilot ships with one account per role so you can
-              step into the manufacturer's executive view, a regional distributor
+              step into the manufacturer&apos;s executive view, a regional distributor
               and a Lagos retailer — all running against the same live data plane.
             </p>
           </div>
@@ -128,7 +137,7 @@ export default function DemoAccountsPage() {
           </div>
         ) : (
           <div className="mt-12 space-y-10">
-            {["super_admin", "manufacturer", "distributor", "retailer"].map((role) => {
+            {ROLE_ORDER.map((role) => {
               const list = grouped[role] || [];
               if (!list.length) return null;
               const meta = ROLE_META[role];

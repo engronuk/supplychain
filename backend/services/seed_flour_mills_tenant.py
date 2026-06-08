@@ -113,6 +113,7 @@ async def _upsert_user(*, email: str, name: str, role: str, entity_id: str,
         "manufacturer_id": manufacturer_id,
         "password_hash": _hash(password),
         "status": "active",
+        "is_demo": True,
         "created_at": (existing or {}).get("created_at", now_iso()),
         "updated_at": now_iso(),
     }
@@ -219,7 +220,9 @@ async def run() -> Dict:
     ]
 
     # ---- 6. Test users -----------------------------------------------------
-    PWD = "FlourMills2026!"
+    # Shared demo password so the one-tap demo sign-in flow keeps working
+    # across all tenants.
+    PWD = "TradeKonekt2026!"
     users_spec = [
         ("flour.admin@tradekonekt.io",       "Flour Mills Admin",            "manufacturer", mfr["id"]),
         ("flour.warehouse@tradekonekt.io",   "Flour Mills Warehouse Mgr",    "warehouse",    wh["id"]),

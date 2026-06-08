@@ -40,11 +40,11 @@ UNILEVER_USERS = {
     "retailer":     ("retailer1@tradekonekt.io",        "TradeKonekt2026!"),
 }
 FLOUR_USERS = {
-    "manufacturer": ("flour.admin@tradekonekt.io",       "FlourMills2026!"),
-    "warehouse":    ("flour.warehouse@tradekonekt.io",   "FlourMills2026!"),
-    "distributor":  ("prime.distributor@tradekonekt.io", "FlourMills2026!"),
-    "wholesaler":   ("lagos.wholesaler@tradekonekt.io",  "FlourMills2026!"),
-    "retailer":     ("flour.retailer1@tradekonekt.io",   "FlourMills2026!"),
+    "manufacturer": ("flour.admin@tradekonekt.io",       "TradeKonekt2026!"),
+    "warehouse":    ("flour.warehouse@tradekonekt.io",   "TradeKonekt2026!"),
+    "distributor":  ("prime.distributor@tradekonekt.io", "TradeKonekt2026!"),
+    "wholesaler":   ("lagos.wholesaler@tradekonekt.io",  "TradeKonekt2026!"),
+    "retailer":     ("flour.retailer1@tradekonekt.io",   "TradeKonekt2026!"),
 }
 
 

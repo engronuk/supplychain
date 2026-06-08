@@ -112,12 +112,14 @@ class TestHierarchyPaths:
             created_ids.append(r.json()["id"])
             return r.json()
 
-        # Pick an existing manufacturer so we don't have to create one
+        # Pick the Unilever manufacturer explicitly so tests don't pollute
+        # a second tenant's subtree (the API returns mfrs sorted by recency,
+        # so since Flour Mills was added "first" returns Flour Mills now).
         mfrs = requests.get(
             f"{BASE_URL}/api/organizations?organization_type=manufacturer",
             headers=admin_h, timeout=15).json()
         assert mfrs, "expected at least 1 manufacturer in seed"
-        mfr = mfrs[0]
+        mfr = next((m for m in mfrs if m.get("organization_name") == "Unilever"), mfrs[0])
 
         wh = _create({
             "organization_name": "TEST_Warehouse_iter12",
@@ -142,11 +144,21 @@ class TestHierarchyPaths:
         out = {"mfr": mfr, "wh": wh, "dist": dist, "ws": ws, "rt": rt,
                "ids": created_ids}
         yield out
-        # Teardown — soft-deactivate (no DELETE endpoint for orgs)
-        for oid in created_ids:
-            requests.patch(f"{BASE_URL}/api/organizations/{oid}",
-                           headers=admin_h, json={"status": "inactive"},
-                           timeout=10)
+        # Teardown — hard-delete the test fixtures directly in Mongo so they
+        # don't accumulate across runs (the public API only soft-deactivates,
+        # but these are short-lived test rows).
+        try:
+            from core import db
+            import asyncio
+            asyncio.get_event_loop().run_until_complete(
+                db.organizations.delete_many({"id": {"$in": created_ids}})
+            )
+        except Exception:
+            # Fallback: at least mark inactive so they don't appear active.
+            for oid in created_ids:
+                requests.patch(f"{BASE_URL}/api/organizations/{oid}",
+                               headers=admin_h, json={"status": "inactive"},
+                               timeout=10)
 
     def test_warehouse_visible_in_mfr_hierarchy(self, admin_h, created):
         r = requests.get(
