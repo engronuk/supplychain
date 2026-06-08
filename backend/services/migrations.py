@@ -96,6 +96,23 @@ INDEX_SPECS: List[Tuple[str, list, dict]] = [
     ("organization_relationships", [("id", ASCENDING)], {"unique": True, "name": "uniq_id"}),
     ("organization_relationships", [("from_organization_id", ASCENDING), ("relationship_type", ASCENDING)], {"name": "by_from_type"}),
     ("organization_relationships", [("to_organization_id", ASCENDING), ("relationship_type", ASCENDING)], {"name": "by_to_type"}),
+
+    # Phase 1+2 Ownership Model — additive `organization_id` indexes so the
+    # unified field is queryable everywhere without touching legacy indexes.
+    ("products",           [("organization_id", ASCENDING)], {"name": "by_organization"}),
+    ("inventory",          [("organization_id", ASCENDING)], {"name": "by_organization"}),
+    ("inventory",          [("warehouse_id",    ASCENDING)], {"name": "by_warehouse",
+                                                              "sparse": True}),
+    ("batches",            [("organization_id", ASCENDING)], {"name": "by_organization"}),
+    ("promotions",         [("organization_id", ASCENDING)], {"name": "by_organization"}),
+    ("purchase_orders",    [("organization_id", ASCENDING)], {"name": "by_organization"}),
+    ("procurement_carts",  [("organization_id", ASCENDING)], {"name": "by_organization"}),
+    ("supplier_quotes",    [("organization_id", ASCENDING)], {"name": "by_organization"}),
+    ("distributor_orders", [("organization_id", ASCENDING)], {"name": "by_organization"}),
+    ("requests",           [("organization_id", ASCENDING)], {"name": "by_organization"}),
+    ("sales",              [("organization_id", ASCENDING)], {"name": "by_organization"}),
+    ("daily_sales",        [("organization_id", ASCENDING)], {"name": "by_organization"}),
+    ("shipments",          [("organization_id", ASCENDING)], {"name": "by_organization"}),
 ]
 
 

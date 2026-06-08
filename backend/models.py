@@ -54,6 +54,8 @@ class Product(BaseModel):
     unit_price: float
     barcode: str = ""
     manufacturer_id: str = ""
+    # Unified ownership (Phase 1+2 — read-only mirror of manufacturer_id today).
+    organization_id: str = ""
 
 
 class InventoryItem(BaseModel):
@@ -67,6 +69,12 @@ class InventoryItem(BaseModel):
     velocity: float = 0.0
     retail_price: Optional[float] = None      # retailer's own selling price (₦)
     notes: Optional[str] = None
+    # Unified ownership (Phase 1+2 — mirrors owner_id today).
+    organization_id: str = ""
+    # Optional warehouse anchor — reserved for future warehouse-level stock
+    # tracking. Today inventory remains owner-anchored; warehouse_id is set
+    # to None on every row and the WMS module will populate it later.
+    warehouse_id: Optional[str] = None
     updated_at: str = Field(default_factory=now_iso)
 
 
@@ -92,6 +100,8 @@ class Shipment(BaseModel):
     distributor_id: str = ""
     retailer_id: str = ""
     manufacturer_id: str = ""
+    # Unified ownership (Phase 1+2 — mirrors from_id, the dispatcher).
+    organization_id: str = ""
     items: List[ShipmentLine]
     status: ShipmentStatus = "pending"
     tracking_code: str = Field(default_factory=lambda: "SHP-" + uuid.uuid4().hex[:8].upper())
@@ -128,6 +138,8 @@ class StockRequest(BaseModel):
     items: List[RequestLine]
     status: RequestStatus = "pending"
     note: Optional[str] = None
+    # Unified ownership (Phase 1+2 — mirrors retailer_id, the requester).
+    organization_id: str = ""
     created_at: str = Field(default_factory=now_iso)
     resolved_at: Optional[str] = None
 
@@ -214,6 +226,8 @@ class Cart(BaseModel):
     retailer_id: str
     items: List[CartItem] = Field(default_factory=list)
     note: Optional[str] = None
+    # Unified ownership (mirrors retailer_id).
+    organization_id: str = ""
     updated_at: str = Field(default_factory=now_iso)
 
 
@@ -257,6 +271,8 @@ class PurchaseOrder(BaseModel):
     shipment_id: Optional[str] = None
     duplicate_of: Optional[str] = None
     status_history: List[StatusEvent] = Field(default_factory=list)
+    # Unified ownership (Phase 1+2 — mirrors retailer_id, the PO buyer).
+    organization_id: str = ""
     created_at: str = Field(default_factory=now_iso)
     updated_at: str = Field(default_factory=now_iso)
     submitted_at: Optional[str] = None
@@ -299,6 +315,8 @@ class SupplierQuote(BaseModel):
     responses: List[QuoteResponse] = Field(default_factory=list)
     status: QuoteStatus = "open"
     note: Optional[str] = None
+    # Unified ownership (Phase 1+2 — mirrors retailer_id, the quote requester).
+    organization_id: str = ""
     created_at: str = Field(default_factory=now_iso)
     closed_at: Optional[str] = None
 

@@ -548,3 +548,49 @@ Unilever (manufacturer)
 - The single "Unassigned" distributor and retailer (seed test rows without a region) are left in place — the migration skipped them and logged a warning. They remain accessible to super_admin via the flat list view.
 - South West region has 0 distributors in the seed → its warehouse exists as a placeholder (ready for onboarding) but no wholesalers were spawned there.
 
+
+
+## Updates (2026-06-08 — Ownership Model Migration Phase 1+2)
+Foundation refactor — purely additive `organization_id` rollout across every ownership-bearing collection.
+
+### Backfilled
+**48,808 documents** across 12 collections got an `organization_id` field mirroring their legacy FK. Idempotent script (`services/migrate_ownership.py`) auto-runs at boot. `warehouse_id` placeholder (NULL) added to all 47,580 inventory rows for future Warehouse Management.
+
+| Collection | Source FK | Rows backfilled |
+|---|---|---:|
+| products            | manufacturer_id  | 15 |
+| inventory           | owner_id         | 47,580 |
+| batches             | manufacturer_id  | 45 |
+| promotions          | manufacturer_id  | 1 |
+| purchase_orders     | retailer_id      | 235 |
+| procurement_carts   | retailer_id      | 1 |
+| supplier_quotes     | retailer_id      | 72 |
+| distributor_orders  | distributor_id   | 61 |
+| requests            | retailer_id      | 72 |
+| sales               | retailer_id      | 37 |
+| daily_sales         | retailer_id      | 613 |
+| shipments           | from_id          | 76 |
+
+### Indexes
+13 new ascending `by_organization` indexes (plus a sparse `by_warehouse` on inventory). `ensure_indexes` boot output: `{'indexes_ensured': 70, 'indexes_failed': 0}`.
+
+### Code
+- `models.py` — added optional `organization_id` (and `warehouse_id` on InventoryItem) to Product, InventoryItem, Shipment, StockRequest, Cart, PurchaseOrder, SupplierQuote. Non-breaking defaults.
+- `services/migrate_ownership.py` (new) — idempotent backfill with per-collection counts.
+- `services/ownership.py` (new) — `org_or_legacy(field, oid)` helper for future read paths that want forward-compat (`$or` on either field).
+- `services/migrations.py` — 13 new indexes registered.
+- `server.py` — bootstrap chain extended to auto-run ownership migration after regional topology.
+
+### Constraints honoured
+**No write-path / workflow / UI / business-logic / legacy-field-removal changes.** Auth, RBAC, procurement, order approval, inventory math, analytics — all untouched.
+
+### Regression
+- `test_organizations` (10) + `test_organizations_extended` (21) + `test_procurement` (12) + `test_retailer_inventory` (13) + `test_distributor_os` (20) → **76/76 PASS**.
+- `test_product_intelligence` + one `test_shipment_command` failure pre-date this iteration (confirmed via `git stash`-and-rerun on the prior commit). They are snapshot-cache / test-ordering issues unrelated to `organization_id`.
+
+### Deferred (next phases)
+- Drivers, Vehicles — collections don't exist yet (will be born with `organization_id` only, no legacy FK)
+- Warehouse-level inventory split — waits for the WMS module with verified stock positions
+- Phase 3 (write-path) and Phase 4 (legacy field removal) — pending until downstream consumers move to the unified field
+
+Full deliverable: `/app/memory/OWNERSHIP_MIGRATION_REPORT.md`

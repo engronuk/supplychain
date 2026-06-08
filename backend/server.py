@@ -238,6 +238,20 @@ async def _background_bootstrap():
     except Exception:
         logger.exception("Regional topology migration failed (continuing)")
 
+    # Ownership Model — additive `organization_id` backfill (Phase 1+2).
+    # Idempotent; safe on every boot. Touches only rows still missing the
+    # new field. No write-path or business logic changes.
+    try:
+        from services.migrate_ownership import run as run_ownership
+        result = await run_ownership()
+        touched = sum(v.get("backfilled", 0) for v in result.values() if isinstance(v, dict))
+        if touched:
+            logger.info("Ownership backfill: %d documents updated (%s)",
+                        touched, {k: v.get("backfilled", 0) for k, v in result.items()
+                                  if isinstance(v, dict) and v.get("backfilled", 0)})
+    except Exception:
+        logger.exception("Ownership migration failed (continuing)")
+
     # Refresh seeded date fields so the demo always looks "actively used
     # today". Skipped immediately after a fresh seed (data is already
     # current). Idempotent — safe to run on every subsequent boot.
