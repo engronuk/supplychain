@@ -452,3 +452,62 @@ Manufacturer can see all 91 distributors; Distributor sees all its retailers.
   - Procurement history table — last 5 POs for this SKU with PO status badges
 - **Wiring**: Full Inventory table rows are now clickable (cursor pointer + violet hover) and navigate to `/inventory/product/{id}`.
 - **Tested**: pytest **13/13** PASS in `tests/test_retailer_inventory.py` (9 existing + 4 new for product detail: GET 200/payload, 404 unknown product, PATCH pricing with margin computation, PATCH with empty body returns 400).
+
+
+## Updates (2026-06-08 — Universal Organization Architecture + Many-to-Many Relationships)
+**Foundation refactor.** The supply-chain entities (manufacturer / distributor / retailer + new warehouse / wholesaler / logistics_provider tiers) now live in a single unified `organizations` collection with a parent–child hierarchy (`parent_organization_id`). Legacy collections keep working as the runtime source for products/orders/sales and are cross-linked to organizations via matching UUIDs.
+
+### Hierarchy rules (strict, enforced by API)
+- `manufacturer` → `warehouse` | `distributor`
+- `distributor` → `wholesaler`
+- `wholesaler` → `retailer`
+- `warehouse`, `retailer`, `logistics_provider` → no children
+
+### Role visibility
+| Role | Can manage | Sidebar shows /organizations |
+|------|-----------|-------------------------------|
+| super_admin | all 6 types | YES |
+| manufacturer | warehouse + distributor | YES |
+| distributor | wholesaler | YES |
+| wholesaler | retailer | YES |
+| retailer | — | NO |
+| logistics_provider | — | NO |
+
+### Backend (new files / endpoints)
+- `backend/routes/organizations.py`
+  - `GET /api/organizations` (filterable; scoped to descendants for non-admins)
+  - `POST /api/organizations` (creates with auto-allocated org code MFR-/WHR-/DST-/WHO-/RTL-/LOG-, validates parent-child rules + scope)
+  - `GET/PATCH /api/organizations/{id}` (with hierarchy cycle prevention)
+  - `GET /api/organizations/{id}/parent | /children | /hierarchy` (recursive tree)
+  - `GET /api/organizations/me/network` (own subtree; super-admin gets virtual `__root__`)
+  - `GET /api/organizations/me/permissions` (returns `can_create_types` per role)
+  - **Cross-tier many-to-many overlay**:
+    - `POST /api/organization-relationships` (`relationship_type` ∈ supplies / distributes_for / warehouses_for / logistics_for / partner; duplicate active = 409; self-ref = 400)
+    - `GET /api/organization-relationships?organization_id=…&direction=from|to|both`
+    - `GET /api/organizations/{id}/relationships` (inlines counterpart org + direction)
+    - `PATCH /api/organization-relationships/{id}` (status transitions, auto-set `ended_at`)
+    - `DELETE /api/organization-relationships/{id}`
+- `backend/services/migrate_organizations.py` — idempotent backfill (reuses legacy UUIDs). Already executed: 3,172 rows (1 manufacturer + 91 distributors + 3,080 retailers).
+- `backend/services/migrations.py` — indexes on `organizations` and `organization_relationships`.
+
+### Models (`backend/models.py`)
+- `Organization`, `OrganizationCreate`, `OrganizationUpdate`
+- `OrganizationRelationship`, `OrganizationRelationshipCreate`, `OrganizationRelationshipUpdate`
+- New literals in `core.py`: `OrganizationType`, `OrganizationStatus`, `OrganizationRelationshipType`, `OrganizationRelationshipStatus`, `ORG_CHILDREN_ALLOWED`
+
+### Frontend
+- `views/OrganizationManagement.jsx` — premium Org Mgmt page with two synchronized views:
+  - **List** — type/status/region/search filters, table with type chips, edit per row
+  - **Hierarchy** — collapsible tree rendered from `me/network`
+  - **Create/Edit** dialog driven by `me/permissions` (only types the user can create are offered; parent options auto-filtered by `ORG_CHILDREN_ALLOWED`)
+- `components/Layout.jsx` — sidebar shows `/organizations` for super_admin / manufacturer / distributor / wholesaler; hidden for retailer + logistics_provider.
+- `lib/api.js` — added `Api.organizations / organization / createOrganization / updateOrganization / orgHierarchy / orgChildren / myOrgNetwork / myOrgPermissions / orgRelationships / orgRelationshipsFor / createOrgRelationship / updateOrgRelationship / deleteOrgRelationship`.
+- `App.js` — route `/organizations` wired.
+
+### Testing (iteration_12)
+- **Backend pytest**: 31/31 PASS across `tests/test_organizations.py` (10) + new `tests/test_organizations_extended.py` (21) covering all 4 hierarchy paths, cycle prevention, scope enforcement, OrganizationRelationship CRUD + 409 dedup + scope, and legacy supply-chain regression (`/inventory`, `/shipments`, `/procurement/purchase-orders`, `/procurement/quotes`).
+- **Frontend smoke**: Org Mgmt renders with 3,180 orgs for super_admin; retailer scoped to a single org with no Create button; sidebar visibility matrix verified.
+- **One bug found and fixed in-flight**: super_admin sidebar was missing the `/organizations` entry (early `return` short-circuited the universal rule); now added directly to the super_admin nav array.
+
+### Data caveat
+The 3,080 existing retailers are parented directly to distributors (not via a wholesaler tier). The strict `ORG_CHILDREN_ALLOWED` rule means a distributor user can no longer CREATE new retailers (only wholesalers). Existing retailers remain visible because hierarchy scoping walks descendants by `parent_organization_id` regardless of type-chain. This is the intended new behaviour and is documented in `routes/organizations.py` module docstring.
