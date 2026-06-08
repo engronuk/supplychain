@@ -594,3 +594,41 @@ Foundation refactor — purely additive `organization_id` rollout across every o
 - Phase 3 (write-path) and Phase 4 (legacy field removal) — pending until downstream consumers move to the unified field
 
 Full deliverable: `/app/memory/OWNERSHIP_MIGRATION_REPORT.md`
+
+## Updates (2026-06-08 — Multi-Tenant Validation + Critical Isolation Bug Fix)
+
+Second manufacturer **Flour Mills Nigeria** seeded as a fully isolated tenant to prove the universal organization architecture is genuinely multi-tenant. Built a 9-node subtree (1 mfg → 1 warehouse → 1 distributor → 1 wholesaler → 5 retailers) with unique org codes (`MFR-0002`, `WHR-0013`, `DST-0097`, `WHO-0030`, `RTL-3086..3090`) and 5 test users at every tier.
+
+### 🔴 Critical bug found & fixed
+`migrate_regional_topology` was **not tenant-aware** — it queried distributors/retailers globally and reparented them by region into Unilever's warehouses & hubs. The bug was immediately surfaced by the validation exercise (initial run: 6/22 PASS). After fixing:
+- `run()` now accepts a `manufacturer_id` and pre-computes its tenant subtree
+- Distributor/retailer queries gated by `{id: {$in: tenant_ids}}`
+- `seed_flour_mills_tenant._upsert_org` is now self-healing for drifted parent links
+
+### Validation results (post-fix): **22/22 PASSED**
+- super_admin sees both tenants (3223 + 9 orgs, disjoint)
+- Every Flour Mills user sees only Flour Mills orgs (no Unilever leak)
+- Every Unilever user sees no Flour Mills orgs (no Flour leak)
+- Retailer users see only their own org (singular subtree)
+- Permission matrix verified across all 5 tiers (manufacturer / warehouse / distributor / wholesaler / retailer)
+- Cross-tenant direct GET by id returns 403 in both directions
+- Hierarchy traversal returns exactly the expected 9-node Flour Mills tree
+
+### Regression: 76/76 prior pytest tests still PASS.
+
+### Files
+- New: `services/seed_flour_mills_tenant.py` (idempotent + self-healing)
+- New: `tests/test_multi_tenant_isolation.py` (CI-runnable validation harness)
+- Modified: `services/migrate_regional_topology.py` (tenant-scoped)
+- Report: `/app/memory/MULTI_TENANT_VALIDATION_REPORT.md`
+- Credentials: `/app/memory/test_credentials.md` (Tenant 2 section added)
+
+### Test credentials (Tenant 2 — password `FlourMills2026!`)
+| Role | Email |
+|---|---|
+| manufacturer | `flour.admin@tradekonekt.io` |
+| warehouse | `flour.warehouse@tradekonekt.io` |
+| distributor | `prime.distributor@tradekonekt.io` |
+| wholesaler | `lagos.wholesaler@tradekonekt.io` |
+| retailer | `flour.retailer1@tradekonekt.io` |
+

@@ -93,14 +93,48 @@ async def _upsert_org(*, kind: str, name: str, prefix: str,
     return doc
 
 
-async def run() -> dict:
-    manufacturer = await db.organizations.find_one(
-        {"organization_type": "manufacturer"}, {"_id": 0},
-    )
+async def run(manufacturer_id: str | None = None) -> dict:
+    """Build regional topology for ONE tenant only.
+
+    The regional bucketing was originally written when the system had a
+    single manufacturer. With multi-tenant support every tenant must build
+    its OWN warehouses/wholesalers/retailer tree, so this migration is now
+    explicitly scoped to one manufacturer subtree.
+
+    If `manufacturer_id` is not supplied we default to the FIRST tenant
+    that was ever seeded — historically Unilever — and ignore all others.
+    """
+    if manufacturer_id:
+        manufacturer = await db.organizations.find_one(
+            {"id": manufacturer_id, "organization_type": "manufacturer"},
+            {"_id": 0},
+        )
+    else:
+        manufacturer = await db.organizations.find_one(
+            {"organization_type": "manufacturer", "organization_name": "Unilever"},
+            {"_id": 0},
+        )
+        if not manufacturer:
+            manufacturer = await db.organizations.find_one(
+                {"organization_type": "manufacturer"}, {"_id": 0},
+                sort=[("created_at", 1)],
+            )
     if not manufacturer:
         raise RuntimeError("No manufacturer found — seed Unilever first.")
     mfr_id = manufacturer["id"]
     logger.info("Manufacturer root: %s (%s)", manufacturer["organization_name"], mfr_id)
+
+    # Build the set of org ids that belong to THIS tenant (via parent_id walk).
+    # Anything outside this set is left untouched — other tenants stay isolated.
+    tenant_ids: set[str] = {mfr_id}
+    frontier = [mfr_id]
+    while frontier:
+        children = await db.organizations.find(
+            {"parent_organization_id": {"$in": frontier}}, {"_id": 0, "id": 1},
+        ).to_list(50000)
+        next_frontier = [c["id"] for c in children if c["id"] not in tenant_ids]
+        tenant_ids.update(next_frontier)
+        frontier = next_frontier
 
     summary = {
         "warehouses": {},
@@ -124,9 +158,11 @@ async def run() -> dict:
         summary["warehouses"][region] = {"id": wh["id"], "code": wh["organization_code"]}
 
     # ---------- 2. Reparent distributors → regional warehouse ----------
+    # Only touch distributors that belong to THIS tenant's subtree.
     distributors_by_region: dict[str, List[dict]] = defaultdict(list)
     async for d in db.organizations.find(
-        {"organization_type": "distributor"}, {"_id": 0},
+        {"organization_type": "distributor", "id": {"$in": list(tenant_ids)}},
+        {"_id": 0},
     ):
         distributors_by_region[d.get("region") or "Unassigned"].append(d)
 
@@ -174,9 +210,10 @@ async def run() -> dict:
         region_to_wholesalers[region] = whs_ids
 
     # ---------- 4. Reparent retailers → regional wholesaler (round-robin) ----------
+    # Tenant-scoped — only retailers inside this manufacturer's subtree.
     retailers_by_region: dict[str, List[dict]] = defaultdict(list)
     async for r in db.organizations.find(
-        {"organization_type": "retailer"},
+        {"organization_type": "retailer", "id": {"$in": list(tenant_ids)}},
         {"_id": 0, "id": 1, "region": 1, "organization_code": 1, "parent_organization_id": 1},
     ):
         retailers_by_region[r.get("region") or "Unassigned"].append(r)
