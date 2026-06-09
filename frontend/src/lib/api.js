@@ -98,6 +98,27 @@ export const Api = {
   // shipments
   shipments: (params = {}) => api.get("/shipments", { params }).then((r) => r.data),
   createShipment: (payload) => api.post("/shipments", payload).then((r) => r.data),
+
+  // WMS workspace
+  wmsSummary: (warehouse_id) => api.get("/wms/summary", { params: warehouse_id ? { warehouse_id } : {} }).then((r) => r.data),
+  wmsInventoryDetail: (product_id, warehouse_id) =>
+    api.get(`/wms/inventory/${product_id}`, { params: warehouse_id ? { warehouse_id } : {} }).then((r) => r.data),
+  wmsUpdateInventory: (id, payload) =>
+    api.patch(`/wms/inventory/${id}`, payload).then((r) => r.data),
+  wmsListGrns: (warehouse_id) =>
+    api.get("/wms/grns", { params: warehouse_id ? { warehouse_id } : {} }).then((r) => r.data),
+  wmsCreateGrn: (payload) =>
+    api.post("/wms/grns", payload).then((r) => r.data),
+  wmsListDispatches: (warehouse_id) =>
+    api.get("/wms/dispatches", { params: warehouse_id ? { warehouse_id } : {} }).then((r) => r.data),
+  wmsCreateDispatch: (payload) =>
+    api.post("/wms/dispatches", payload).then((r) => r.data),
+  wmsUpdateDispatchStatus: (id, status) =>
+    api.patch(`/wms/dispatches/${id}/status`, { status }).then((r) => r.data),
+  wmsListTasks: (warehouse_id) =>
+    api.get("/wms/tasks", { params: warehouse_id ? { warehouse_id } : {} }).then((r) => r.data),
+  wmsListAlerts: (warehouse_id) =>
+    api.get("/wms/alerts", { params: warehouse_id ? { warehouse_id } : {} }).then((r) => r.data),
   updateShipmentStatus: (id, status) =>
     api.patch(`/shipments/${id}/status`, { status }).then((r) => r.data),
 

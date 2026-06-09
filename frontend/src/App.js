@@ -27,7 +27,15 @@ import ManufacturerProductDetail from "@/views/ManufacturerProductDetail";
 import ProductCommandCenter from "@/views/ProductCommandCenter";
 import ManufacturerDistributorDetail from "@/views/ManufacturerDistributorDetail";
 import ProductIntelligenceCenter from "@/views/ProductIntelligenceCenter";
-import WMSDashboard from "@/views/WMSDashboard";
+import WMSLayout from "@/views/wms/WMSLayout";
+import WMSDashboardPage from "@/views/wms/DashboardPage";
+import { InventoryListPage, InventoryDetailPage } from "@/views/wms/InventoryPages";
+import { ReceivingPage, DispatchPage } from "@/views/wms/ReceivingDispatch";
+import {
+  WarehousesPage, AlertsPage, TransfersPage, ReturnsPage, CycleCountsPage,
+  ReportsPage as WMSReportsPage, LocationsPage, UsersPage as WMSUsersPage,
+  ProductsPage as WMSProductsPage, SettingsPage as WMSSettingsPage,
+} from "@/views/wms/OtherPages";
 import { Toaster } from "@/components/ui/sonner";
 import { Loader2 } from "lucide-react";
 
@@ -95,7 +103,23 @@ function App() {
             <Route path="/" element={<PublicHome />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/demo" element={<DemoAccountsPage />} />
-            <Route path="/wms" element={<Protected><WMSDashboard /></Protected>} />
+            <Route path="/wms" element={<Protected><WMSLayout /></Protected>}>
+              <Route index element={<WMSDashboardPage />} />
+              <Route path="inventory" element={<InventoryListPage />} />
+              <Route path="inventory/:productId" element={<InventoryDetailPage />} />
+              <Route path="receiving" element={<ReceivingPage />} />
+              <Route path="dispatch" element={<DispatchPage />} />
+              <Route path="transfers" element={<TransfersPage />} />
+              <Route path="returns" element={<ReturnsPage />} />
+              <Route path="cycle-counts" element={<CycleCountsPage />} />
+              <Route path="reports" element={<WMSReportsPage />} />
+              <Route path="alerts" element={<AlertsPage />} />
+              <Route path="warehouses" element={<WarehousesPage />} />
+              <Route path="locations" element={<LocationsPage />} />
+              <Route path="users" element={<WMSUsersPage />} />
+              <Route path="products" element={<WMSProductsPage />} />
+              <Route path="settings" element={<WMSSettingsPage />} />
+            </Route>
             <Route element={<Protected><Layout /></Protected>}>
               <Route path="/dashboard" element={<RoleDashboard />} />
               <Route path="/product-intelligence" element={<ProductIntelligenceCenter />} />

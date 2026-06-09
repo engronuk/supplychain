@@ -38,6 +38,7 @@ from routes import (
     shipments,
     stock_requests,
     uploads,
+    wms,
 )
 from services.intel.scheduler import start_scheduler, stop_scheduler
 from services.migrations import ensure_indexes
@@ -82,6 +83,7 @@ for r in (
     intel.router,
     seed_route.router,
     uploads.router,
+    wms.router,
 ):
     api_router.include_router(r)
 
