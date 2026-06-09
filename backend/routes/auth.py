@@ -456,3 +456,113 @@ async def list_demo_accounts():
         x.get("email", ""),
     ))
     return out
+
+
+
+# ---------------------------------------------------------------------------
+# Demo Portal (3-step wizard) — tenants endpoint
+# ---------------------------------------------------------------------------
+# Cosmetic metadata for each tenant. Kept here (not on the org document) so
+# we can iterate on the wording without DB migrations.
+TENANT_META: Dict[str, Dict[str, str]] = {
+    "Flour Mills Nigeria": {
+        "type_label": "FMCG Manufacturer",
+        "tagline": (
+            "One of Nigeria's leading food manufacturers with a strong "
+            "distribution network across the country."
+        ),
+        "accent": "moss",
+        "initials": "FMN",
+        "short_name": "FMN",
+    },
+    "Unilever": {
+        "type_label": "Consumer Goods Manufacturer",
+        "tagline": (
+            "World-class consumer goods company with trusted brands and "
+            "nationwide distribution."
+        ),
+        "accent": "indigo",
+        "initials": "U",
+        "short_name": "Unilever",
+    },
+}
+
+
+@router.get("/auth/demo-tenants")
+async def list_demo_tenants():
+    """Returns one card per manufacturer tenant for the demo wizard.
+
+    Includes live counts per supply-chain tier (warehouse / distributor /
+    wholesaler / retailer) plus a flag for how many demo users exist per
+    role. Tier counts are computed by walking the unified `organizations`
+    tree under each manufacturer's id.
+    """
+    mfrs = await db.organizations.find(
+        {"organization_type": "manufacturer", "status": "active"}, {"_id": 0},
+    ).to_list(50)
+    # Count demo users grouped by (manufacturer_id, role) in one pass.
+    demo_users = await db.users.find(
+        {"is_demo": True, "status": "active"},
+        {"_id": 0, "manufacturer_id": 1, "role": 1},
+    ).to_list(200)
+    user_counts: Dict[tuple, int] = {}
+    super_admin_count = 0
+    for u in demo_users:
+        if u.get("role") == "super_admin":
+            super_admin_count += 1
+            continue
+        key = (u.get("manufacturer_id", ""), u.get("role", ""))
+        user_counts[key] = user_counts.get(key, 0) + 1
+
+    out: List[Dict[str, Any]] = []
+    for mfr in mfrs:
+        mfr_id = mfr["id"]
+        # Walk descendants once to bucket types.
+        seen = {mfr_id}
+        frontier = [mfr_id]
+        tier_counts: Dict[str, int] = {"warehouse": 0, "distributor": 0,
+                                        "wholesaler": 0, "retailer": 0,
+                                        "logistics_provider": 0}
+        while frontier:
+            children = await db.organizations.find(
+                {"parent_organization_id": {"$in": frontier},
+                 "status": "active"},
+                {"_id": 0, "id": 1, "organization_type": 1},
+            ).to_list(50000)
+            next_frontier = []
+            for c in children:
+                if c["id"] in seen:
+                    continue
+                seen.add(c["id"])
+                next_frontier.append(c["id"])
+                t = c.get("organization_type")
+                if t in tier_counts:
+                    tier_counts[t] += 1
+            frontier = next_frontier
+        meta = TENANT_META.get(mfr["organization_name"], {})
+        out.append({
+            "id": mfr_id,
+            "code": mfr.get("organization_code"),
+            "name": mfr["organization_name"],
+            "type_label": meta.get("type_label", "Manufacturer"),
+            "tagline": meta.get("tagline", ""),
+            "accent": meta.get("accent", "indigo"),
+            "initials": meta.get("initials") or "".join(
+                w[:1] for w in mfr["organization_name"].split()
+            )[:3].upper(),
+            "short_name": meta.get("short_name", mfr["organization_name"]),
+            "region": mfr.get("region"),
+            "city": mfr.get("city"),
+            "tier_counts": tier_counts,
+            "users_by_role": {
+                "super_admin":   super_admin_count,
+                "manufacturer":  user_counts.get((mfr_id, "manufacturer"), 0),
+                "warehouse":     user_counts.get((mfr_id, "warehouse"), 0),
+                "distributor":   user_counts.get((mfr_id, "distributor"), 0),
+                "wholesaler":    user_counts.get((mfr_id, "wholesaler"), 0),
+                "retailer":      user_counts.get((mfr_id, "retailer"), 0),
+            },
+        })
+    # Newest tenants first, so Flour Mills surfaces ahead of Unilever today.
+    out.sort(key=lambda x: (x["name"] != "Flour Mills Nigeria", x["name"]))
+    return out

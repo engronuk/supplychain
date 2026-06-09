@@ -51,6 +51,7 @@ export const AuthApi = {
   me: () => api.get("/auth/me").then((r) => r.data),
   refresh: () => api.post("/auth/refresh").then((r) => r.data),
   demoAccounts: () => api.get("/auth/demo-accounts").then((r) => r.data),
+  demoTenants: () => api.get("/auth/demo-tenants").then((r) => r.data),
   impersonate: (userId) =>
     api.post(`/auth/impersonate/${userId}`).then((r) => r.data),
   // Hydrate the manufacturer/distributor/retailer record after login.
