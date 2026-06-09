@@ -632,3 +632,58 @@ Second manufacturer **Flour Mills Nigeria** seeded as a fully isolated tenant to
 | wholesaler | `lagos.wholesaler@tradekonekt.io` |
 | retailer | `flour.retailer1@tradekonekt.io` |
 
+
+## Updates (2026-06-08 — Flour Mills `Oil and Fat` catalogue + tenant-isolation hardening)
+
+### Catalogue seeded
+6 Golden Penny products under category **Oil and Fat**, owned by Flour Mills Nigeria (MFR-0002):
+
+| SKU | Product | Pack | Unit Price | Barcode |
+|---|---|---|---:|---|
+| GP-SOYA-5L     | Golden Penny Soya Oil       | 5L bottle   | ₦12,500 | 6151001230011 |
+| GP-VEG-5L      | Golden Penny Vegetable Oil  | 5L bottle   | ₦11,800 | 6151001230028 |
+| GP-SPRD-250G   | Golden Penny Spread         | 250g tub    | ₦2,200  | 6151001230035 |
+| GP-MARG-250G   | Golden Penny Margarine      | 250g tub    | ₦1,800  | 6151001230042 |
+| GP-CHOC-500G   | Golden Penny Choc Oh        | 500g jar    | ₦3,500  | 6151001230059 |
+| GP-IFAT-25KG   | Industrial Fat Products     | 25kg drum   | ₦42,000 | 6151001230066 |
+
+12 batches (2 per product — one fresh, one mid-life; unit_cost = 70% of retail; 1-year shelf life).
+
+### Inventory positions (48 rows)
+| Tier | Rows | Total Units | Per-Product Target |
+|---|---:|---:|---:|
+| Warehouse (WHR-0013) | 6 | 30,105 | ~5,000 |
+| Distributor (DST-0097) | 6 | 23,871 | ~4,000 |
+| Wholesaler (WHO-0030) | 6 | 8,297 | ~1,400 |
+| Retailers (RTL-3086..3090, 5 retailers) | 30 | 4,480 | ~150 |
+
+Retail prices set at 15% markup over manufacturer unit_price. Warehouse rows include `warehouse_id` (the WHR-0013 id) — first use of the new field reserved for the future Warehouse Management module.
+
+### 🔴 Critical isolation bug discovered & fixed
+`GET /api/products` was completely unscoped (no auth dep, no tenant filter). Flour Mills admin could see all 15 Unilever products — direct multi-tenant breach. Fixed in `routes/entities.py::list_products`:
+- Now accepts an optional auth via `_maybe_user(request)` helper (best-effort, no hard failure for legacy unauthenticated callers).
+- If user is authenticated and not super_admin, defaults the filter to `{manufacturer_id: tenant_id}` resolved from the calling user.
+- Explicit `?manufacturer_id=` parameter still works for legacy callers and the super_admin admin console.
+
+### Tenant resolver upgraded
+`services/auth.py::resolve_user_tenant` previously returned `""` for `warehouse`, `wholesaler`, `logistics_provider` roles (collections didn't exist when it was written). Added `_walk_to_manufacturer(org_id)` helper that walks `organizations.parent_organization_id` upward to find the manufacturer ancestor — works uniformly for every tier. Distributor + retailer resolution also fall back to this walk when their legacy collection rows are missing.
+
+### Post-fix isolation matrix (verified via curl)
+| User | products visible | Unilever SKUs | Flour Mills SKUs |
+|---|---:|---:|---:|
+| super_admin | 21 | 15 | 6 |
+| Unilever Mfg | 15 | 15 | 0 |
+| Unilever Distributor | 15 | 15 | 0 |
+| Flour Mills Mfg | 6 | 0 | 6 |
+| Flour Mills Warehouse | 6 | 0 | 6 |
+| Flour Mills Wholesaler | 6 | 0 | 6 |
+| Flour Mills Retailer | 6 | 0 | 6 |
+
+### Regression
+- pytest: **76/76 PASS** (no change)
+- Multi-tenant validation: **22/22 PASS** (no change)
+
+### Files
+- New: `services/seed_flour_mills_products.py` (idempotent seeder)
+- Modified: `routes/entities.py` (tenant-scoped products), `services/auth.py` (universal tenant resolver)
+

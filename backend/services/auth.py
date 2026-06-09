@@ -191,7 +191,13 @@ async def clear_login_failures(user_id: str) -> None:
 
 # ---------------- entity-scope helpers ----------------
 async def resolve_user_tenant(user: Dict[str, Any]) -> str:
-    """Find the manufacturer_id (= tenant_id) for any user role."""
+    """Find the manufacturer_id (= tenant_id) for any user role.
+
+    Falls back to walking the unified `organizations` hierarchy via
+    `parent_organization_id` so the newer warehouse / wholesaler tiers
+    (which don't exist in the legacy `manufacturers`/`distributors`/
+    `retailers` collections) still resolve to the right tenant.
+    """
     role = user.get("role")
     eid = user.get("entity_id", "")
     if role == "super_admin":
@@ -200,14 +206,38 @@ async def resolve_user_tenant(user: Dict[str, Any]) -> str:
         return eid
     if role == "distributor":
         d = await db.distributors.find_one({"id": eid}, {"_id": 0, "manufacturer_id": 1})
-        return (d or {}).get("manufacturer_id", "")
+        if d and d.get("manufacturer_id"):
+            return d["manufacturer_id"]
+        # Fallback for distributors that only exist in the unified org tree.
+        return await _walk_to_manufacturer(eid)
     if role == "retailer":
         r = await db.retailers.find_one({"id": eid}, {"_id": 0, "distributor_id": 1})
-        if not r:
+        if r and r.get("distributor_id"):
+            d = await db.distributors.find_one({"id": r["distributor_id"]},
+                                                {"_id": 0, "manufacturer_id": 1})
+            if d and d.get("manufacturer_id"):
+                return d["manufacturer_id"]
+        return await _walk_to_manufacturer(eid)
+    if role in ("warehouse", "wholesaler", "logistics_provider"):
+        return await _walk_to_manufacturer(eid)
+    return ""
+
+
+async def _walk_to_manufacturer(org_id: str, max_hops: int = 8) -> str:
+    """Walk `organizations.parent_organization_id` upwards until we hit a
+    `manufacturer` org. Returns its id, or "" if unreachable."""
+    cur_id = org_id
+    for _ in range(max_hops):
+        if not cur_id:
             return ""
-        d = await db.distributors.find_one({"id": r["distributor_id"]},
-                                            {"_id": 0, "manufacturer_id": 1})
-        return (d or {}).get("manufacturer_id", "")
+        doc = await db.organizations.find_one(
+            {"id": cur_id}, {"_id": 0, "organization_type": 1, "parent_organization_id": 1},
+        )
+        if not doc:
+            return ""
+        if doc.get("organization_type") == "manufacturer":
+            return cur_id
+        cur_id = doc.get("parent_organization_id") or ""
     return ""
 
 

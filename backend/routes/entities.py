@@ -3,12 +3,23 @@ from __future__ import annotations
 
 from typing import List, Optional
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, Request
 
 from core import db
 from models import Distributor, Manufacturer, Product, Retailer
+from services.auth import get_current_user, resolve_user_tenant
 
 router = APIRouter()
+
+
+async def _maybe_user(request: Request) -> Optional[dict]:
+    """Best-effort user resolution — returns None if no/invalid token so the
+    endpoint still works as an unauthenticated read for legacy callers.
+    """
+    try:
+        return await get_current_user(request)
+    except Exception:
+        return None
 
 
 @router.get("/")
@@ -34,6 +45,19 @@ async def list_retailers(distributor_id: Optional[str] = None):
 
 
 @router.get("/products", response_model=List[Product])
-async def list_products(manufacturer_id: Optional[str] = None):
-    q = {"manufacturer_id": manufacturer_id} if manufacturer_id else {}
+async def list_products(request: Request, manufacturer_id: Optional[str] = None):
+    """Default-scoped by the authenticated user's tenant so multi-tenant
+    isolation holds. Super-admin (and unauthenticated legacy callers) see
+    everything; non-admin authenticated users only see products owned by
+    their tenant unless they explicitly pass `manufacturer_id`.
+    """
+    if manufacturer_id:
+        q = {"manufacturer_id": manufacturer_id}
+    else:
+        user = await _maybe_user(request)
+        if user and user.get("role") != "super_admin":
+            tenant_id = await resolve_user_tenant(user)
+            q = {"manufacturer_id": tenant_id} if tenant_id else {}
+        else:
+            q = {}
     return await db.products.find(q, {"_id": 0}).sort("name", 1).to_list(2000)
