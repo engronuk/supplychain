@@ -27,6 +27,7 @@ import ManufacturerProductDetail from "@/views/ManufacturerProductDetail";
 import ProductCommandCenter from "@/views/ProductCommandCenter";
 import ManufacturerDistributorDetail from "@/views/ManufacturerDistributorDetail";
 import ProductIntelligenceCenter from "@/views/ProductIntelligenceCenter";
+import WMSDashboard from "@/views/WMSDashboard";
 import { Toaster } from "@/components/ui/sonner";
 import { Loader2 } from "lucide-react";
 
@@ -36,6 +37,7 @@ function RoleDashboard() {
   if (session.role === "super_admin") return <SuperAdminConsole />;
   if (session.role === "manufacturer") return <ManufacturerDashboard />;
   if (session.role === "distributor") return <DistributorDashboard />;
+  if (session.role === "warehouse") return <Navigate to="/wms" replace />;
   return <RetailerDashboardV2 />;
 }
 
@@ -93,6 +95,7 @@ function App() {
             <Route path="/" element={<PublicHome />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/demo" element={<DemoAccountsPage />} />
+            <Route path="/wms" element={<Protected><WMSDashboard /></Protected>} />
             <Route element={<Protected><Layout /></Protected>}>
               <Route path="/dashboard" element={<RoleDashboard />} />
               <Route path="/product-intelligence" element={<ProductIntelligenceCenter />} />
