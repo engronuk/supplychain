@@ -304,14 +304,15 @@ function WarehouseDialog({ existing, onClose }) {
 // Tabs: Overview, Inventory, Users, Inbound, Outbound, Transfers, Analytics, Settings
 // ---------------------------------------------------------------------------
 const TABS = [
-  { id: "overview",  label: "Overview" },
-  { id: "inventory", label: "Inventory" },
-  { id: "users",     label: "Users" },
-  { id: "inbound",   label: "Inbound" },
-  { id: "outbound",  label: "Outbound" },
-  { id: "transfers", label: "Transfers" },
-  { id: "analytics", label: "Analytics" },
-  { id: "settings",  label: "Settings" },
+  { id: "overview",   label: "Overview" },
+  { id: "fulfillment", label: "Fulfillment" },
+  { id: "inventory",  label: "Inventory" },
+  { id: "users",      label: "Users" },
+  { id: "inbound",    label: "Inbound" },
+  { id: "outbound",   label: "Outbound" },
+  { id: "transfers",  label: "Transfers" },
+  { id: "analytics",  label: "Analytics" },
+  { id: "settings",   label: "Settings" },
 ];
 
 export function ManufacturerWarehouseDetail() {
@@ -440,6 +441,8 @@ export function ManufacturerWarehouseDetail() {
           openTasks={openTasks} invValue={invValue} invUnits={invUnits}
           onAction={(action) => handleQuickAction(action, w, navigate)} />
       )}
+
+      {tab === "fulfillment" && <FulfillmentTab warehouseId={w.id} />}
 
       {tab === "inventory" && <InventoryTab inventory={inventory} byPid={byPid} onAction={(action, row) => handleInventoryAction(action, row, w, navigate)} />}
       {tab === "users" && <UsersTab w={w} users={whUsers} />}
@@ -1491,6 +1494,119 @@ function RuleCard({ Icon, tint, title, rows, testid }) {
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Fulfillment Queue — orders the Manufacturer allocated to this warehouse
+// ---------------------------------------------------------------------------
+const FULFILLMENT_LIFECYCLE = ["pending_picking", "picking", "picked", "loaded", "dispatched", "delivered", "closed"];
+const FULFILLMENT_NEXT = {
+  pending_picking: "picking",
+  picking: "picked",
+  picked: "loaded",
+  loaded: "dispatched",
+  dispatched: "delivered",
+  delivered: "closed",
+};
+
+function FulfillmentTab({ warehouseId }) {
+  const [bucket, setBucket] = useState("all");
+  const [rows, setRows] = useState([]);
+  const [summary, setSummary] = useState({});
+  const [busy, setBusy] = useState(false);
+
+  const reload = () => {
+    Api.fulfillmentList(warehouseId, bucket === "all" ? undefined : bucket).then(setRows).catch(() => setRows([]));
+    Api.fulfillmentSummary(warehouseId).then(setSummary).catch(() => setSummary({}));
+  };
+  useEffect(() => { reload(); }, [warehouseId, bucket]);
+
+  const advance = async (fo) => {
+    const next = FULFILLMENT_NEXT[fo.status];
+    if (!next) return;
+    setBusy(true);
+    try {
+      await Api.fulfillmentAdvance(fo.id, next);
+      toast.success(`Fulfillment moved to ${next.replace("_", " ")}`);
+      reload();
+    } catch (e) {
+      toast.error(e.response?.data?.detail || "Failed to advance fulfillment");
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="space-y-3" data-testid="fulfillment-tab">
+      {/* Banner: manufacturer-owned */}
+      <div className="rounded-xl bg-blue-50/60 border border-blue-100 px-4 py-3 flex items-start gap-3">
+        <Sparkles className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+        <div className="text-sm text-slate-700">
+          <span className="font-semibold text-slate-900">Warehouse is an execution center.</span>{" "}
+          Quantities are allocated by the Manufacturer&apos;s Allocation Center and cannot be modified here. Move each fulfillment through the lifecycle until delivered.
+        </div>
+      </div>
+
+      {/* Lifecycle pill row */}
+      <div className="rounded-xl bg-white border border-slate-200/80 shadow-sm px-4 py-3 flex items-center gap-2 flex-wrap">
+        <button onClick={() => setBucket("all")}
+          className={`text-xs px-2.5 py-1 rounded-md font-medium ${bucket === "all" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}>
+          All ({summary.open != null ? `${summary.open} open` : "—"})
+        </button>
+        {FULFILLMENT_LIFECYCLE.map((s) => (
+          <button key={s} onClick={() => setBucket(s)}
+            className={`text-xs px-2.5 py-1 rounded-md font-medium transition ${bucket === s ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
+            data-testid={`fl-bucket-${s}`}>
+            {s.replace("_", " ")} ({summary[s] || 0})
+          </button>
+        ))}
+      </div>
+
+      <div className="rounded-xl bg-white border border-slate-200/80 shadow-sm overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="text-xs text-slate-500 bg-slate-50/60 border-b border-slate-200">
+            <tr>
+              <th className="text-left py-3 px-5 font-medium">Fulfillment #</th>
+              <th className="text-left py-3 font-medium">Order Ref</th>
+              <th className="text-left py-3 font-medium">Distributor</th>
+              <th className="text-right py-3 font-medium">Units</th>
+              <th className="text-left py-3 pl-6 font-medium">Stage</th>
+              <th className="text-left py-3 font-medium">Created</th>
+              <th className="text-right py-3 px-5 font-medium">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((f) => {
+              const units = (f.items || []).reduce((s, it) => s + (it.allocated_quantity || 0), 0);
+              const next = FULFILLMENT_NEXT[f.status];
+              return (
+                <tr key={f.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/40">
+                  <td className="py-3 px-5 font-mono text-xs text-slate-900 font-medium">{f.fulfillment_number}</td>
+                  <td className="py-3 font-mono text-xs text-slate-600">{(f.order_id || "").slice(0, 8).toUpperCase()}</td>
+                  <td className="py-3">
+                    <div className="text-slate-900 font-medium">{f.distributor_name}</div>
+                    <div className="text-xs text-slate-500">{f.items?.length || 0} SKU lines</div>
+                  </td>
+                  <td className="py-3 text-right text-slate-700">{num(units)}</td>
+                  <td className="py-3 pl-6"><LifecyclePill status={f.status} /></td>
+                  <td className="py-3 text-slate-500 text-xs">{fmtDate(f.created_at)}</td>
+                  <td className="py-3 px-5 text-right">
+                    {next ? (
+                      <Button size="sm" disabled={busy} onClick={() => advance(f)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white" data-testid={`advance-${f.id.slice(0, 6)}`}>
+                        Move to {next.replace("_", " ")} <ArrowUpFromLine className="h-3.5 w-3.5 ml-1" />
+                      </Button>
+                    ) : (
+                      <span className="text-xs text-slate-400">—</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+            {rows.length === 0 && <tr><td colSpan={7} className="text-center text-slate-400 py-12">No fulfillment orders in this bucket.</td></tr>}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

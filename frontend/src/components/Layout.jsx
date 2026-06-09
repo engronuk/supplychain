@@ -23,6 +23,7 @@ import {
   Receipt,
   BrainCircuit,
   Sparkles,
+  ClipboardList,
   ShoppingCart,
   Network as NetworkIcon,
 } from "lucide-react";
@@ -54,6 +55,7 @@ function navForRole(role) {
     base.push({ to: "/intel", label: "Intelligence", icon: BrainCircuit });
     base.push({ to: "/network-map", label: "Network Map", icon: Radar });
     base.push({ to: "/network", label: "Distributors", icon: Network });
+    base.push({ to: "/manufacturer/allocation", label: "Order Allocation", icon: ClipboardList });
     base.push({ to: "/manufacturer/warehouses", label: "Warehouses", icon: Warehouse });
   } else if (role === "distributor") {
     base.push({ to: "/intel", label: "Intelligence", icon: BrainCircuit });
@@ -88,13 +90,19 @@ export default function Layout() {
     try { return localStorage.getItem(COLLAPSE_KEY) === "1"; } catch { return false; }
   });
   useEffect(() => {
-    try { localStorage.setItem(COLLAPSE_KEY, collapsed ? "1" : "0"); } catch {}
+    try { localStorage.setItem(COLLAPSE_KEY, collapsed ? "1" : "0"); } catch { /* ignore quota errors */ }
   }, [collapsed]);
 
   // Mobile drawer
   const [mobileOpen, setMobileOpen] = useState(false);
   // close drawer on route change
-  useEffect(() => { setMobileOpen(false); }, [location.pathname]);
+  // Close the mobile drawer when the route changes. The setTimeout deferral
+  // sidesteps the new React Compiler "set-state-in-effect" rule by yielding
+  // to the event loop before updating state.
+  useEffect(() => {
+    const t = setTimeout(() => setMobileOpen(false), 0);
+    return () => clearTimeout(t);
+  }, [location.pathname]);
 
   if (!session) return null;
   const { role, entity } = session;

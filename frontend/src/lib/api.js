@@ -127,6 +127,33 @@ export const Api = {
     api.get("/wms/cycle-counts", { params: warehouse_id ? { warehouse_id } : {} }).then((r) => r.data),
   wmsListTransfers: (warehouse_id, direction) =>
     api.get("/wms/transfers", { params: { ...(warehouse_id ? { warehouse_id } : {}), ...(direction ? { direction } : {}) } }).then((r) => r.data),
+
+  // ---- Manufacturer Order Allocation Center ----
+  allocationSummary: () => api.get("/allocation/summary").then((r) => r.data),
+  allocationPool: (bucket) =>
+    api.get("/allocation/pool", { params: bucket ? { bucket } : {} }).then((r) => r.data),
+  allocationOrderDetail: (id) => api.get(`/allocation/orders/${id}`).then((r) => r.data),
+  allocationRecommend: (id) =>
+    api.get(`/allocation/orders/${id}/recommendation`).then((r) => r.data),
+  allocationAuto: (id, notes) =>
+    api.post(`/allocation/orders/${id}/auto-allocate`, { notes }).then((r) => r.data),
+  allocationManual: (id, lines, notes) =>
+    api.post(`/allocation/orders/${id}/manual-allocate`, { lines, notes }).then((r) => r.data),
+  allocationReject: (id, reason) =>
+    api.post(`/allocation/orders/${id}/reject`, { reason }).then((r) => r.data),
+  allocationBackOrder: (id, reason) =>
+    api.post(`/allocation/orders/${id}/back-order`, { reason }).then((r) => r.data),
+  allocationAcknowledge: (id) =>
+    api.post(`/allocation/orders/${id}/acknowledge`).then((r) => r.data),
+  allocationBackOrders: () => api.get("/allocation/back-orders").then((r) => r.data),
+
+  // ---- Warehouse Fulfillment Queue ----
+  fulfillmentSummary: (warehouse_id) =>
+    api.get("/fulfillment/summary", { params: warehouse_id ? { warehouse_id } : {} }).then((r) => r.data),
+  fulfillmentList: (warehouse_id, bucket) =>
+    api.get("/fulfillment", { params: { ...(warehouse_id ? { warehouse_id } : {}), ...(bucket ? { bucket } : {}) } }).then((r) => r.data),
+  fulfillmentAdvance: (id, to) =>
+    api.post(`/fulfillment/${id}/advance`, { to }).then((r) => r.data),
   updateShipmentStatus: (id, status) =>
     api.patch(`/shipments/${id}/status`, { status }).then((r) => r.data),
 

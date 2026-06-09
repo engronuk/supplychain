@@ -774,3 +774,63 @@ Created `services/seed_warehouse_operations.py` — a single idempotent seed tha
 ```
 cd /app/backend && python -m services.seed_warehouse_operations
 ```
+
+---
+
+## 2026-02-09 (d) — Manufacturer-Controlled Order Allocation (Phase 1)
+
+Implemented the new universal supply-chain workflow: distributors place demand on the **manufacturer**, manufacturers allocate inventory to warehouses, warehouses execute fulfillment. Distributors never order from warehouses; warehouses cannot modify allocated quantities.
+
+### Decisions confirmed with user
+- Legacy orders migrated to `status="completed"` on first seed run (clean slate).
+- Auto-allocation priority: **region match → stock-on-hand → distance proxy**.
+- Reservation timing: **reserve immediately on allocation**, release on rejection/cancellation.
+
+### Backend
+- `routes/allocation.py` — 9 endpoints:
+  - `GET /api/allocation/summary` — bucket counts
+  - `GET /api/allocation/pool?bucket=...` — orders in a bucket
+  - `GET /api/allocation/orders/{id}` — order detail + full allocation/fulfillment/back-order audit trail
+  - `GET /api/allocation/orders/{id}/recommendation` — per-product warehouse recommendation with region/stock/distance scoring
+  - `POST /api/allocation/orders/{id}/auto-allocate`
+  - `POST /api/allocation/orders/{id}/manual-allocate`
+  - `POST /api/allocation/orders/{id}/back-order`
+  - `POST /api/allocation/orders/{id}/reject`
+  - `POST /api/allocation/orders/{id}/acknowledge`
+  - `GET /api/allocation/back-orders`
+- `routes/fulfillment.py` — Warehouse-side queue:
+  - `GET /api/fulfillment/summary?warehouse_id=...`
+  - `GET /api/fulfillment?warehouse_id=...&bucket=...`
+  - `POST /api/fulfillment/{id}/advance` (pending_picking → picking → picked → loaded → dispatched → delivered → closed)
+- Inventory side effects: allocation reserves; dispatch decrements reserved + quantity; delivery cascades back to parent order status.
+- `services/seed_allocation.py` (idempotent, tag `allocation_v1`):
+  - 44 legacy orders migrated to "completed"
+  - Created orders across every bucket: 16 new, 12 awaiting_allocation, 10 allocated, 8 partially_allocated, 12 fulfillment_in_progress, 16 completed, 8 back-ordered, 6 rejected — across both Unilever and Flour Mills tenants
+  - Materialised matching `order_allocations`, `fulfillment_orders`, `back_orders`; applied reservations/decrements based on FO stage.
+
+### Frontend
+- **New route**: `/manufacturer/allocation` with `AllocationCenter` page
+  - 7 KPI bucket cards (New / Awaiting Allocation / Allocated / Fulfillment In Progress / Completed / Back Orders / Rejected)
+  - Order list table with distributor, region, units, value, submitted time
+  - Slide-over **Allocation Decision Drawer**:
+    - Auto / Manual mode toggle
+    - Per-product warehouse list with region match + available + score + "Recommended" badge
+    - Manual mode lets the user enter per-warehouse quantities; live "Allocated / Requested" counter
+    - Footer actions: Back Order, Reject (with reason), Auto-Allocate, Apply Allocation
+- **Fulfillment tab** added to Manufacturer Warehouse Module (`/manufacturer/warehouses/:id`)
+  - Banner explaining execution-center role
+  - Bucket pill row with live counts per lifecycle stage
+  - Table with Fulfillment #, Order Ref, Distributor, Units, Stage, Created, "Move to next stage" CTA
+- **Nav**: "Order Allocation" link added to manufacturer sidebar
+- API client extended with 13 new `allocation*` / `fulfillment*` methods.
+
+### Data Model (new collections)
+- `order_allocations` — per-decision audit row (mode, lines, decided_by, decided_at, notes)
+- `fulfillment_orders` — what the warehouse executes (one per source warehouse per order)
+- `back_orders` — outstanding demand awaiting future stock
+
+### Phase 2 (next turn)
+- Standalone WMS `/wms/fulfillment` page (same data, mirrored UI)
+- Notifications for all 3 personas (currently best-effort push; need an in-app feed)
+- Allocation KPIs: Fill Rate, Allocation Time, Back-Order Rate, Service Level, Warehouse Performance
+- Audit trail viewer (timeline of allocation events per order)
