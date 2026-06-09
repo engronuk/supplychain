@@ -834,3 +834,27 @@ Implemented the new universal supply-chain workflow: distributors place demand o
 - Notifications for all 3 personas (currently best-effort push; need an in-app feed)
 - Allocation KPIs: Fill Rate, Allocation Time, Back-Order Rate, Service Level, Warehouse Performance
 - Audit trail viewer (timeline of allocation events per order)
+
+---
+
+## 2026-02-09 (e) — Distributor "Place Order" Workflow
+
+The distributor side of the new order-allocation architecture: they now place purchase orders against the **manufacturer** directly from the Procurement page.
+
+### What shipped (`DistributorProcurementInbox.jsx`)
+- Page heading rewritten to **"Procurement Workspace"** with subtitle that reflects both outbound and inbound flows.
+- Tabs reorganised into 4: **Place Order** (default), **My Purchase Orders**, Retailer Orders, Quote Requests.
+- **Place Order tab**:
+  - Manufacturer catalogue grid (filtered by `session.user.manufacturer_id`) with search, ± buttons + numeric input per row.
+  - Sticky right-side cart with live line totals, units sum, order value, optional note, and a single "Submit Order to Manufacturer" CTA.
+  - On submit, posts to existing `POST /api/distributor/{id}/orders` — the order lands in `distributor_orders` with `status="pending"`, which the Manufacturer's Allocation Center already surfaces in its "New Orders" bucket.
+- **My Purchase Orders tab**:
+  - Filter pill row covering every status (Submitted, Awaiting Allocation, Allocated, Partially Allocated, In Progress, Delivered, Back Ordered, Rejected) plus "Open" and "All".
+  - Order cards with status badge + a 4-step progress tracker (Submitted → Allocated → In Progress → Delivered) with live violet fill per stage.
+  - Rejected orders show the manufacturer's rejection reason inline.
+  - Collapsible "View line items" table per order.
+- API client extended with `distributorCreateOrder`, `distributorListMyOrders`, `distributorListManufacturers`.
+
+### Verified end-to-end
+- Logged in as `lagos.distributor@tradekonekt.io`, filled cart (500× Axe Body Spray + 300× Blue Band Margarine = ₦11.2M / 800 units), hit Submit → toast "Order F353DB7E submitted to manufacturer"; cart cleared.
+- The order is now visible to `unilever@tradekonekt.io` in `/manufacturer/allocation` under "New Orders".

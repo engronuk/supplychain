@@ -215,6 +215,14 @@ export const Api = {
              { reason }).then((r) => r.data),
   manufacturerOrderDispatch: (manufacturer_id, order_id) =>
     api.post(`/manufacturer/${manufacturer_id}/distributor-orders/${order_id}/dispatch`).then((r) => r.data),
+
+  // ---- Distributor → Manufacturer purchase orders (new flow) ----
+  distributorCreateOrder: (distributor_id, payload) =>
+    api.post(`/distributor/${distributor_id}/orders`, payload).then((r) => r.data),
+  distributorListMyOrders: (distributor_id) =>
+    api.get(`/distributor/${distributor_id}/orders`).then((r) => r.data),
+  distributorListManufacturers: (distributor_id) =>
+    api.get(`/distributor/${distributor_id}/manufacturers`).then((r) => r.data),
   manufacturerRetailerDetail: (manufacturer_id, distributor_id, retailer_id) =>
     api.get(`/manufacturer/${manufacturer_id}/distributor/${distributor_id}/retailer/${retailer_id}`).then((r) => r.data),
 
