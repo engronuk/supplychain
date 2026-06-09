@@ -687,3 +687,26 @@ Retail prices set at 15% markup over manufacturer unit_price. Warehouse rows inc
 - New: `services/seed_flour_mills_products.py` (idempotent seeder)
 - Modified: `routes/entities.py` (tenant-scoped products), `services/auth.py` (universal tenant resolver)
 
+
+---
+
+## 2026-02-09 — Manufacturer Warehouse Detail redesign
+
+User requested an enterprise SaaS-style redesign of the per-warehouse drill-down at `/manufacturer/warehouses/:id`, inspired by Microsoft Dynamics 365, SAP Fiori, and Oracle Cloud SCM.
+
+### What shipped
+- Page title slot now reads **"Warehouse Management"** (breadcrumb) above the bold warehouse name.
+- Status / location / code / **Owned** chips on the header line.
+- **Actions** dropdown (Edit Warehouse / Open WMS Workspace / All Warehouses) + primary **Create Transfer** button.
+- **Six** summary cards: Total Inventory, Inventory Value, Inbound Shipments Today, Outbound Shipments Today, Pending Transfers, Open Tasks — capacity utilization metrics intentionally removed per spec.
+- Tabs reduced to short labels (Overview, Inventory, Users, Inbound, Outbound, Transfers, Analytics, Settings) on a card-style tab bar.
+- **Overview tab** rebuilt with 4 sections:
+  1. Warehouse Information (Name, Code, Location, Manager, Phone, Email, Status, Coordinates) with inline Edit.
+  2. Recent Activity timeline (received / dispatched / transfer / alert / user — synthesized from real GRNs, dispatches, alerts).
+  3. Operational Snapshot (Active Products, Open Inbound, Open Outbound, Pending Transfers, Inventory Alerts).
+  4. Quick Actions grid: Receive Shipment, Create Dispatch, Create Transfer, Add User, View Inventory, Generate Report.
+- Inventory / Inbound / Outbound tabs polished (status pills, low-stock highlighting).
+- Transfers, Users, Analytics, Settings tabs now ship real (not placeholder) UI: synthesized transfer view, manager-as-user row + Add User CTA, top-SKUs-by-value chart, settings panel.
+
+### Files
+- Modified: `frontend/src/views/ManufacturerWarehouses.jsx` — full rewrite of `ManufacturerWarehouseDetail` and supporting sub-components (List page + create/edit dialog untouched).
