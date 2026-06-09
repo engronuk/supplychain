@@ -119,6 +119,14 @@ export const Api = {
     api.get("/wms/tasks", { params: warehouse_id ? { warehouse_id } : {} }).then((r) => r.data),
   wmsListAlerts: (warehouse_id) =>
     api.get("/wms/alerts", { params: warehouse_id ? { warehouse_id } : {} }).then((r) => r.data),
+  wmsListWarehouseUsers: (warehouse_id) =>
+    api.get("/wms/users", { params: warehouse_id ? { warehouse_id } : {} }).then((r) => r.data),
+  wmsListReturns: (warehouse_id) =>
+    api.get("/wms/returns", { params: warehouse_id ? { warehouse_id } : {} }).then((r) => r.data),
+  wmsListCycleCounts: (warehouse_id) =>
+    api.get("/wms/cycle-counts", { params: warehouse_id ? { warehouse_id } : {} }).then((r) => r.data),
+  wmsListTransfers: (warehouse_id, direction) =>
+    api.get("/wms/transfers", { params: { ...(warehouse_id ? { warehouse_id } : {}), ...(direction ? { direction } : {}) } }).then((r) => r.data),
   updateShipmentStatus: (id, status) =>
     api.patch(`/shipments/${id}/status`, { status }).then((r) => r.data),
 

@@ -441,3 +441,83 @@ async def warehouse_summary(
         "outbound_today": outbound,
         "pending_tasks": tasks_payload["total"],
     }
+
+
+
+# ---------------------------------------------------------------------------
+# Warehouse-team users (sourced from seed; future write-paths will land here)
+# ---------------------------------------------------------------------------
+@router.get("/wms/users")
+async def list_warehouse_users(
+    warehouse_id: Optional[str] = None,
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    wh = await _scope_warehouse(user, warehouse_id)
+    rows = await db.warehouse_users.find(
+        {"warehouse_id": wh["id"]}, {"_id": 0},
+    ).sort("joined_at", -1).to_list(200)
+    return rows
+
+
+# ---------------------------------------------------------------------------
+# Returns
+# ---------------------------------------------------------------------------
+@router.get("/wms/returns")
+async def list_returns(
+    warehouse_id: Optional[str] = None,
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    wh = await _scope_warehouse(user, warehouse_id)
+    rows = await db.returns.find(
+        {"warehouse_id": wh["id"]}, {"_id": 0},
+    ).sort("created_at", -1).to_list(200)
+    return rows
+
+
+# ---------------------------------------------------------------------------
+# Cycle counts
+# ---------------------------------------------------------------------------
+@router.get("/wms/cycle-counts")
+async def list_cycle_counts(
+    warehouse_id: Optional[str] = None,
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    wh = await _scope_warehouse(user, warehouse_id)
+    rows = await db.cycle_counts.find(
+        {"warehouse_id": wh["id"]}, {"_id": 0},
+    ).sort("performed_at", -1).to_list(200)
+    return rows
+
+
+# ---------------------------------------------------------------------------
+# Transfers — surfaces shipment rows tagged is_transfer=True OR with
+# to_role="warehouse" so both Manufacturer and standalone WMS see the same
+# canonical list.
+# ---------------------------------------------------------------------------
+@router.get("/wms/transfers")
+async def list_transfers(
+    warehouse_id: Optional[str] = None,
+    direction: Optional[str] = Query("all", regex="^(all|outgoing|incoming)$"),
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    wh = await _scope_warehouse(user, warehouse_id)
+    base_q: Dict[str, Any] = {
+        "$or": [
+            {"is_transfer": True, "from_id": wh["id"]},
+            {"is_transfer": True, "to_id": wh["id"]},
+            {"to_role": "warehouse", "from_id": wh["id"]},
+            {"to_role": "warehouse", "to_id": wh["id"]},
+        ],
+    }
+    if direction == "outgoing":
+        base_q = {"$or": [
+            {"is_transfer": True, "from_id": wh["id"]},
+            {"to_role": "warehouse", "from_id": wh["id"]},
+        ]}
+    elif direction == "incoming":
+        base_q = {"$or": [
+            {"is_transfer": True, "to_id": wh["id"]},
+            {"to_role": "warehouse", "to_id": wh["id"]},
+        ]}
+    rows = await db.shipments.find(base_q, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return rows

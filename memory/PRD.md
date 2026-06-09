@@ -735,3 +735,42 @@ User feedback: the previous redesign was structurally correct but business-incor
 
 ### Files
 - Modified: `frontend/src/views/ManufacturerWarehouses.jsx` — full tab-body rewrite, Recharts integration, new helper components (WatchTile, RuleCard, LifecyclePill, ListToolbar, ChartCard, RoleBadge, SumStat, RowAction, relativeTime/fmtDate utils).
+
+---
+
+## 2026-02-09 (c) — Warehouse Operations Demo Data Seeding
+
+Created `services/seed_warehouse_operations.py` — a single idempotent seed that populates linked operational history across the Manufacturer Warehouse Module and the standalone WMS (both surfaces read the same underlying records).
+
+### Generated per re-run (tagged `seed_tag = warehouse_ops_v1`)
+- **Inventory**: 51 enriched rows with Available / Reserved / Damaged / Reorder / last_movement_at across 4 warehouses (Unilever Lagos, Unilever Kano, Unilever Abuja, Flour Mills Lagos).
+- **Inbound GRNs**: 50 — distribution 15 received / 10 receiving / 15 expected / 5 delayed / 5 awaiting_review. Numbered GRN-2026-001…050.
+- **Outbound dispatches**: 75 — 35 completed / 15 picking / 10 loaded / 10 awaiting_dispatch / 5 delayed. Numbered DSP-2026-001…075.
+- **Warehouse transfers**: 30 inter-warehouse (same-tenant) moves across full lifecycle (draft → approved → picking → loaded → in_transit → received → completed). Numbered TRF-2026-xxx.
+- **Warehouse users**: 36 across roles (Manager / Receiving / Dispatch / Inventory Controller / Store Keeper) with realistic Nigerian names + tenant-domain emails.
+- **Tasks**: 50 across completed / in_progress / pending / escalated.
+- **Notifications/Alerts**: 35 persisted notifications surfaced through `/wms/alerts`.
+- **Returns**: 30 records with 5 reasons × 6 statuses.
+- **Cycle counts**: 24 records (some clean, some with variance).
+- Inventory effects: received GRNs increment stock; completed dispatches & transfers decrement source and credit destination. Final pass floors any negative rows to a low-stock positive band.
+
+### Backend changes
+- New `routes/wms.py` endpoints (all tenant-scoped via `_scope_warehouse`):
+  - `GET /api/wms/users`
+  - `GET /api/wms/returns`
+  - `GET /api/wms/cycle-counts`
+  - `GET /api/wms/transfers` (returns shipments where is_transfer or to_role=warehouse, in either direction)
+
+### Frontend changes
+- API client extended (`wmsListWarehouseUsers`, `wmsListReturns`, `wmsListCycleCounts`, `wmsListTransfers`).
+- `ManufacturerWarehouseDetail` now loads warehouse users + canonical transfers list.
+- `InventoryTab` reads `reserved`, `damaged`, `last_movement_at` directly from the inventory row (synthesis kept as fallback).
+- `UsersTab` reads real warehouse_users grouped by role with last-active timestamps.
+- `TransfersTab` now shows Direction (Incoming/Outgoing) + real source/destination names from the canonical transfer feed.
+- `OutboundTab` displays the resolved destination name instead of just the role.
+- Pending-transfers KPI now derived from the canonical transfers list.
+
+### To re-seed
+```
+cd /app/backend && python -m services.seed_warehouse_operations
+```

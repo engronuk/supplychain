@@ -326,6 +326,8 @@ export function ManufacturerWarehouseDetail() {
   const [dispatches, setDispatches] = useState([]);
   const [alerts, setAlerts] = useState([]);
   const [tasks, setTasks] = useState(null);
+  const [whUsers, setWhUsers] = useState([]);
+  const [transfers, setTransfers] = useState([]);
   const [editing, setEditing] = useState(false);
   const [actionsOpen, setActionsOpen] = useState(false);
 
@@ -338,6 +340,8 @@ export function ManufacturerWarehouseDetail() {
     Api.wmsListDispatches(id).then(setDispatches).catch(() => {});
     Api.wmsListAlerts(id).then((data) => setAlerts(Array.isArray(data) ? data : (data?.alerts || []))).catch(() => {});
     Api.wmsListTasks(id).then(setTasks).catch(() => {});
+    Api.wmsListWarehouseUsers(id).then(setWhUsers).catch(() => {});
+    Api.wmsListTransfers(id).then(setTransfers).catch(() => {});
   };
   useEffect(() => { reload(); }, [id]);
 
@@ -358,9 +362,9 @@ export function ManufacturerWarehouseDetail() {
   const inboundToday  = summary?.inbound_today ?? 0;
   const outboundToday = summary?.outbound_today ?? 0;
   const openTasks     = tasks?.total ?? 0;
-  // Pending Transfers — currently approximated by dispatches awaiting/pending until a
-  // dedicated transfers collection lands. Falls back to 0 cleanly.
-  const pendingTransfers = dispatches.filter((d) => ["pending", "approved", "in_transit"].includes(d.status)).length;
+  // Pending Transfers — derived from the canonical transfers list. Anything
+  // not yet completed/received counts as pending.
+  const pendingTransfers = transfers.filter((t) => !["completed", "received"].includes((t.status || "").toLowerCase())).length;
 
   return (
     <div className="space-y-6" data-testid="warehouse-detail">
@@ -438,10 +442,10 @@ export function ManufacturerWarehouseDetail() {
       )}
 
       {tab === "inventory" && <InventoryTab inventory={inventory} byPid={byPid} onAction={(action, row) => handleInventoryAction(action, row, w, navigate)} />}
-      {tab === "users" && <UsersTab w={w} />}
+      {tab === "users" && <UsersTab w={w} users={whUsers} />}
       {tab === "inbound" && <InboundTab rows={grns} />}
-      {tab === "outbound" && <OutboundTab rows={dispatches} />}
-      {tab === "transfers" && <TransfersTab dispatches={dispatches} w={w} onCreate={() => navigate(`/wms/transfers?warehouse=${w.id}`)} />}
+      {tab === "outbound" && <OutboundTab rows={dispatches.filter((d) => !d.is_transfer)} />}
+      {tab === "transfers" && <TransfersTab transfers={transfers} w={w} onCreate={() => navigate(`/wms/transfers?warehouse=${w.id}`)} />}
       {tab === "analytics" && <AnalyticsTab summary={summary} inventory={inventory} byPid={byPid} grns={grns} dispatches={dispatches} />}
       {tab === "settings" && <SettingsTab w={w} onEdit={() => setEditing(true)} />}
 
@@ -773,11 +777,10 @@ function InventoryTab({ inventory, byPid, onAction }) {
     const ql = q.trim().toLowerCase();
     return inventory.map((r) => {
       const p = byPid[r.product_id] || {};
-      // Derived (reserved & damaged not yet first-class fields — synthesize like backend
-      // does for total_units = qty + 15% reserved; assume ~1% damaged).
       const available = r.quantity || 0;
-      const reserved  = Math.round(available * 0.15);
-      const damaged   = Math.round(available * 0.01);
+      // Prefer seeded/real fields; fall back to synthesized splits.
+      const reserved  = (r.reserved   != null) ? r.reserved   : Math.round(available * 0.15);
+      const damaged   = (r.damaged    != null) ? r.damaged    : Math.round(available * 0.01);
       const reorder   = r.reorder_level || 0;
       const low       = available <= reorder;
       return {
@@ -787,7 +790,7 @@ function InventoryTab({ inventory, byPid, onAction }) {
         sku: p.sku || "—",
         unit_price: p.unit_price || 0,
         available, reserved, damaged, reorder, low,
-        last_movement: r.updated_at || r.created_at,
+        last_movement: r.last_movement_at || r.updated_at || r.created_at,
         value: (p.unit_price || 0) * available,
       };
     }).filter((r) => {
@@ -973,7 +976,7 @@ function OutboundTab({ rows }) {
             {filtered.map((r) => (
               <tr key={r.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/40">
                 <td className="py-3 px-5 font-mono text-xs text-slate-900 font-medium">{r.tracking_code || "—"}</td>
-                <td className="py-3 text-slate-700 capitalize">{r.to_role || "—"}</td>
+                <td className="py-3 text-slate-700">{r.to_name || (r.to_role ? r.to_role.charAt(0).toUpperCase() + r.to_role.slice(1) : "—")}</td>
                 <td className="py-3 text-slate-600 text-xs">{r.created_by_name || r.from_role || "System"}</td>
                 <td className="py-3 text-right text-slate-700">{r.items?.length || 0}</td>
                 <td className="py-3 pl-6"><LifecyclePill status={r.status || "pending"} kind="outbound" /></td>
@@ -1084,18 +1087,20 @@ function StatusPill({ status }) { return <LifecyclePill status={status} />; }
 // ---------------------------------------------------------------------------
 const TRANSFER_LIFECYCLE = ["draft","approved","picking","loaded","in_transit","received","completed"];
 
-function TransfersTab({ dispatches, w, onCreate }) {
-  // Real transfers would live in a dedicated collection; until then derive from
-  // outbound shipments where the destination is another warehouse.
-  const transfers = dispatches.filter((d) => (d.to_role || "").toLowerCase() === "warehouse")
-    .map((d) => ({
-      number: d.tracking_code || (d.id || "").slice(0, 8),
-      source: w.organization_name,
-      destination: d.to_id ? `WH ${d.to_id.slice(0, 6)}` : "—",
-      products: d.items?.length || 0,
-      status: d.status || "draft",
-      created_by: d.created_by_name || "System",
-      created_at: d.created_at,
+function TransfersTab({ transfers, w, onCreate }) {
+  const [statusF, setStatusF] = useState("all");
+  const rows = (transfers || [])
+    .filter((t) => statusF === "all" || (t.status || "draft") === statusF)
+    .map((t) => ({
+      id: t.id,
+      number: t.transfer_number || t.tracking_code || (t.id || "").slice(0, 8),
+      source: t.from_id === w.id ? w.organization_name : (t.from_name || "—"),
+      destination: t.to_id === w.id ? w.organization_name : (t.to_name || "—"),
+      products: t.items?.length || 0,
+      status: (t.status || "draft").toLowerCase(),
+      created_by: t.created_by_name || "System",
+      created_at: t.created_at,
+      direction: t.from_id === w.id ? "out" : "in",
     }));
 
   return (
@@ -1110,6 +1115,12 @@ function TransfersTab({ dispatches, w, onCreate }) {
           </span>
         ))}
         <div className="flex-1" />
+        <select value={statusF} onChange={(e) => setStatusF(e.target.value)}
+          className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700">
+          <option value="all">All statuses</option>
+          {TRANSFER_LIFECYCLE.map((s) => <option key={s} value={s}>{s.replace("_"," ")}</option>)}
+          <option value="awaiting_approval">awaiting approval</option>
+        </select>
         <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={onCreate} data-testid="new-transfer-btn">
           <Plus className="h-3.5 w-3.5 mr-1.5" /> New Transfer
         </Button>
@@ -1120,6 +1131,7 @@ function TransfersTab({ dispatches, w, onCreate }) {
           <thead className="text-xs text-slate-500 bg-slate-50/60 border-b border-slate-200">
             <tr>
               <th className="text-left py-3 px-5 font-medium">Transfer #</th>
+              <th className="text-left py-3 font-medium">Direction</th>
               <th className="text-left py-3 font-medium">Source</th>
               <th className="text-left py-3 font-medium">Destination</th>
               <th className="text-right py-3 font-medium">Products</th>
@@ -1130,9 +1142,15 @@ function TransfersTab({ dispatches, w, onCreate }) {
             </tr>
           </thead>
           <tbody>
-            {transfers.map((t, i) => (
-              <tr key={i} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/40">
+            {rows.map((t) => (
+              <tr key={t.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/40">
                 <td className="py-3 px-5 font-mono text-xs text-slate-900 font-medium">{t.number}</td>
+                <td className="py-3">
+                  <Chip tint={t.direction === "out" ? "amber" : "blue"}>
+                    {t.direction === "out" ? <ArrowUpFromLine className="h-3 w-3" /> : <ArrowDownToLine className="h-3 w-3" />}
+                    {t.direction === "out" ? "Outgoing" : "Incoming"}
+                  </Chip>
+                </td>
                 <td className="py-3 text-slate-700">{t.source}</td>
                 <td className="py-3 text-slate-700">{t.destination}</td>
                 <td className="py-3 text-right text-slate-700">{t.products}</td>
@@ -1146,7 +1164,7 @@ function TransfersTab({ dispatches, w, onCreate }) {
                 </td>
               </tr>
             ))}
-            {transfers.length === 0 && <tr><td colSpan={8} className="text-center text-slate-400 py-12">No transfers in flight. Create one to move stock between warehouses.</td></tr>}
+            {rows.length === 0 && <tr><td colSpan={9} className="text-center text-slate-400 py-12">No transfers match the selected filter.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -1155,25 +1173,34 @@ function TransfersTab({ dispatches, w, onCreate }) {
 }
 
 // ---------------------------------------------------------------------------
-// Users — role buckets with operational actions
+// Users — real warehouse team grouped by role
 // ---------------------------------------------------------------------------
-function UsersTab({ w }) {
-  // Synthesize role buckets from what we know (manager is real; others are placeholders
-  // until a per-warehouse roster collection lands).
-  const buckets = [
-    {
-      role: "Warehouse Manager", tint: "blue",
-      members: w.manager_name ? [{ name: w.manager_name, email: w.contact_email, phone: w.contact_phone, status: "active" }] : [],
-    },
-    { role: "Receiving Officers",  tint: "emerald", members: [] },
-    { role: "Dispatch Officers",   tint: "amber",   members: [] },
-    { role: "Inventory Controllers", tint: "violet", members: [] },
+function UsersTab({ w, users }) {
+  const groupedRoles = [
+    { role: "Warehouse Manager",   tint: "blue" },
+    { role: "Receiving Officer",   tint: "emerald" },
+    { role: "Dispatch Officer",    tint: "amber" },
+    { role: "Inventory Controller", tint: "violet" },
+    { role: "Store Keeper",        tint: "rose" },
   ];
+  const grouped = groupedRoles.map((g) => ({
+    ...g,
+    members: (users || []).filter((u) => u.role === g.role),
+  }));
+  // Fall back to the seeded manager_name if the new collection is empty.
+  if (grouped.every((g) => g.members.length === 0) && w.manager_name) {
+    grouped[0].members.push({
+      id: "fallback-mgr", name: w.manager_name,
+      email: w.contact_email, phone: w.contact_phone, status: "active",
+    });
+  }
+  const total = grouped.reduce((s, g) => s + g.members.length, 0);
+
   return (
     <div className="space-y-3" data-testid="users-tab">
       <div className="rounded-xl bg-white border border-slate-200/80 shadow-sm px-4 py-3 flex items-center gap-3 flex-wrap">
         <div className="text-sm font-semibold text-slate-900">Warehouse Team</div>
-        <span className="text-xs text-slate-500">· Manage roles, access, and on-call rotation</span>
+        <span className="text-xs text-slate-500">· {total} assigned across {grouped.filter((g) => g.members.length > 0).length} roles</span>
         <div className="flex-1" />
         <Button size="sm" variant="outline" className="border-slate-200" data-testid="invite-user-btn">
           <Mail className="h-3.5 w-3.5 mr-1.5" /> Invite
@@ -1183,7 +1210,7 @@ function UsersTab({ w }) {
         </Button>
       </div>
 
-      {buckets.map((b) => (
+      {grouped.map((b) => (
         <div key={b.role} className="rounded-xl bg-white border border-slate-200/80 shadow-sm overflow-hidden">
           <div className="px-5 py-3 border-b border-slate-100 flex items-center gap-3">
             <RoleBadge label={b.role} tint={b.tint} />
@@ -1200,17 +1227,23 @@ function UsersTab({ w }) {
                   <th className="text-left py-3 px-5 font-medium">Name</th>
                   <th className="text-left py-3 font-medium">Email</th>
                   <th className="text-left py-3 font-medium">Phone</th>
+                  <th className="text-left py-3 font-medium">Last Active</th>
                   <th className="text-left py-3 font-medium">Status</th>
                   <th className="text-right py-3 px-5 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {b.members.map((u, i) => (
-                  <tr key={i} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/40">
+                {b.members.map((u) => (
+                  <tr key={u.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/40">
                     <td className="py-3 px-5 font-medium text-slate-900">{u.name}</td>
                     <td className="py-3 text-slate-600">{u.email || "—"}</td>
                     <td className="py-3 text-slate-600">{u.phone || "—"}</td>
-                    <td className="py-3"><Chip tint="emerald"><CheckCircle2 className="h-3 w-3" /> {u.status}</Chip></td>
+                    <td className="py-3 text-slate-500 text-xs">{u.last_active_at ? relativeTime(u.last_active_at) : "—"}</td>
+                    <td className="py-3">
+                      <Chip tint={u.status === "active" ? "emerald" : "slate"}>
+                        <CheckCircle2 className="h-3 w-3" /> {u.status}
+                      </Chip>
+                    </td>
                     <td className="py-3 px-5 text-right">
                       <RowAction title="Change Role"     Icon={ShieldCheck} onClick={() => toast.info("Change role")} />
                       <RowAction title="Reset Password"  Icon={KeyRound}    onClick={() => toast.info("Reset password link sent")} />
