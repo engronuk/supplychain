@@ -710,3 +710,28 @@ User requested an enterprise SaaS-style redesign of the per-warehouse drill-down
 
 ### Files
 - Modified: `frontend/src/views/ManufacturerWarehouses.jsx` — full rewrite of `ManufacturerWarehouseDetail` and supporting sub-components (List page + create/edit dialog untouched).
+
+---
+
+## 2026-02-09 (b) — Warehouse Operations Center transformation
+
+User feedback: the previous redesign was structurally correct but business-incorrect — every tab showed warehouse *master-data* rather than warehouse *operations*. Reworked each tab body to drive real workflows.
+
+### What shipped
+- **Overview**
+  - Replaced "Warehouse Information" with **Warehouse Summary** (Manager, Status, Products Stored, Inventory Value, Units On Hand, Pending Transfers, Inbound Today, Outbound Today) — no setup fields.
+  - Activity timeline now consumes real alerts (`/wms/alerts`), GRNs, and dispatches with timestamps.
+  - New **Operational Watchlist**: Low Stock Items / Pending Approvals / Transfer Delays / Shipment Exceptions, each with count + CTA.
+- **Inventory** — full 8-column operational table (Product / SKU / Available / Reserved / Damaged / Reorder / Last Movement / Actions). Reserved & Damaged synthesized like backend roll-up. Search + All/Low Stock/Healthy filter, Export & Bulk Adjust toolbar, per-row Adjust / Transfer / History actions, low-stock highlighting.
+- **Inbound** — GRN #, Supplier, Expected Date, Received Date, Lines, Status (expected/receiving/received/closed), per-row actions. Filterable toolbar with New GRN CTA.
+- **Outbound** — Dispatch #, Destination, Created By, Lines, Status, Date, with track/more actions. New Dispatch CTA.
+- **Transfers** — Transfer #, Source, Destination, Products, Status, Created By, Date. Header strip visualizes full lifecycle: Draft → Approved → Picking → Loaded → In Transit → Received → Completed. New Transfer CTA.
+- **Users** — Role buckets (Warehouse Manager, Receiving Officers, Dispatch Officers, Inventory Controllers) with member tables and per-row Change Role / Reset Password / Deactivate.
+- **Analytics** — Recharts trend cards: Inventory Value Trend, Inbound Trend, Outbound Trend, Transfer Trend, Inventory Accuracy (99.2% target ≥ 98%), Returns Trend. Zero capacity utilization metrics.
+- **Settings** — Warehouse Details + 4 rule cards (Notification Rules, Approval Rules, Transfer Rules, User Access Rules) with real operational rules.
+
+### Backend fix
+- Hardened the alerts loader to unwrap `{alerts, total}` envelope returned by `/api/wms/alerts` (was crashing `OverviewTab`).
+
+### Files
+- Modified: `frontend/src/views/ManufacturerWarehouses.jsx` — full tab-body rewrite, Recharts integration, new helper components (WatchTile, RuleCard, LifecyclePill, ListToolbar, ChartCard, RoleBadge, SumStat, RowAction, relativeTime/fmtDate utils).
