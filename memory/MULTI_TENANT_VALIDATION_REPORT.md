@@ -6,7 +6,7 @@ _Date: 2026-06-08 · Result: **22/22 PASSED**_
 
 | Tenant | Root org code | Orgs in subtree |
 |---|---|---:|
-| Unilever | (legacy) | 3207 |
+| Unilever | (legacy) | 3208 |
 | Flour Mills Nigeria | MFR-0002 | 9 |
 
 ## Flour Mills network (verified hierarchy)
@@ -39,15 +39,15 @@ Password (all accounts): `FlourMills2026!`
 
 | # | Test | Result | Detail |
 |---:|---|:---:|---|
-| 1 | super_admin sees both tenants | ✅ | uni=3207 flour=9 |
+| 1 | super_admin sees both tenants | ✅ | uni=3208 flour=9 |
 | 2 | Tenant subtrees are disjoint | ✅ | intersection=0 |
 | 3 | Flour [manufacturer] only sees Flour orgs | ✅ | count=9 flour_overlap=9 unilever_overlap=0 |
 | 4 | Flour [warehouse] only sees Flour orgs | ✅ | count=8 flour_overlap=8 unilever_overlap=0 |
 | 5 | Flour [distributor] only sees Flour orgs | ✅ | count=7 flour_overlap=7 unilever_overlap=0 |
 | 6 | Flour [wholesaler] only sees Flour orgs | ✅ | count=6 flour_overlap=6 unilever_overlap=0 |
 | 7 | Flour [retailer] only sees Flour orgs | ✅ | count=1 flour_overlap=1 unilever_overlap=0 |
-| 8 | Unilever [manufacturer] cannot see any Flour Mills org | ✅ | count=3207 flour_overlap=0 |
-| 9 | Unilever [distributor] cannot see any Flour Mills org | ✅ | count=197 flour_overlap=0 |
+| 8 | Unilever [manufacturer] cannot see any Flour Mills org | ✅ | count=3208 flour_overlap=0 |
+| 9 | Unilever [distributor] cannot see any Flour Mills org | ✅ | count=198 flour_overlap=0 |
 | 10 | Unilever [retailer] cannot see any Flour Mills org | ✅ | count=1 flour_overlap=0 |
 | 11 | Unilever retailer sees only own org | ✅ | count=1 |
 | 12 | Flour retailer sees only own org | ✅ | count=1 |
@@ -60,7 +60,7 @@ Password (all accounts): `FlourMills2026!`
 | 19 | Unilever mfg → GET Flour distributor returns 403 | ✅ | status=403 body={"detail":"Outside your organization scope"} |
 | 20 | Flour mfg → GET Unilever distributor returns 403 | ✅ | status=403 body={"detail":"Outside your organization scope"} |
 | 21 | Super-admin descendant query on Flour root == 9 nodes | ✅ | size=9 |
-| 22 | Super-admin descendant query on Unilever root still works | ✅ | size=3207 expected=3207 |
+| 22 | Super-admin descendant query on Unilever root still works | ✅ | size=3208 expected=3208 |
 
 ## Result: 22/22 PASSED
 
