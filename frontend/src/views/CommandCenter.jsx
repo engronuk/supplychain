@@ -19,16 +19,23 @@ function useGoogleMaps(apiKey) {
     if (window.google?.maps) { setTimeout(() => setReady(true), 0); return; }
     if (!apiKey) return;
     const id = "tk-maps-script";
-    if (document.getElementById(id)) {
-      document.getElementById(id).addEventListener("load", () => setTimeout(() => setReady(true), 0));
-      return;
-    }
+    // Global callback used by the async loader. Idempotent across remounts.
+    window.__tkMapsInit = window.__tkMapsInit || (() => {
+      window.__tkMapsReady = true;
+      window.dispatchEvent(new Event("tk:maps-ready"));
+    });
+    const onReady = () => setTimeout(() => setReady(true), 0);
+    if (window.__tkMapsReady) { onReady(); return; }
+    window.addEventListener("tk:maps-ready", onReady, { once: true });
+    if (document.getElementById(id)) return () => window.removeEventListener("tk:maps-ready", onReady);
     const s = document.createElement("script");
     s.id = id;
     s.async = true; s.defer = true;
-    s.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&v=weekly`;
-    s.onload = () => setTimeout(() => setReady(true), 0);
+    // loading=async + callback is the Google-recommended modern pattern and
+    // silences the "loaded directly without loading=async" console warning.
+    s.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&v=weekly&loading=async&callback=__tkMapsInit`;
     document.head.appendChild(s);
+    return () => window.removeEventListener("tk:maps-ready", onReady);
   }, [apiKey]);
   return ready;
 }
@@ -131,34 +138,34 @@ export default function CommandCenter() {
       </div>
 
       {/* Map + alerts */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-5">
         <div className="rounded-xl bg-white border border-slate-200/80 shadow-sm overflow-hidden">
           <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
             <div className="font-semibold text-slate-900 text-sm">Sales Heatmap · Last 24h</div>
             <div className="text-xs text-slate-500">{regions.length} regions</div>
           </div>
           {!apiKey ? (
-            <div className="h-[460px] grid place-items-center text-sm text-slate-400 p-6 text-center">
+            <div className="h-[680px] grid place-items-center text-sm text-slate-400 p-6 text-center">
               <span>Google Maps API key not configured. Set <code>REACT_APP_MAPS_API_KEY</code> in frontend/.env.</span>
             </div>
           ) : !mapsReady ? (
-            <div className="h-[460px] grid place-items-center text-sm text-slate-400">Loading map…</div>
+            <div className="h-[680px] grid place-items-center text-sm text-slate-400">Loading map…</div>
           ) : (
-            <div ref={mapRef} className="h-[460px] w-full" data-testid="pulse-map" />
+            <div ref={mapRef} className="h-[680px] w-full" data-testid="pulse-map" />
           )}
           <div className="px-5 py-3 border-t border-slate-100 text-[11px] text-slate-500">
             BigQuery · {health?.dataset || "pulse"}.sales_events · {health?.location || "europe-west2"}
           </div>
         </div>
 
-        <div className="rounded-xl bg-white border border-slate-200/80 shadow-sm overflow-hidden">
+        <div className="rounded-xl bg-white border border-slate-200/80 shadow-sm overflow-hidden flex flex-col">
           <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
             <div className="font-semibold text-slate-900 text-sm inline-flex items-center gap-2">
               <Sparkles className="h-3.5 w-3.5 text-violet-600" /> Proactive Restock Alerts
             </div>
             <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-violet-100 text-violet-700">Vertex AI</span>
           </div>
-          <div className="max-h-[460px] overflow-y-auto">
+          <div className="flex-1 max-h-[680px] overflow-y-auto">
             {alerts.length === 0 ? (
               <div className="text-center text-slate-400 text-sm py-16 px-6">
                 No spikes detected. Velocity is within 1.5× of the 14-day baseline.
