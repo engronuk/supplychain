@@ -3,9 +3,8 @@
 // for transcription, speechSynthesis for TTS). Strictly retailer-scoped on
 // the backend (requires the caller's JWT; 403 on cross-tenant access).
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import axios from "axios";
+import api from "@/lib/api";
 import { useSession } from "@/context/SessionContext";
-import { getAccessToken } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -22,9 +21,6 @@ import {
   RotateCw,
 } from "lucide-react";
 import { toast } from "sonner";
-
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
 
 interface ChatTurn {
   role: "user" | "assistant";
@@ -120,16 +116,11 @@ export default function RetailerAssistantBubble({ onUiAction, onRefresh }: Props
     setTurns((arr) => [...arr, userTurn]);
     setInput("");
     setThinking(true);
-    const authHeaders = (): Record<string, string> => {
-      const t = getAccessToken();
-      return t ? { Authorization: `Bearer ${t}` } : {};
-    };
     try {
       const history = turns.slice(-8).map((t) => ({ role: t.role, content: t.content }));
-      const { data } = await axios.post(
-        `${API}/retailer/${retailerId}/assistant`,
+      const { data } = await api.post(
+        `/retailer/${retailerId}/assistant`,
         { message: trimmed, history },
-        { headers: authHeaders() },
       );
       const assistantTurn: ChatTurn = {
         role: "assistant",
@@ -146,10 +137,9 @@ export default function RetailerAssistantBubble({ onUiAction, onRefresh }: Props
         if (a.action === "reorder") {
           // server-side execute
           try {
-            const res = await axios.post(
-              `${API}/retailer/${retailerId}/assistant/execute`,
+            const res = await api.post(
+              `/retailer/${retailerId}/assistant/execute`,
               { action: a },
-              { headers: authHeaders() },
             );
             if (res.data?.ok) {
               toast.success(
@@ -249,13 +239,10 @@ export default function RetailerAssistantBubble({ onUiAction, onRefresh }: Props
       const ext = (blob.type.split("/")[1] || "webm").split(";")[0];
       const fd = new FormData();
       fd.append("audio", blob, `clip.${ext}`);
-      const t = getAccessToken();
-      const headers: Record<string, string> = { "Content-Type": "multipart/form-data" };
-      if (t) headers.Authorization = `Bearer ${t}`;
-      const { data } = await axios.post(
-        `${API}/retailer/${retailerId}/assistant/transcribe`,
+      const { data } = await api.post(
+        `/retailer/${retailerId}/assistant/transcribe`,
         fd,
-        { headers },
+        { headers: { "Content-Type": "multipart/form-data" } },
       );
       const text = (data?.text || "").trim();
       if (!text) {
