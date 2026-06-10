@@ -73,9 +73,10 @@ def _to_bq_row(ev: PulseEvent, manufacturer_id: Optional[str]) -> Dict[str, Any]
 # Endpoints
 # ---------------------------------------------------------------------------
 @router.get("/pulse/health")
-async def pulse_health(user: Dict[str, Any] = Depends(get_current_user)):
-    """Verify GCP connectivity + dataset bootstrap. Returns the table id +
-    schema so the operator knows exactly what was provisioned."""
+async def pulse_health():
+    """PUBLIC ops endpoint — verifies GCP connectivity + dataset bootstrap so
+    operators can confirm Cloud Run can reach BigQuery and Vertex AI without
+    needing a JWT. Returns provisioned table info (no secrets)."""
     if get_client() is None:
         raise HTTPException(503, "GCP not configured — missing GCP_PROJECT_ID or credentials")
     try:
@@ -83,6 +84,13 @@ async def pulse_health(user: Dict[str, Any] = Depends(get_current_user)):
     except Exception as e:
         logger.exception("[pulse] bootstrap failed")
         raise HTTPException(500, f"BigQuery bootstrap failed: {e}")
+    # Bonus: probe Vertex AI as well so health covers both services at once.
+    try:
+        from services import vertex_llm
+        info["vertex_ai_configured"] = vertex_llm.is_configured()
+        info["vertex_ai_model"] = vertex_llm.DEFAULT_MODEL
+    except Exception:
+        info["vertex_ai_configured"] = False
     return info
 
 
