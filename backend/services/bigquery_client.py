@@ -24,13 +24,47 @@ from typing import Any, Dict, List, Optional
 from google.cloud import bigquery
 from google.oauth2 import service_account
 
-GCP_PROJECT_ID    = os.environ.get("GCP_PROJECT_ID", "")
 BIGQUERY_DATASET  = os.environ.get("BIGQUERY_DATASET", "pulse")
 BIGQUERY_LOCATION = os.environ.get("BIGQUERY_LOCATION", "europe-west2")
-SA_PATH           = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", "")
-
 TABLE_NAME        = "sales_events"
-FULL_TABLE_ID     = f"{GCP_PROJECT_ID}.{BIGQUERY_DATASET}.{TABLE_NAME}"
+
+
+# ---------------------------------------------------------------------------
+# Runtime helpers — read env at CALL time so values reflect Cloud Run config
+# even if the module was imported before the env was injected.
+# ---------------------------------------------------------------------------
+def _project_id() -> str:
+    """Resolve the GCP project id, supporting both env var names."""
+    return (
+        os.environ.get("GCP_PROJECT_ID")
+        or os.environ.get("GOOGLE_CLOUD_PROJECT")
+        or ""
+    )
+
+
+def _running_on_cloud_run() -> bool:
+    """Cloud Run sets K_SERVICE automatically — best signal we're in prod."""
+    return bool(os.environ.get("K_SERVICE") or os.environ.get("CLOUD_RUN_JOB"))
+
+
+def _sa_key_path() -> str:
+    """Return the SA JSON path ONLY for local dev. On Cloud Run we always
+    use the attached service account via Application Default Credentials."""
+    if _running_on_cloud_run():
+        return ""
+    path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS", "")
+    return path if path and os.path.exists(path) else ""
+
+
+def full_table_id() -> str:
+    return f"{_project_id()}.{BIGQUERY_DATASET}.{TABLE_NAME}"
+
+
+# Back-compat module attribute (used by callers that imported the constant).
+# Note: this snapshot is fine for the table id label, but always prefer
+# full_table_id() in new code.
+FULL_TABLE_ID = full_table_id()
+
 
 _SCHEMA = [
     bigquery.SchemaField("event_id",       "STRING",    mode="REQUIRED"),
@@ -51,14 +85,24 @@ _SCHEMA = [
 
 @lru_cache(maxsize=1)
 def get_client() -> Optional[bigquery.Client]:
-    """Return a memoised BigQuery client, or None if GCP is not configured."""
-    if not GCP_PROJECT_ID:
+    """Return a memoised BigQuery client.
+
+    Auth strategy:
+        • On Cloud Run (`K_SERVICE` is set) → always use ADC = the attached
+          service account. The SA JSON file is ignored even if it happens to
+          exist on disk.
+        • Locally → use the SA JSON file pointed to by
+          GOOGLE_APPLICATION_CREDENTIALS if present, else ADC.
+    """
+    project = _project_id()
+    if not project:
         return None
-    if SA_PATH and os.path.exists(SA_PATH):
-        creds = service_account.Credentials.from_service_account_file(SA_PATH)
-        return bigquery.Client(project=GCP_PROJECT_ID, credentials=creds, location=BIGQUERY_LOCATION)
-    # Fall back to ADC (Cloud Run attached service account).
-    return bigquery.Client(project=GCP_PROJECT_ID, location=BIGQUERY_LOCATION)
+    sa_path = _sa_key_path()
+    if sa_path:
+        creds = service_account.Credentials.from_service_account_file(sa_path)
+        return bigquery.Client(project=project, credentials=creds, location=BIGQUERY_LOCATION)
+    # Cloud Run path → ADC picks up the attached SA automatically.
+    return bigquery.Client(project=project, location=BIGQUERY_LOCATION)
 
 
 def ensure_dataset_and_table() -> Dict[str, Any]:
@@ -68,13 +112,14 @@ def ensure_dataset_and_table() -> Dict[str, Any]:
     if not client:
         return {"status": "skipped", "reason": "GCP not configured"}
 
-    dataset_ref = f"{GCP_PROJECT_ID}.{BIGQUERY_DATASET}"
+    project     = _project_id()
+    dataset_ref = f"{project}.{BIGQUERY_DATASET}"
     ds = bigquery.Dataset(dataset_ref)
     ds.location = BIGQUERY_LOCATION
     ds.description = "TradeKonekt Real-Time Pulse — distributor/retailer sales events"
     client.create_dataset(ds, exists_ok=True)
 
-    table = bigquery.Table(FULL_TABLE_ID, schema=_SCHEMA)
+    table = bigquery.Table(full_table_id(), schema=_SCHEMA)
     table.time_partitioning = bigquery.TimePartitioning(
         type_=bigquery.TimePartitioningType.DAY, field="occurred_at",
     )
@@ -84,13 +129,14 @@ def ensure_dataset_and_table() -> Dict[str, Any]:
 
     return {
         "status": "ready",
-        "project": GCP_PROJECT_ID,
+        "project": project,
         "dataset": BIGQUERY_DATASET,
         "location": BIGQUERY_LOCATION,
-        "table": FULL_TABLE_ID,
+        "table": full_table_id(),
         "schema_fields": [f.name for f in _SCHEMA],
         "partition": "occurred_at (DAY)",
         "cluster":   ["region", "product_id"],
+        "auth_mode": "adc-cloud-run" if _running_on_cloud_run() else ("sa-file" if _sa_key_path() else "adc-local"),
     }
 
 
@@ -99,7 +145,7 @@ def insert_events(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     client = get_client()
     if not client:
         raise RuntimeError("BigQuery client is not configured")
-    return client.insert_rows_json(FULL_TABLE_ID, rows)
+    return client.insert_rows_json(full_table_id(), rows)
 
 
 def run_query(query: str, params: Optional[List[bigquery.ScalarQueryParameter]] = None) -> List[Dict[str, Any]]:

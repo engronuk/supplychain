@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field
 
 from services.auth import get_current_user
 from services.bigquery_client import (
-    FULL_TABLE_ID, ensure_dataset_and_table, get_client, insert_events, run_query,
+    ensure_dataset_and_table, full_table_id, get_client, insert_events, run_query,
 )
 
 router = APIRouter()
@@ -78,7 +78,7 @@ async def pulse_health():
     operators can confirm Cloud Run can reach BigQuery and Vertex AI without
     needing a JWT. Returns provisioned table info (no secrets)."""
     if get_client() is None:
-        raise HTTPException(503, "GCP not configured — missing GCP_PROJECT_ID or credentials")
+        raise HTTPException(503, "GCP not configured — missing GCP_PROJECT_ID (or GOOGLE_CLOUD_PROJECT) env var")
     try:
         info = ensure_dataset_and_table()
     except Exception as e:
@@ -146,7 +146,7 @@ async def by_region(
           COUNT(*)         AS events,
           AVG(latitude)    AS latitude,
           AVG(longitude)   AS longitude
-        FROM `{FULL_TABLE_ID}`
+        FROM `{full_table_id()}`
         WHERE occurred_at >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL @hours HOUR)
           AND (@mfr = "" OR manufacturer_id = @mfr)
         GROUP BY region
@@ -179,7 +179,7 @@ async def alerts(user: Dict[str, Any] = Depends(get_current_user)):
         WITH recent AS (
           SELECT region, product_id, ANY_VALUE(product_name) AS product_name,
                  SUM(units_sold) AS units_24h
-          FROM `{FULL_TABLE_ID}`
+          FROM `{full_table_id()}`
           WHERE occurred_at >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 24 HOUR)
             AND (@mfr = "" OR manufacturer_id = @mfr)
           GROUP BY region, product_id
@@ -187,7 +187,7 @@ async def alerts(user: Dict[str, Any] = Depends(get_current_user)):
         history AS (
           SELECT region, product_id,
                  SUM(units_sold) / 14.0 AS avg_daily_units_14d
-          FROM `{FULL_TABLE_ID}`
+          FROM `{full_table_id()}`
           WHERE occurred_at >= TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 14 DAY)
             AND occurred_at <  TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 24 HOUR)
             AND (@mfr = "" OR manufacturer_id = @mfr)

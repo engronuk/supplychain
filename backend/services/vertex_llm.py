@@ -3,14 +3,19 @@
 This is the **only** place AI calls should originate from. New AI features
 must import and use the helpers below — do NOT pull in emergentintegrations.
 
-Auth & config come from environment variables that were set up during the
-GCP rollout (`backend/.env` locally, Cloud Run env on production):
-    GOOGLE_GENAI_USE_VERTEXAI=true     # route google-genai through Vertex
-    GOOGLE_CLOUD_PROJECT=<project-id>
-    GOOGLE_CLOUD_LOCATION=<region>     # e.g. europe-west2
-    GOOGLE_APPLICATION_CREDENTIALS=<path/to/sa-key.json>   # local only
-    GENAI_MODEL_ID=gemini-2.5-flash    # default
-    GENAI_PRO_MODEL_ID=gemini-2.5-pro  # for deeper/longer reasoning
+Auth & config (env vars):
+    GCP_PROJECT_ID            — preferred project id (our convention)
+    GOOGLE_CLOUD_PROJECT      — fallback / google-genai's native var
+    GOOGLE_CLOUD_LOCATION     — Vertex region (defaults to BIGQUERY_LOCATION
+                                 then europe-west2)
+    GENAI_MODEL_ID            — default model (gemini-2.5-flash)
+    GENAI_PRO_MODEL_ID        — heavier model (defaults to DEFAULT_MODEL)
+
+Credentials:
+    • Cloud Run (K_SERVICE set) → Application Default Credentials via the
+      attached service account. The SA JSON file is IGNORED even if present.
+    • Local dev → ADC. If GOOGLE_APPLICATION_CREDENTIALS points to an SA
+      JSON file the SDK uses it automatically.
 """
 
 from __future__ import annotations
@@ -32,14 +37,52 @@ DEFAULT_MODEL = os.environ.get("GENAI_MODEL_ID", "gemini-2.5-flash")
 PRO_MODEL     = os.environ.get("GENAI_PRO_MODEL_ID", DEFAULT_MODEL)
 
 
+# ---------------------------------------------------------------------------
+# Runtime config helpers — read env at CALL time so values reflect Cloud Run
+# injection even if this module was imported before.
+# ---------------------------------------------------------------------------
+def _project_id() -> str:
+    return (
+        os.environ.get("GCP_PROJECT_ID")
+        or os.environ.get("GOOGLE_CLOUD_PROJECT")
+        or ""
+    )
+
+
+def _location() -> str:
+    return (
+        os.environ.get("GOOGLE_CLOUD_LOCATION")
+        or os.environ.get("BIGQUERY_LOCATION")
+        or "europe-west2"
+    )
+
+
+def _on_cloud_run() -> bool:
+    return bool(os.environ.get("K_SERVICE") or os.environ.get("CLOUD_RUN_JOB"))
+
+
 @lru_cache(maxsize=1)
 def get_client() -> Optional[genai.Client]:
-    """Return a memoised Vertex AI client (None if not configured)."""
-    if not os.environ.get("GOOGLE_CLOUD_PROJECT"):
+    """Return a memoised Vertex AI client.
+
+    Auth strategy mirrors `bigquery_client`:
+      • Cloud Run (K_SERVICE present) → ADC via attached service account.
+        The SA JSON file path is ignored even if it accidentally exists.
+      • Local dev → ADC; if GOOGLE_APPLICATION_CREDENTIALS points to a real
+        file the SDK picks it up automatically.
+
+    The project and location are passed explicitly to the Client so the
+    integration works regardless of whether the operator set
+    `GCP_PROJECT_ID` (our convention) or `GOOGLE_CLOUD_PROJECT` (google-genai's).
+    """
+    project = _project_id()
+    if not project:
         return None
+    if _on_cloud_run():
+        # Defensive: never let an accidentally-mounted dev key win on prod.
+        os.environ.pop("GOOGLE_APPLICATION_CREDENTIALS", None)
     try:
-        # google-genai picks up ADC + the GOOGLE_GENAI_USE_VERTEXAI flag.
-        return genai.Client()
+        return genai.Client(vertexai=True, project=project, location=_location())
     except Exception:
         logger.exception("[vertex_llm] client init failed")
         return None
