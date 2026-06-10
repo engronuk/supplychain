@@ -914,3 +914,14 @@ Stack used:
 - Vertex AI `gemini-2.5-flash` via native `google-genai` + ADC
 - Google Maps JS API (client-side, key in `frontend/.env`)
 
+
+## 2026-02-10 (b) — Command Center now a Dashboard tab
+
+User feedback: keep the Command Center accessible from the main Dashboard instead of a separate sidebar entry.
+
+- **Dashboard tab switcher** added at the top of `ManufacturerDashboard.jsx`:
+  - "Executive Overview" (default) — the existing AI Exec Summary / KPI Strip / Revenue Trend / Regional / Products / Distributors / Pipeline / Alerts cascade
+  - "Command Center" with PULSE badge — embeds the `<CommandCenter />` component (Google Maps + KPIs + Vertex AI alerts) inline within the same `/dashboard` route
+- Sidebar Command Center entry removed (it's a tab now); standalone `/manufacturer/command-center` route kept for direct linking.
+- Smoke-tested end-to-end: tab switch toggles between hero + tab content; map + alerts render in the Pulse tab; data-testids `dashboard-tabs`, `dashboard-tab-overview`, `dashboard-tab-pulse` available for automation.
+

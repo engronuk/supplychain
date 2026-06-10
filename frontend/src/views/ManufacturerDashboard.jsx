@@ -15,6 +15,7 @@ import { useCachedFetch, setCached as setDataCache } from "@/lib/dataCache";
 import { RefreshPill } from "@/components/RefreshPill";
 import { toast } from "sonner";
 import { STATE_PATHS, STATE_ZONE, VIEWBOX as NG_VIEWBOX } from "@/lib/nigeriaStates";
+import CommandCenter from "@/views/CommandCenter";
 import {
   TrendingUp, TrendingDown, Sparkles, Bell,
   Store, Warehouse, Activity, Truck, Package, AlertTriangle,
@@ -22,6 +23,7 @@ import {
   ChevronRight, PackageCheck, Factory, Building2,
   Download, Maximize2, Target, Zap, Compass, BrainCircuit,
   ShieldCheck, Flame, ArrowUpRight, BarChart3, Info,
+  LayoutDashboard, Globe2,
 } from "lucide-react";
 
 const fmtMoney = (v) => {
@@ -39,6 +41,7 @@ export default function ManufacturerDashboard() {
   const entityId = session?.entity?.id;
   const [trendWindow, setTrendWindow] = useState(12);
   const [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview"); // "overview" | "pulse"
 
   const cacheKey = entityId ? `mfg-overview:${entityId}` : null;
   const { data, loading, reload } = useCachedFetch(
@@ -81,6 +84,13 @@ export default function ManufacturerDashboard() {
           refreshing={refreshing}
         />
 
+        {/* Tab switcher — Overview vs Real-Time Pulse Command Center */}
+        <DashboardTabs active={activeTab} onChange={setActiveTab} />
+
+        {activeTab === "pulse" ? (
+          <CommandCenter />
+        ) : (
+          <>
         {/* 1 — EXECUTIVE HERO (AI summary + confidence + actions) */}
         <ExecutiveHero
           bullets={data.ai_summary}
@@ -121,7 +131,51 @@ export default function ManufacturerDashboard() {
 
         {/* 8 — ACTIONABLE NETWORK ALERTS */}
         <ActionableAlertsCard alerts={data.alerts} atRisk={data.coverage_kpis.distributor_performance.at_risk} />
+          </>
+        )}
       </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// DashboardTabs — segmented control to swap between Executive Overview and
+// the Real-Time Pulse Command Center (GCP-powered).
+// ============================================================================
+function DashboardTabs({ active, onChange }) {
+  const tabs = [
+    { id: "overview", label: "Executive Overview", icon: LayoutDashboard },
+    { id: "pulse",    label: "Command Center",     icon: Globe2,
+      badge: "PULSE" },
+  ];
+  return (
+    <div
+      className="inline-flex items-center gap-1 p-1 rounded-xl bg-white border border-slate-200/80 shadow-sm"
+      data-testid="dashboard-tabs"
+    >
+      {tabs.map(({ id, label, icon: Icon, badge }) => {
+        const isActive = active === id;
+        return (
+          <button
+            key={id}
+            onClick={() => onChange(id)}
+            data-testid={`dashboard-tab-${id}`}
+            className={`relative inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all
+              ${isActive
+                ? "bg-slate-900 text-white shadow-sm"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"}`}
+          >
+            <Icon className="h-4 w-4" />
+            <span>{label}</span>
+            {badge && (
+              <span className={`text-[9px] font-bold tracking-[0.15em] px-1.5 py-0.5 rounded
+                ${isActive ? "bg-violet-500/30 text-violet-100" : "bg-violet-100 text-violet-700"}`}>
+                {badge}
+              </span>
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }

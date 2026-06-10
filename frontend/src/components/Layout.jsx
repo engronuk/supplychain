@@ -52,7 +52,6 @@ function navForRole(role) {
   }
   base.push({ to: "/shipments", label: "Shipments", icon: Truck });
   if (role === "manufacturer") {
-    base.push({ to: "/manufacturer/command-center", label: "Command Center", icon: Globe2 });
     base.push({ to: "/product-intelligence", label: "Product Intelligence", icon: Sparkles });
     base.push({ to: "/intel", label: "Intelligence", icon: BrainCircuit });
     base.push({ to: "/network-map", label: "Network Map", icon: Radar });
