@@ -943,3 +943,35 @@ The Command Center's "alerts" panel was upgraded from a shallow velocity-ratio l
 
 Smoke-tested end-to-end: Gemini returned 5 fully-populated briefings + executive briefing for Unilever (`ai_status: vertex_ai`). Sample briefing: Knorr Bouillon Cubes · Port Harcourt · CRITICAL DEMAND_SLUMP 0.1× — narrative cites exact numbers (252 units / ₦214,200 / 93.69% drop / velocity 0.0742), hypotheses ranked 90/70/60% each with evidence anchored to the data, 4 risk flags, 24h forecast, owner-assigned actions.
 
+
+## 2026-02-10 (d) — Sabi: Vertex-AI-only + strict tenant isolation
+
+Dead Claude Sonnet 4.5 routing path removed and Sabi (the in-store retailer AI assistant) hardened against cross-tenant access at three layers.
+
+### Backend (`routes/assistant.py`)
+- Dropped `COMPLEX_PROVIDER`/`COMPLEX_MODEL`/`_route_model()`. Sabi now uses only `vertex_llm.DEFAULT_MODEL` (gemini-2.5-flash).
+- New `_assert_can_access_retailer()` tenant guard applied to all three Sabi endpoints (`/assistant`, `/assistant/transcribe`, `/assistant/execute`). Allowed callers: the retailer themselves (`role=retailer` AND `entity_id == retailer_id`) or `super_admin`. Everything else → **403 "Sabi is scoped to your own store only."**.
+- Anonymous requests → 401 (`get_current_user` dependency).
+- Vertex quota 429s mapped to a graceful 503 "Sabi is briefly busy (AI rate limit reached). Please try again in a minute." instead of leaking the raw GenAI error.
+
+### System prompt hardened (`services/retailer.py`)
+- Prompt template now interpolates `retailer_id` in addition to `retailer_name`.
+- Added explicit non-negotiable tenant-isolation rules:
+  1. Strictly scoped to `retailer_id=…`. Every fact must come from the data block. No hallucination.
+  2. Any question about other retailers / network-wide totals → respond with a fixed denial message.
+  3. Never expose the retailer_id or any internal identifiers in the reply text.
+  4. If the answer is not in the data block → say so plainly, ask one clarifying question.
+
+### Frontend (`RetailerAssistantBubble.tsx`)
+- Header comment updated to "Vertex AI (Gemini 2.5 Flash) only — text + voice via Gemini multimodal STT".
+- All 3 axios calls (`/assistant`, `/assistant/execute`, `/assistant/transcribe`) now attach the Bearer token from `getAccessToken()` so they pass the new auth requirement.
+
+### Tests verified (curl, live preview)
+| Test | Caller | Target | Expected | Got |
+|------|--------|--------|----------|-----|
+| A | retailer1 | own Sabi | 200 | **200** — Gemini answered with retailer1's actual inventory only |
+| B | retailer2 | retailer1's Sabi | 403 | **403** ✅ |
+| C | distributor | retailer1's Sabi | 403 | **403** ✅ |
+| D | anonymous | retailer1's Sabi | 401 | **401** ✅ |
+| 429 path | retailer1 | own Sabi | 503 graceful | **503** ✅ |
+

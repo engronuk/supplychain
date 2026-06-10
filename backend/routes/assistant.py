@@ -1,95 +1,110 @@
-"""Retailer AI Assistant ("Sabi") — Gemini 2.5 Flash by default, escalates to
-Claude Sonnet 4.5 for complex queries (long-form drafts, multi-step planning).
-Voice input via OpenAI Whisper.
+"""Retailer AI Assistant ("Sabi") — Vertex AI (Gemini 2.5 Flash) only.
+
+This route is strictly tenant-scoped: callers can only interact with the
+Sabi assistant of a retailer they own (or super-admins, for support).
+Cross-tenant calls are rejected with 403. The system prompt and the data
+context provided to Gemini are also strictly limited to the requested
+retailer's records — no other retailer / distributor / manufacturer data
+is read or exposed.
 """
 from __future__ import annotations
 
 import json as _json
-import os
 import re
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
 from core import db, logger
 from models import (
     AssistantActionPayload, AssistantPayload, RequestLine, StockRequest,
 )
+from services.auth import get_current_user
 from services.helpers import push_notification
 from services.retailer import SYSTEM_PROMPT_TEMPLATE, build_retailer_context
 
 router = APIRouter()
 
+
 # ---------------------------------------------------------------------------
-# Model routing — Gemini 2.5 Flash is 10× cheaper and good enough for ~95% of
-# the shopkeeper-style questions. Only escalate to Claude Sonnet 4.5 when the
-# query clearly needs multi-step planning / long-form drafting.
+# Tenant scope guard — the caller must own the retailer they're chatting with.
 # ---------------------------------------------------------------------------
-DEFAULT_PROVIDER = "gemini"
-DEFAULT_MODEL = "gemini-2.5-flash"
-COMPLEX_PROVIDER = "anthropic"
-COMPLEX_MODEL = "claude-sonnet-4-5-20250929"
+async def _assert_can_access_retailer(retailer_id: str, user: Dict[str, Any]) -> Dict[str, Any]:
+    """Verify the authenticated user can interact with `retailer_id`.
 
-# Heuristic triggers — case-insensitive. Anything matching → escalate.
-COMPLEX_PATTERNS = re.compile(
-    r"\b(draft|create|write|prepare|build|design|generate)\b.*\b("
-    r"procurement\s+plan|business\s+plan|marketing\s+plan|launch\s+plan|"
-    r"forecast|projection|strategy|proposal|report|analysis|breakdown|roadmap"
-    r")\b"
-    r"|\b\d+[-\s]?day\b"
-    r"|\bcompare\b.+\bvs\b"
-    r"|\bstep[-\s]?by[-\s]?step\b"
-    r"|\bpros\s+and\s+cons\b",
-    re.IGNORECASE,
-)
+    Allowed callers:
+      • The retailer itself (role=retailer, entity_id matches).
+      • super_admin (for support / debug).
 
-
-def _route_model(message: str) -> tuple[str, str]:
-    """Pick (provider, model) based on the message. Long queries also escalate."""
-    if len(message) > 280 or COMPLEX_PATTERNS.search(message or ""):
-        return COMPLEX_PROVIDER, COMPLEX_MODEL
-    return DEFAULT_PROVIDER, DEFAULT_MODEL
-
-
-@router.post("/retailer/{retailer_id}/assistant")
-async def retailer_assistant(retailer_id: str, payload: AssistantPayload):
-    from services import vertex_llm
-    if not vertex_llm.is_configured():
-        raise HTTPException(500, "Assistant unavailable: Vertex AI is not configured")
-
+    Returns the retailer record (without `_id`) on success, raises 403/404
+    on failure.
+    """
     retailer = await db.retailers.find_one({"id": retailer_id}, {"_id": 0})
     if not retailer:
         raise HTTPException(404, "Retailer not found")
 
+    role = (user.get("role") or "").lower()
+    entity_id = user.get("entity_id") or ""
+
+    if role == "super_admin":
+        return retailer
+    if role == "retailer" and entity_id == retailer_id:
+        return retailer
+
+    logger.warning(
+        "Sabi cross-tenant access denied: user=%s role=%s entity=%s → retailer=%s",
+        user.get("id"), role, entity_id, retailer_id,
+    )
+    raise HTTPException(403, "Sabi is scoped to your own store only.")
+
+
+@router.post("/retailer/{retailer_id}/assistant")
+async def retailer_assistant(
+    retailer_id: str,
+    payload: AssistantPayload,
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    from services import vertex_llm
+    if not vertex_llm.is_configured():
+        raise HTTPException(500, "Assistant unavailable: Vertex AI is not configured")
+
+    retailer = await _assert_can_access_retailer(retailer_id, user)
+
+    # Strictly scoped to THIS retailer. build_retailer_context only queries
+    # records keyed by retailer_id.
     context_blob = await build_retailer_context(retailer_id)
     system_prompt = SYSTEM_PROMPT_TEMPLATE.format(
+        retailer_id=retailer_id,
         retailer_name=retailer["name"],
         today=datetime.now(timezone.utc).date().isoformat(),
         context=context_blob,
     )
 
     session_id = payload.session_id or f"retailer-{retailer_id}"
-    provider, model = _route_model(payload.message)
-    logger.info("Sabi routing: provider=%s model=%s len=%s", provider, model, len(payload.message))
+    model = vertex_llm.DEFAULT_MODEL
+    logger.info("Sabi call: retailer=%s user=%s model=%s len=%s",
+                retailer_id, user.get("id"), model, len(payload.message))
 
-    # Convert history to vertex_llm format. We ignore the legacy "provider" toggle
-    # because Vertex AI Gemini is now the only engine.
     history = [{"role": h.role, "content": h.content} for h in payload.history[-8:]]
     try:
         text = await vertex_llm.complete(
             system=system_prompt,
             user=payload.message,
             history=history,
-            model=model if model.startswith("gemini") else vertex_llm.DEFAULT_MODEL,
+            model=model,
             temperature=0.5,
             max_output_tokens=1200,
         )
     except Exception as e:
+        msg = str(e)
+        if "429" in msg or "RESOURCE_EXHAUSTED" in msg:
+            logger.warning("Sabi: Vertex AI quota exhausted for retailer=%s", retailer_id)
+            raise HTTPException(503, "Sabi is briefly busy (AI rate limit reached). Please try again in a minute.")
         logger.exception("Assistant call failed")
         raise HTTPException(502, f"Assistant error: {e}")
 
-    action: Optional[Dict[str, Any]] = None
+    action = None
     m = re.search(r"```json\s*(\{.*?\})\s*```", text, re.DOTALL)
     spoken = text
     if m:
@@ -100,8 +115,11 @@ async def retailer_assistant(retailer_id: str, payload: AssistantPayload):
             action = None
 
     return {
-        "reply": spoken, "action": action, "session_id": session_id,
-        "model": model, "provider": "vertex-ai",
+        "reply":      spoken,
+        "action":     action,
+        "session_id": session_id,
+        "model":      model,
+        "provider":   "vertex-ai",
     }
 
 
@@ -122,19 +140,19 @@ _MAX_AUDIO_BYTES = 25 * 1024 * 1024
 async def retailer_assistant_transcribe(
     retailer_id: str,
     audio: UploadFile = File(...),
+    user: Dict[str, Any] = Depends(get_current_user),
 ):
     """Transcribe an audio clip using Vertex AI Gemini multimodal input.
 
     Accepts mp3 / mp4 / m4a / wav / webm / ogg up to 25 MB. Returns:
         { "text": "<transcript>" }
+    Tenant-scoped: caller must own this retailer.
     """
     from services import vertex_llm
     if not vertex_llm.is_configured():
         raise HTTPException(500, "Voice input unavailable: Vertex AI is not configured")
 
-    retailer = await db.retailers.find_one({"id": retailer_id}, {"_id": 0})
-    if not retailer:
-        raise HTTPException(404, "Retailer not found")
+    await _assert_can_access_retailer(retailer_id, user)
 
     ext = ((audio.filename or "").rsplit(".", 1)[-1] or "").lower()
     if (audio.content_type or "") not in _ALLOWED_AUDIO_MIME and ext not in _ALLOWED_AUDIO_EXTS:
@@ -161,11 +179,16 @@ async def retailer_assistant_transcribe(
 
 
 @router.post("/retailer/{retailer_id}/assistant/execute")
-async def retailer_assistant_execute(retailer_id: str, payload: AssistantActionPayload):
-    """Execute a structured action returned by the assistant (server-side validated)."""
-    retailer = await db.retailers.find_one({"id": retailer_id}, {"_id": 0})
-    if not retailer:
-        raise HTTPException(404, "Retailer not found")
+async def retailer_assistant_execute(
+    retailer_id: str,
+    payload: AssistantActionPayload,
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    """Execute a structured action returned by the assistant (server-side validated).
+
+    Tenant-scoped: caller must own this retailer.
+    """
+    retailer = await _assert_can_access_retailer(retailer_id, user)
 
     a = payload.action or {}
     kind = a.get("action")

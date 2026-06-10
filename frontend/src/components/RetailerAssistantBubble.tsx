@@ -1,10 +1,11 @@
 // RetailerAssistantBubble.tsx — floating AI chat bubble for retailers.
-// Chat (Gemini 2.5 Flash by default; auto-escalates to Claude Sonnet 4.5 for
-// complex queries) + voice (OpenAI Whisper STT for transcription,
-// speechSynthesis for TTS). Strictly retailer-scoped on the backend.
+// Vertex AI (Gemini 2.5 Flash) only — text + voice (Gemini multimodal STT
+// for transcription, speechSynthesis for TTS). Strictly retailer-scoped on
+// the backend (requires the caller's JWT; 403 on cross-tenant access).
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import { useSession } from "@/context/SessionContext";
+import { getAccessToken } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -119,12 +120,17 @@ export default function RetailerAssistantBubble({ onUiAction, onRefresh }: Props
     setTurns((arr) => [...arr, userTurn]);
     setInput("");
     setThinking(true);
+    const authHeaders = (): Record<string, string> => {
+      const t = getAccessToken();
+      return t ? { Authorization: `Bearer ${t}` } : {};
+    };
     try {
       const history = turns.slice(-8).map((t) => ({ role: t.role, content: t.content }));
-      const { data } = await axios.post(`${API}/retailer/${retailerId}/assistant`, {
-        message: trimmed,
-        history,
-      });
+      const { data } = await axios.post(
+        `${API}/retailer/${retailerId}/assistant`,
+        { message: trimmed, history },
+        { headers: authHeaders() },
+      );
       const assistantTurn: ChatTurn = {
         role: "assistant",
         content: data.reply || "(no response)",
@@ -140,9 +146,11 @@ export default function RetailerAssistantBubble({ onUiAction, onRefresh }: Props
         if (a.action === "reorder") {
           // server-side execute
           try {
-            const res = await axios.post(`${API}/retailer/${retailerId}/assistant/execute`, {
-              action: a,
-            });
+            const res = await axios.post(
+              `${API}/retailer/${retailerId}/assistant/execute`,
+              { action: a },
+              { headers: authHeaders() },
+            );
             if (res.data?.ok) {
               toast.success(
                 `Reorder placed (${res.data.items_count} item${res.data.items_count === 1 ? "" : "s"})`
@@ -241,10 +249,13 @@ export default function RetailerAssistantBubble({ onUiAction, onRefresh }: Props
       const ext = (blob.type.split("/")[1] || "webm").split(";")[0];
       const fd = new FormData();
       fd.append("audio", blob, `clip.${ext}`);
+      const t = getAccessToken();
+      const headers: Record<string, string> = { "Content-Type": "multipart/form-data" };
+      if (t) headers.Authorization = `Bearer ${t}`;
       const { data } = await axios.post(
         `${API}/retailer/${retailerId}/assistant/transcribe`,
         fd,
-        { headers: { "Content-Type": "multipart/form-data" } },
+        { headers },
       );
       const text = (data?.text || "").trim();
       if (!text) {
