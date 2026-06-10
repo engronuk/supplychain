@@ -264,14 +264,9 @@ async def intel_copilot(payload: CopilotMsg):
     tenant scoping enforced.
     """
     tid = await _tenant_or_404(payload.role, payload.entity_id)
-    api_key = os.environ.get("EMERGENT_LLM_KEY")
-    if not api_key:
-        raise HTTPException(500, "Copilot unavailable: missing LLM key")
-
-    try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage  # type: ignore
-    except Exception as e:
-        raise HTTPException(500, f"emergentintegrations unavailable: {e}")
+    from services import vertex_llm
+    if not vertex_llm.is_configured():
+        raise HTTPException(500, "Copilot unavailable: Vertex AI is not configured")
 
     # Build a compact tenant-scoped context bundle the LLM can consult.
     ctx = await _copilot_context(tid, payload.role, payload.entity_id)
@@ -289,10 +284,11 @@ async def intel_copilot(payload: CopilotMsg):
         f"unless the user explicitly asks for a long-form plan. "
         f"You may end with a single fenced JSON block ```json{{\"action\":...}}``` ONLY if the "
         f"user explicitly asks to do something (eg 'mark as actioned')."
+        f"\n\nECOSYSTEM JSON:\n" + _json.dumps(ctx, default=str)[:9000]
     )
-    # Light auto-routing: cheap by default, complex queries get Sonnet.
+    # Light auto-routing: flash by default, deeper queries get pro.
     text_for_routing = payload.message or ""
-    use_sonnet = (
+    use_pro = (
         len(text_for_routing) > 280
         or bool(re.search(
             r"\b(draft|create|prepare|build|design|generate|forecast|projection|strategy|roadmap)\b",
@@ -300,34 +296,24 @@ async def intel_copilot(payload: CopilotMsg):
         ))
         or re.search(r"\b\d+[-\s]?day\b", text_for_routing) is not None
     )
-    provider, model = (
-        ("anthropic", "claude-sonnet-4-5-20250929") if use_sonnet
-        else ("gemini", "gemini-2.5-flash")
-    )
+    model = vertex_llm.PRO_MODEL if use_pro else vertex_llm.DEFAULT_MODEL
 
     session_id = payload.session_id or f"intel-copilot-{tid}-{payload.role}-{payload.entity_id}"
-    chat = LlmChat(
-        api_key=api_key, session_id=session_id,
-        system_message=system + "\n\nECOSYSTEM JSON:\n" + _json.dumps(ctx, default=str)[:9000],
-    ).with_model(provider, model)
-
-    for h in (payload.history or [])[-6:]:
-        if h.get("role") == "user":
-            try:
-                await chat.send_message(UserMessage(text=str(h.get("content", ""))))
-            except Exception:
-                break
+    history = [{"role": str(h.get("role", "")), "content": str(h.get("content", ""))} for h in (payload.history or [])[-6:]]
 
     try:
-        resp = await chat.send_message(UserMessage(text=payload.message))
+        text = await vertex_llm.complete(
+            system=system, user=payload.message, history=history, model=model,
+            temperature=0.4, max_output_tokens=1024,
+        )
     except Exception as e:
         logger.exception("Copilot LLM call failed")
         raise HTTPException(502, f"Copilot error: {e}")
     return {
-        "reply": str(resp or "").strip(),
+        "reply": text,
         "tenant_id": tid, "role": payload.role,
         "session_id": session_id,
-        "model": model, "provider": provider,
+        "model": model, "provider": "vertex-ai",
     }
 
 

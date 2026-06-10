@@ -1,16 +1,16 @@
-"""AI-powered insight generation via Claude Haiku (emergentintegrations).
+"""AI-powered insight generation via Vertex AI Gemini.
 
-Falls back to deterministic placeholders when LLM key/library is missing.
+Falls back to deterministic placeholders when Vertex is not configured.
 """
 from __future__ import annotations
 
 import json as _json
-import os
 import re
 import time
 from typing import Dict, List, Tuple
 
 from core import logger
+from services import vertex_llm
 
 _INSIGHTS_CACHE: Dict[str, Tuple[float, List[dict]]] = {}  # key -> (expires_at, insights)
 
@@ -24,13 +24,7 @@ async def generate_ai_insights(*, prompt_id: str, kind: str, context: str) -> Li
     if cached and cached[0] > time.time():
         return cached[1]
 
-    api_key = os.environ.get("EMERGENT_LLM_KEY")
-    if not api_key:
-        return _fallback_insights(kind, context)
-
-    try:
-        from emergentintegrations.llm.chat import LlmChat, UserMessage  # type: ignore
-    except Exception:
+    if not vertex_llm.is_configured():
         return _fallback_insights(kind, context)
 
     system = (
@@ -42,13 +36,8 @@ async def generate_ai_insights(*, prompt_id: str, kind: str, context: str) -> Li
         '  "detail": <= 140 chars, single actionable line\n'
         "No prose, no markdown fences, no commentary — only the JSON array."
     )
-    chat = (
-        LlmChat(api_key=api_key, session_id=prompt_id, system_message=system)
-        .with_model("anthropic", "claude-haiku-4-5-20251001")
-    )
     try:
-        resp = await chat.send_message(UserMessage(text=context))
-        text = str(resp or "").strip()
+        text = await vertex_llm.complete(system=system, user=context, temperature=0.4, max_output_tokens=800)
         m = re.search(r"\[.*\]", text, re.DOTALL)
         if not m:
             return _fallback_insights(kind, context)
@@ -72,5 +61,5 @@ def _fallback_insights(kind: str, context: str) -> List[dict]:
     return [{
         "tone": "info", "icon": "info",
         "title": "Insights unavailable",
-        "detail": "Could not contact the LLM service — showing baseline view.",
+        "detail": "Vertex AI is not configured — showing baseline view.",
     }]

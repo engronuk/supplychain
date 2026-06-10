@@ -259,14 +259,13 @@ async def generate_exec_summary(tenant_id: str, role: str = "manufacturer",
     context_str = _json.dumps(ctx, default=str, indent=2)[:9000]
     phrasing = _role_phrasing(role, ctx.get("scope_label", ""), ctx.get("primary_region"))
 
-    api_key = os.environ.get("EMERGENT_LLM_KEY")
+    from services import vertex_llm
     bullets: List[dict] = []
     headline = "Operations stable — no urgent action."
     rec_text = ""
 
-    if api_key:
+    if vertex_llm.is_configured():
         try:
-            from emergentintegrations.llm.chat import LlmChat, UserMessage  # type: ignore
             system = (
                 f"You are the executive briefing voice of TradeKonekt. {phrasing} "
                 "Read the JSON state and produce STRICT JSON:\n"
@@ -280,13 +279,10 @@ async def generate_exec_summary(tenant_id: str, role: str = "manufacturer",
                 "Use Nigerian Naira (₦). Never invent numbers not in the JSON. "
                 "If retailers_in_scope is 0 say so plainly; never pretend coverage you don't have."
             )
-            chat = LlmChat(
-                api_key=api_key,
-                session_id=f"intel-exec-{tenant_id}-{role}-{entity_id}",
-                system_message=system,
-            ).with_model("anthropic", "claude-sonnet-4-5-20250929")
-            resp = await chat.send_message(UserMessage(text=context_str))
-            text = str(resp or "").strip()
+            text = await vertex_llm.complete(
+                system=system, user=context_str, model=vertex_llm.PRO_MODEL,
+                temperature=0.3, max_output_tokens=900,
+            )
             m = re.search(r"\{.*\}", text, re.DOTALL)
             if m:
                 parsed = _json.loads(m.group(0))
@@ -338,7 +334,7 @@ async def generate_exec_summary(tenant_id: str, role: str = "manufacturer",
             "retailers_in_scope": ctx.get("retailers_in_scope"),
         },
         "generated_at": now_iso(),
-        "model": "claude-sonnet-4-5-20250929",
+        "model": "vertex-ai/gemini-2.5-flash",
     }
 
     await db.intel_executive_summaries.update_one(
