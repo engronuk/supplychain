@@ -73,6 +73,18 @@ async def job_forecasts():
             logger.exception("forecast job failed for %s", tid)
 
 
+async def job_pulse_intelligence():
+    """Hourly job — recompute the Manufacturer Command Center intelligence
+    snapshot grounded in real platform data for every tenant.
+    """
+    from services.pulse_intelligence import compute_intelligence
+    for tid in await _tenants():
+        try:
+            await compute_intelligence(tid)
+        except Exception:
+            logger.exception("pulse intelligence job failed for %s", tid)
+
+
 async def job_hourly():
     for tid in await _tenants():
         try:
@@ -187,6 +199,13 @@ def start_scheduler():
     scheduler.add_job(
         job_daily, CronTrigger(hour=6, minute=0), id="intel_daily",
         max_instances=1, coalesce=True,
+    )
+    # Pulse intelligence (Manufacturer Command Center) — every 60 min,
+    # first run T+7 min so it doesn't collide with the hourly bundle.
+    scheduler.add_job(
+        job_pulse_intelligence, IntervalTrigger(minutes=60), id="pulse_intelligence",
+        max_instances=1, coalesce=True,
+        next_run_time=now + timedelta(minutes=7),
     )
 
     scheduler.start()

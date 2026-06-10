@@ -1,18 +1,30 @@
-"""Proactive Intelligence Engine — Vertex AI powered.
+"""Proactive Intelligence Engine — Vertex AI powered, grounded in
+real platform data (MongoDB) and *persisted* for hourly batch refresh.
 
-For each (region, product) signal we expose to the Manufacturer Command
-Center, we:
+The Manufacturer Command Center reads the latest snapshot from
+`db.pulse_intelligence` (one document per manufacturer). The snapshot is
+recomputed:
 
-  1. Pull a *rich evidence pack* from BigQuery (multi-window velocity,
-     day-over-day delta, statistical significance, distributor concentration,
-     regional spread, top-distributor drivers).
-  2. Feed the evidence pack to Vertex AI Gemini under a **strict JSON
+  • Hourly by the in-process APScheduler (see services/intel/scheduler.py)
+  • On-demand by `POST /api/pulse/intelligence/recompute` (the "Recompute"
+    button on the Command Center).
+
+`compute_intelligence(mfr_id)` is the single entry point that:
+  1. Pulls a *rich evidence pack* from MongoDB — combining the existing
+     intel modules (forecasts / retailer health / delivery risk / anomalies
+     / allocations / fulfillment activity / recent orders) so the
+     manufacturer briefing reflects what is ACTUALLY happening on the
+     platform, not synthetic telemetry alone.
+  2. (Optionally) augments with the BigQuery sales-velocity signal.
+  3. Feeds the evidence pack to Vertex AI Gemini under a **strict JSON
      schema** (response_mime_type=application/json + response_schema). The
      model is forced to emit severity, headline, ranked root-cause
      hypotheses with confidence + evidence, a 24h trajectory forecast, a
-     priority-ordered list of recommended actions, and risk flags.
-  3. Generate a network-level *executive briefing* in a second pass —
-     a 2–3 sentence synthesis a manufacturer COO can act on at a glance.
+     priority-ordered list of recommended actions, and risk flags — PLUS a
+     network-level executive briefing in the same call.
+  4. Falls back to a deterministic evidence-only briefing if Vertex is
+     rate-limited so the UI never shows blank.
+  5. Upserts the result into `db.pulse_intelligence`.
 
 This module is the only place that talks to Vertex AI for the Pulse system.
 """
@@ -20,24 +32,623 @@ This module is the only place that talks to Vertex AI for the Pulse system.
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 from google.cloud import bigquery
 
-from services.bigquery_client import full_table_id, get_client, run_query
+from core import db
 from services import vertex_llm
+from services.bigquery_client import full_table_id, get_client, run_query
 
 logger = logging.getLogger(__name__)
 
 
-# ---------------------------------------------------------------------------
-# BigQuery evidence pack — combines several signals into one row per
-# (region, product). Limited to top-50 by composite signal score.
-# ---------------------------------------------------------------------------
+# ===========================================================================
+# Platform-grounded signal gathering (MongoDB)
+# ===========================================================================
+async def gather_platform_signals(mfr_id: str) -> Dict[str, Any]:
+    """Pull a rich evidence pack from MongoDB describing what is actually
+    happening on the platform RIGHT NOW for this manufacturer.
+
+    Combines the existing intel layer (forecasts / retailer health / delivery
+    risk / anomalies) with operational tables (orders, allocations,
+    fulfillment, GRNs, stock requests). Returns a structured dict that the
+    LLM can reason over.
+    """
+    now = datetime.now(timezone.utc)
+    last_24h_iso = (now - timedelta(hours=24)).isoformat()
+    last_7d_iso  = (now - timedelta(days=7)).isoformat()
+
+    # 1. Tenant scope: distributors & retailers belonging to this manufacturer.
+    distributors = await db.distributors.find(
+        {"manufacturer_id": mfr_id}, {"_id": 0, "id": 1, "name": 1, "region": 1, "city": 1},
+    ).to_list(5000)
+    dist_ids = [d["id"] for d in distributors]
+    dist_by_id = {d["id"]: d for d in distributors}
+
+    retailers = await db.retailers.find(
+        {"distributor_id": {"$in": dist_ids}},
+        {"_id": 0, "id": 1, "name": 1, "distributor_id": 1, "region": 1},
+    ).to_list(50000)
+    ret_count = len(retailers)
+    ret_by_dist: Dict[str, int] = {}
+    for r in retailers:
+        ret_by_dist[r["distributor_id"]] = ret_by_dist.get(r["distributor_id"], 0) + 1
+
+    # 2. Stock-exhaustion forecasts (already computed by services/intel/forecasts.py)
+    forecasts = await db.intel_forecasts.find(
+        {"tenant_id": mfr_id, "urgency": {"$in": ["critical", "high"]}},
+        {"_id": 0},
+    ).sort("days_remaining", 1).to_list(500)
+    stockouts_by_region: Dict[str, Dict[str, Any]] = {}
+    products_at_risk: Dict[str, Dict[str, Any]] = {}
+    for f in forecasts:
+        region = f.get("region") or "Unknown"
+        rb = stockouts_by_region.setdefault(region, {
+            "region": region, "shops_at_risk": 0,
+            "critical_count": 0, "high_count": 0,
+            "naira_at_risk": 0.0, "top_products": set(),
+        })
+        rb["shops_at_risk"] += 1
+        rb[f"{f['urgency']}_count"] = rb.get(f"{f['urgency']}_count", 0) + 1
+        rb["naira_at_risk"] += float(f.get("naira_at_risk", 0) or 0)
+        if f.get("product_name"):
+            rb["top_products"].add(f["product_name"])
+        pn = f.get("product_name") or f.get("product_id") or "?"
+        pb = products_at_risk.setdefault(pn, {
+            "product_name": pn, "shops_at_risk": 0, "regions": set(),
+            "min_days": float("inf"), "naira_at_risk": 0.0,
+        })
+        pb["shops_at_risk"] += 1
+        pb["regions"].add(region)
+        pb["min_days"] = min(pb["min_days"], float(f.get("days_remaining", 0) or 0))
+        pb["naira_at_risk"] += float(f.get("naira_at_risk", 0) or 0)
+    # Stringify sets for JSON
+    for r in stockouts_by_region.values():
+        r["top_products"] = list(r["top_products"])[:5]
+    for p in products_at_risk.values():
+        p["regions"] = list(p["regions"])
+        if p["min_days"] == float("inf"):
+            p["min_days"] = None
+    top_products_at_risk = sorted(
+        products_at_risk.values(),
+        key=lambda x: -(x["shops_at_risk"]),
+    )[:8]
+
+    # 3. Retailer churn risk
+    churn_high = await db.intel_retailer_health.count_documents(
+        {"tenant_id": mfr_id, "churn_risk": "high"},
+    )
+    churn_medium = await db.intel_retailer_health.count_documents(
+        {"tenant_id": mfr_id, "churn_risk": "medium"},
+    )
+
+    # 4. Delivery risk
+    delivery_high = await db.intel_delivery_eta.count_documents(
+        {"tenant_id": mfr_id, "risk": "high"},
+    )
+    delivery_high_samples = await db.intel_delivery_eta.find(
+        {"tenant_id": mfr_id, "risk": "high"},
+        {"_id": 0, "destination": 1, "expected_eta_days": 1, "delay_days": 1},
+    ).limit(5).to_list(5)
+
+    # 5. Recent anomalies (last 24h)
+    anomalies = await db.intel_alerts.find(
+        {"tenant_id": mfr_id, "category": "anomaly", "created_at": {"$gte": last_24h_iso}},
+        {"_id": 0, "retailer_name": 1, "region": 1, "kind": 1, "score": 1, "message": 1},
+    ).sort("score", -1).limit(8).to_list(8)
+
+    # 6. Allocation & fulfillment activity (last 7d)
+    allocs_pending = await db.order_allocations.count_documents(
+        {"manufacturer_id": mfr_id, "status": "pending"},
+    )
+    allocs_done_7d = await db.order_allocations.count_documents(
+        {"manufacturer_id": mfr_id, "status": "allocated", "created_at": {"$gte": last_7d_iso}},
+    )
+    fulfillment_pending = await db.fulfillment_orders.count_documents(
+        {"manufacturer_id": mfr_id, "status": {"$in": ["pending", "picking", "packing"]}},
+    )
+    fulfillment_done_24h = await db.fulfillment_orders.count_documents(
+        {"manufacturer_id": mfr_id, "status": "dispatched", "updated_at": {"$gte": last_24h_iso}},
+    )
+
+    # 7. Recent orders (distributor → manufacturer)
+    orders_24h = await db.orders.find(
+        {"manufacturer_id": mfr_id, "created_at": {"$gte": last_24h_iso}},
+        {"_id": 0, "id": 1, "distributor_id": 1, "total_value": 1, "status": 1, "created_at": 1},
+    ).to_list(500)
+    orders_revenue_24h = sum(float(o.get("total_value", 0) or 0) for o in orders_24h)
+    orders_7d_count = await db.orders.count_documents(
+        {"manufacturer_id": mfr_id, "created_at": {"$gte": last_7d_iso}},
+    )
+
+    # 8. Stock requests (retailers → distributors, but tells manufacturer about pull demand)
+    requests_24h = await db.requests.count_documents(
+        {"distributor_id": {"$in": dist_ids}, "created_at": {"$gte": last_24h_iso}},
+    )
+    requests_7d = await db.requests.count_documents(
+        {"distributor_id": {"$in": dist_ids}, "created_at": {"$gte": last_7d_iso}},
+    )
+
+    # 9. Distributor performance — top 5 by 24h order revenue
+    rev_by_dist: Dict[str, float] = {}
+    for o in orders_24h:
+        did = o.get("distributor_id")
+        if not did:
+            continue
+        rev_by_dist[did] = rev_by_dist.get(did, 0.0) + float(o.get("total_value", 0) or 0)
+    top_distributors = sorted(
+        ({"distributor_id": did, "name": dist_by_id.get(did, {}).get("name", "?"),
+          "region": dist_by_id.get(did, {}).get("region", ""),
+          "city":   dist_by_id.get(did, {}).get("city", ""),
+          "revenue_24h": round(rv, 0),
+          "retailer_count": ret_by_dist.get(did, 0)}
+         for did, rv in rev_by_dist.items()),
+        key=lambda x: -x["revenue_24h"],
+    )[:5]
+
+    # 10. Recent ingestion-quality marker (so the LLM knows if data is fresh)
+    last_order = await db.orders.find_one(
+        {"manufacturer_id": mfr_id},
+        {"_id": 0, "created_at": 1},
+        sort=[("created_at", -1)],
+    )
+
+    return {
+        "as_of":                     now.isoformat(),
+        "manufacturer_id":           mfr_id,
+        "network": {
+            "distributors":          len(distributors),
+            "retailers":             ret_count,
+        },
+        "demand_signals": {
+            "orders_count_24h":      len(orders_24h),
+            "orders_revenue_24h":    round(orders_revenue_24h, 0),
+            "orders_count_7d":       orders_7d_count,
+            "stock_requests_24h":    requests_24h,
+            "stock_requests_7d":     requests_7d,
+        },
+        "execution": {
+            "allocations_pending":   allocs_pending,
+            "allocations_done_7d":   allocs_done_7d,
+            "fulfillment_pending":   fulfillment_pending,
+            "fulfillment_dispatched_24h": fulfillment_done_24h,
+        },
+        "risk_signals": {
+            "shops_at_risk_total":   sum(r["shops_at_risk"] for r in stockouts_by_region.values()),
+            "stockouts_by_region":   list(stockouts_by_region.values()),
+            "top_products_at_risk":  top_products_at_risk,
+            "churn_high_retailers":  churn_high,
+            "churn_medium_retailers": churn_medium,
+            "delivery_high_risk":    delivery_high,
+            "delivery_samples":      [{
+                "destination":         d.get("destination"),
+                "expected_eta_days":   d.get("expected_eta_days"),
+                "delay_days":          d.get("delay_days"),
+            } for d in delivery_high_samples],
+            "anomalies_24h":         anomalies,
+        },
+        "top_distributors_24h":      top_distributors,
+        "data_freshness": {
+            "last_order_at":         (last_order or {}).get("created_at"),
+        },
+    }
+
+
+# ===========================================================================
+# Combined platform + BQ briefing — Vertex AI with strict schema
+# ===========================================================================
+PLATFORM_BRIEFING_SCHEMA = {
+    "type": "OBJECT",
+    "properties": {
+        "executive_summary": {
+            "type": "OBJECT",
+            "properties": {
+                "headline":   {"type": "STRING"},
+                "narrative":  {"type": "STRING"},
+                "themes":     {"type": "ARRAY", "items": {"type": "STRING"}},
+                "top_action": {"type": "STRING"},
+            },
+            "required": ["headline", "narrative", "themes", "top_action"],
+        },
+        "briefings": {
+            "type": "ARRAY",
+            "items": {
+                "type": "OBJECT",
+                "properties": {
+                    "scope":       {"type": "STRING", "enum": ["NETWORK", "REGION", "DISTRIBUTOR", "PRODUCT"]},
+                    "scope_label": {"type": "STRING"},
+                    "severity":    {"type": "STRING", "enum": ["CRITICAL", "HIGH", "MEDIUM", "INFO"]},
+                    "signal_type": {"type": "STRING", "enum": [
+                        "STOCKOUT_RISK", "DEMAND_SPIKE", "DEMAND_SLUMP",
+                        "DELIVERY_RISK", "CHURN_RISK", "ALLOCATION_BACKLOG",
+                        "FULFILLMENT_BACKLOG", "PROMOTIONAL_OPPORTUNITY",
+                    ]},
+                    "headline":    {"type": "STRING"},
+                    "narrative":   {"type": "STRING"},
+                    "hypotheses": {
+                        "type": "ARRAY",
+                        "items": {
+                            "type": "OBJECT",
+                            "properties": {
+                                "hypothesis": {"type": "STRING"},
+                                "confidence": {"type": "NUMBER"},
+                                "evidence":   {"type": "STRING"},
+                            },
+                            "required": ["hypothesis", "confidence", "evidence"],
+                        },
+                    },
+                    "trajectory_24h": {
+                        "type": "OBJECT",
+                        "properties": {
+                            "expected_units":         {"type": "NUMBER"},
+                            "expected_revenue_naira": {"type": "NUMBER"},
+                            "confidence":             {"type": "NUMBER"},
+                        },
+                        "required": ["expected_units", "expected_revenue_naira", "confidence"],
+                    },
+                    "recommended_actions": {
+                        "type": "ARRAY",
+                        "items": {
+                            "type": "OBJECT",
+                            "properties": {
+                                "action":    {"type": "STRING"},
+                                "priority":  {"type": "INTEGER"},
+                                "rationale": {"type": "STRING"},
+                                "owner":     {"type": "STRING", "enum": [
+                                    "Supply Planning", "Trade Marketing", "Sales Ops",
+                                    "Warehouse Ops", "Finance",
+                                ]},
+                            },
+                            "required": ["action", "priority", "rationale", "owner"],
+                        },
+                    },
+                    "risk_flags": {"type": "ARRAY", "items": {"type": "STRING"}},
+                },
+                "required": ["scope", "scope_label", "severity", "signal_type",
+                             "headline", "narrative", "hypotheses",
+                             "recommended_actions", "risk_flags"],
+            },
+        },
+    },
+    "required": ["executive_summary", "briefings"],
+}
+
+
+PLATFORM_SYSTEM_PROMPT = """You are a senior FMCG supply-chain demand intelligence analyst working for a Nigerian manufacturer. You are given a STRUCTURED EVIDENCE PACK describing what is actually happening on the manufacturer's platform RIGHT NOW (distributor network size, retailer count, last-24h orders/revenue, allocation & fulfillment backlog, stock-exhaustion risk by region & product, churn risk, delivery risk, anomaly alerts, top distributors).
+
+Produce a JSON object containing:
+
+  • `executive_summary` — a single COO-grade synthesis:
+      - headline: ≤ 14 words, the ONE thing the COO needs to know.
+      - narrative: 2–3 sentences referencing ₦ revenue impact, specific
+        regions, real numbers from the evidence pack. NO bullets, NO line
+        breaks.
+      - themes: 2–4 short tag phrases.
+      - top_action: the single highest-priority action across the network.
+
+  • `briefings` — 4 to 8 ranked briefing objects, each addressing ONE
+    meaningful operational signal. For EACH briefing:
+      - scope: NETWORK / REGION / DISTRIBUTOR / PRODUCT (most appropriate level).
+      - scope_label: e.g. "Lagos", "OMO Multi-Active", "Suara & Co (Lagos)", "Network".
+      - severity:
+          CRITICAL = network-wide threat OR many shops/regions affected.
+          HIGH     = significant but contained.
+          MEDIUM   = noteworthy.
+          INFO     = small, statistically-weak signal.
+      - signal_type: from the enum.
+      - headline: ≤ 12 words, action-oriented.
+      - narrative: 2 sentences. CITE actual numbers from the evidence
+        (units, ₦ revenue, region, shop count, days remaining, %). Use ₦ for Naira.
+      - hypotheses: 2–3 RANKED candidate causes. confidence ∈ [0,1].
+        evidence must cite a specific datapoint from the evidence pack.
+        NEVER invent a number that's not in the evidence.
+      - trajectory_24h: project the next 24h units & revenue if relevant
+        (set to 0 / 0 / 0.3 if not applicable).
+      - recommended_actions: 2–4 concrete, owner-assigned actions. Owner ∈
+        {Supply Planning, Trade Marketing, Sales Ops, Warehouse Ops, Finance}.
+        Priority 1 = do first.
+      - risk_flags: short snake_case tags like
+        stockout_risk_72h, single_distributor_dependency,
+        allocation_backlog, regional_concentration_risk,
+        delivery_delays_compounding, momentum_decelerating.
+
+ANCHOR ALL NUMBERS to the evidence pack. If the evidence pack says
+"shops_at_risk_total: 23", you must NOT say "30+ shops at risk". If a
+section is empty, treat it as 0. Return STRICT JSON matching the schema.
+No prose outside JSON.
+"""
+
+
+async def compute_intelligence(mfr_id: str) -> Dict[str, Any]:
+    """End-to-end compute + persist for one manufacturer.
+
+    Pulls platform signals from Mongo (+ optional BQ velocity signal),
+    invokes Vertex AI with the strict JSON schema, falls back to evidence-
+    only on quota error, and **upserts** the result into
+    `db.pulse_intelligence` keyed by manufacturer_id.
+    """
+    now_dt = datetime.now(timezone.utc)
+    platform = await gather_platform_signals(mfr_id)
+
+    bq_signals: List[Dict[str, Any]] = []
+    if get_client() is not None:
+        try:
+            bq_signals = gather_signals(mfr_id, limit=4)
+        except Exception:
+            logger.exception("[pulse_intel] BQ velocity signal failed (non-fatal)")
+
+    payload: Dict[str, Any]
+    if not vertex_llm.is_configured():
+        payload = _evidence_only_intelligence(platform, bq_signals)
+        payload["ai_status"] = "vertex_not_configured"
+    else:
+        evidence_pack = {**platform, "bq_velocity_signals": bq_signals}
+        import json as _json
+        try:
+            out = await vertex_llm.complete_json(
+                system=PLATFORM_SYSTEM_PROMPT,
+                user=_json.dumps(evidence_pack, default=str),
+                response_schema=PLATFORM_BRIEFING_SCHEMA,
+                temperature=0.2,
+                max_output_tokens=7000,
+            )
+            if isinstance(out, dict) and out.get("briefings"):
+                payload = {
+                    "briefings":         out.get("briefings") or [],
+                    "executive_summary": out.get("executive_summary"),
+                    "ai_status":         "vertex_ai",
+                }
+            else:
+                payload = _evidence_only_intelligence(platform, bq_signals)
+                payload["ai_status"] = "fallback: empty_response"
+        except Exception as e:
+            logger.warning("[pulse_intel] Vertex AI failed (%s) — using evidence-only fallback", e)
+            payload = _evidence_only_intelligence(platform, bq_signals)
+            payload["ai_status"] = f"fallback: {type(e).__name__}"
+
+    doc = {
+        "manufacturer_id":   mfr_id,
+        "generated_at":      now_dt.isoformat(),
+        "next_compute_at":   (now_dt + timedelta(hours=1)).isoformat(),
+        "briefings":         payload.get("briefings") or [],
+        "executive_summary": payload.get("executive_summary"),
+        "ai_status":         payload.get("ai_status") or "unknown",
+        "signal_count":      len(platform.get("risk_signals", {}).get("top_products_at_risk", [])) + len(bq_signals),
+        "evidence":          platform,
+    }
+    await db.pulse_intelligence.update_one(
+        {"manufacturer_id": mfr_id},
+        {"$set": doc},
+        upsert=True,
+    )
+    return doc
+
+
+async def latest_intelligence(mfr_id: str) -> Optional[Dict[str, Any]]:
+    """Return the last persisted snapshot for this manufacturer, if any."""
+    doc = await db.pulse_intelligence.find_one(
+        {"manufacturer_id": mfr_id}, {"_id": 0},
+    )
+    return doc
+
+
+# ===========================================================================
+# Deterministic fallback briefing — derived from platform evidence alone.
+# Used when Vertex AI is unavailable / quota-exhausted.
+# ===========================================================================
+def _evidence_only_intelligence(platform: Dict[str, Any], bq_signals: List[Dict[str, Any]]) -> Dict[str, Any]:
+    briefings: List[Dict[str, Any]] = []
+    risk = platform.get("risk_signals", {})
+    demand = platform.get("demand_signals", {})
+    execn = platform.get("execution", {})
+
+    # 1) Per-region stockout risk
+    for r in (risk.get("stockouts_by_region") or [])[:4]:
+        shops = r.get("shops_at_risk", 0)
+        crit = r.get("critical_count", 0)
+        if shops <= 0:
+            continue
+        sev = "CRITICAL" if crit >= 3 else "HIGH" if shops >= 5 else "MEDIUM"
+        briefings.append({
+            "scope": "REGION",
+            "scope_label": r["region"],
+            "severity": sev,
+            "signal_type": "STOCKOUT_RISK",
+            "headline": f"{shops} retailer{'s' if shops != 1 else ''} approaching stockout in {r['region']}",
+            "narrative": (
+                f"In {r['region']}, {shops} retailers are running low (≤10 days cover). "
+                f"{crit} of them are CRITICAL. Top SKUs at risk: {', '.join(r.get('top_products') or [])[:120]}."
+            ),
+            "hypotheses": [
+                {"hypothesis": "Reorder cadence slipping — retailers' last orders are aged.",
+                 "confidence": 0.65,
+                 "evidence": f"{shops} shops below 10-day cover in {r['region']}"}
+            ],
+            "trajectory_24h": {"expected_units": 0, "expected_revenue_naira": 0, "confidence": 0.4},
+            "recommended_actions": [
+                {"priority": 1, "owner": "Supply Planning",
+                 "action": f"Trigger replenishment push to {r['region']} distributors within 24h",
+                 "rationale": f"{crit} retailers are critical; risk of revenue loss + churn."},
+                {"priority": 2, "owner": "Sales Ops",
+                 "action": f"Call top retailers in {r['region']} to confirm restock dates.",
+                 "rationale": "Phone outreach catches retailers slow to use the app."},
+            ],
+            "risk_flags": ["stockout_risk_72h", "regional_concentration_risk"],
+        })
+
+    # 2) Top products at risk
+    for p in (risk.get("top_products_at_risk") or [])[:3]:
+        if p["shops_at_risk"] <= 0:
+            continue
+        briefings.append({
+            "scope": "PRODUCT",
+            "scope_label": p["product_name"],
+            "severity": "HIGH" if p["shops_at_risk"] >= 5 else "MEDIUM",
+            "signal_type": "STOCKOUT_RISK",
+            "headline": f"{p['product_name']} is at risk in {len(p.get('regions') or [])} region(s)",
+            "narrative": (
+                f"{p['product_name']} is running low at {p['shops_at_risk']} retailers across "
+                f"{', '.join(p.get('regions') or [])[:80]}. Minimum days remaining: {p['min_days'] or 'N/A'}."
+            ),
+            "hypotheses": [{
+                "hypothesis": "Demand outpacing supply allocation for this SKU.",
+                "confidence": 0.6,
+                "evidence": f"At-risk shops: {p['shops_at_risk']}, regions affected: {len(p.get('regions') or [])}",
+            }],
+            "trajectory_24h": {"expected_units": 0, "expected_revenue_naira": 0, "confidence": 0.4},
+            "recommended_actions": [
+                {"priority": 1, "owner": "Supply Planning",
+                 "action": f"Allocate additional units of {p['product_name']} to affected regions.",
+                 "rationale": f"{p['shops_at_risk']} shops at risk of stockout."},
+            ],
+            "risk_flags": ["stockout_risk_72h", "multi_region_pressure"],
+        })
+
+    # 3) Allocation / fulfillment backlog
+    if execn.get("allocations_pending", 0) >= 5:
+        briefings.append({
+            "scope": "NETWORK",
+            "scope_label": "Allocation queue",
+            "severity": "HIGH" if execn["allocations_pending"] >= 15 else "MEDIUM",
+            "signal_type": "ALLOCATION_BACKLOG",
+            "headline": f"{execn['allocations_pending']} orders awaiting your allocation",
+            "narrative": (
+                f"{execn['allocations_pending']} distributor orders are queued in the Allocation Center. "
+                f"You allocated {execn.get('allocations_done_7d', 0)} orders in the last 7 days."
+            ),
+            "hypotheses": [{
+                "hypothesis": "Allocation throughput is below demand intake.",
+                "confidence": 0.6,
+                "evidence": f"Pending: {execn['allocations_pending']}, completed 7d: {execn.get('allocations_done_7d', 0)}",
+            }],
+            "trajectory_24h": {"expected_units": 0, "expected_revenue_naira": 0, "confidence": 0.4},
+            "recommended_actions": [
+                {"priority": 1, "owner": "Supply Planning",
+                 "action": "Process the allocation backlog today.",
+                 "rationale": "Pending orders delay fulfillment downstream and risk stockouts."},
+            ],
+            "risk_flags": ["allocation_backlog"],
+        })
+
+    # 4) Delivery risk
+    if risk.get("delivery_high_risk", 0) > 0:
+        briefings.append({
+            "scope": "NETWORK",
+            "scope_label": "Inbound deliveries",
+            "severity": "MEDIUM",
+            "signal_type": "DELIVERY_RISK",
+            "headline": f"{risk['delivery_high_risk']} deliveries flagged as high-risk for delay",
+            "narrative": (
+                f"{risk['delivery_high_risk']} active shipments are showing high delay risk. "
+                f"Affected destinations include: {', '.join((d.get('destination') or '?') for d in (risk.get('delivery_samples') or [])[:3])}."
+            ),
+            "hypotheses": [{
+                "hypothesis": "Logistics constraints (vehicle availability, route congestion).",
+                "confidence": 0.55,
+                "evidence": f"{risk['delivery_high_risk']} high-risk shipments",
+            }],
+            "trajectory_24h": {"expected_units": 0, "expected_revenue_naira": 0, "confidence": 0.4},
+            "recommended_actions": [
+                {"priority": 1, "owner": "Warehouse Ops",
+                 "action": "Escalate the high-risk shipments and confirm carrier ETAs.",
+                 "rationale": "Delivery delays compound stockout risk downstream."},
+            ],
+            "risk_flags": ["delivery_delays_compounding"],
+        })
+
+    # 5) Churn risk
+    if risk.get("churn_high_retailers", 0) > 0:
+        briefings.append({
+            "scope": "NETWORK",
+            "scope_label": "Retailer churn",
+            "severity": "MEDIUM",
+            "signal_type": "CHURN_RISK",
+            "headline": f"{risk['churn_high_retailers']} retailers at high churn risk",
+            "narrative": (
+                f"{risk['churn_high_retailers']} retailers have not ordered recently and are at high churn risk. "
+                f"A further {risk.get('churn_medium_retailers', 0)} are at medium risk."
+            ),
+            "hypotheses": [{
+                "hypothesis": "Inactivity suggests competitor displacement or operational issues at retailer end.",
+                "confidence": 0.55,
+                "evidence": f"High churn risk: {risk['churn_high_retailers']}",
+            }],
+            "trajectory_24h": {"expected_units": 0, "expected_revenue_naira": 0, "confidence": 0.4},
+            "recommended_actions": [
+                {"priority": 1, "owner": "Sales Ops",
+                 "action": "Deploy field reps to re-engage the high-risk retailers this week.",
+                 "rationale": "Each lost retailer is a recurring revenue loss."},
+            ],
+            "risk_flags": ["churn_risk"],
+        })
+
+    # 6) BQ velocity spikes (if any)
+    for s in bq_signals[:2]:
+        vel = float(s.get("velocity_ratio_14d") or 0)
+        if vel < 1.5 and vel > 0.5:
+            continue
+        sev = "HIGH" if (vel >= 2 or vel <= 0.5) else "MEDIUM"
+        sig_type = "DEMAND_SPIKE" if vel >= 1.5 else "DEMAND_SLUMP"
+        briefings.append({
+            "scope": "PRODUCT",
+            "scope_label": s.get("product_name") or "?",
+            "severity": sev,
+            "signal_type": sig_type,
+            "headline": f"{s.get('product_name')} — {sig_type.replace('_',' ').lower()} in {s.get('region')} ({vel:.1f}× baseline)",
+            "narrative": f"{s.get('product_name')} sold {int(s.get('units_24h',0)):,} units in {s.get('region')} (last 24h) — {vel:.1f}× the 14-day baseline.",
+            "hypotheses": [{
+                "hypothesis": "Recent demand momentum shift detected by BigQuery telemetry.",
+                "confidence": 0.55, "evidence": f"velocity_ratio_14d={vel:.2f}",
+            }],
+            "trajectory_24h": {"expected_units": int((s.get('units_24h') or 0) * 1.0),
+                               "expected_revenue_naira": int((s.get('rev_24h') or 0) * 1.0),
+                               "confidence": 0.5},
+            "recommended_actions": [{
+                "priority": 1, "owner": "Supply Planning",
+                "action": f"Verify stock availability in {s.get('region')} for {s.get('product_name')}.",
+                "rationale": "Confirm whether spike/slump matches inventory + promotion calendar.",
+            }],
+            "risk_flags": ["bq_velocity_signal"],
+        })
+
+    # Order by severity
+    sev_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "INFO": 3}
+    briefings.sort(key=lambda x: sev_order.get(x.get("severity"), 9))
+
+    # Network-level executive synthesis
+    shops_at_risk = risk.get("shops_at_risk_total", 0)
+    crit_briefings = sum(1 for b in briefings if b["severity"] == "CRITICAL")
+    high_briefings = sum(1 for b in briefings if b["severity"] == "HIGH")
+    exec_summary = {
+        "headline": (
+            f"{crit_briefings} critical + {high_briefings} high-severity signals across the network"
+            if (crit_briefings + high_briefings) > 0
+            else "Network is operating within normal envelopes"
+        ),
+        "narrative": (
+            f"Last 24h: {demand.get('orders_count_24h',0)} distributor orders worth ₦{demand.get('orders_revenue_24h',0):,.0f}, "
+            f"{demand.get('stock_requests_24h',0)} retailer stock requests. "
+            f"{shops_at_risk} retailers approaching stockout, {execn.get('allocations_pending',0)} orders pending allocation, "
+            f"{execn.get('fulfillment_pending',0)} fulfillment orders in flight. "
+            "Vertex AI synthesis temporarily unavailable; rule-based briefing in use."
+        ),
+        "themes": list({b["signal_type"] for b in briefings})[:4],
+        "top_action": (briefings[0]["recommended_actions"][0]["action"] if briefings else "Continue monitoring."),
+    }
+
+    return {"briefings": briefings, "executive_summary": exec_summary}
+
+
+# ===========================================================================
+# Legacy BigQuery-only signal-gathering kept for backward compatibility.
+# ===========================================================================
 def gather_signals(mfr_id: str, limit: int = 5) -> List[Dict[str, Any]]:
-    """Return the top-N (region, product) signals worth AI analysis."""
+    """Return the top-N (region, product) BigQuery velocity signals."""
     if get_client() is None:
         return []
+
 
     sql = f"""
     WITH base AS (

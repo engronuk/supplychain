@@ -12,14 +12,32 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Sparkles, MapPin, TrendingUp, AlertTriangle, RefreshCw, Cloud,
   Brain, Flame, Activity, ChevronDown, ChevronUp, Target, ShieldAlert,
-  Users, Globe2, Gauge, Workflow,
+  Users, Globe2, Gauge, Workflow, Zap,
 } from "lucide-react";
 import { Api } from "../lib/api";
 import { Button } from "../components/ui/button";
+import { toast } from "sonner";
 
 const naira = (n) => `₦${(Number(n) || 0).toLocaleString("en-NG", { maximumFractionDigits: 0 })}`;
 const num   = (n) => (Number(n) || 0).toLocaleString();
 const pct   = (n) => `${((Number(n) || 0) * 100).toFixed(0)}%`;
+
+// Friendly "x minutes ago" relative-time. Returns null if no input.
+function relativeFrom(iso) {
+  if (!iso) return null;
+  const t = new Date(iso).getTime();
+  if (!t || Number.isNaN(t)) return null;
+  const diff = Math.max(0, Date.now() - t);
+  const m = Math.floor(diff / 60_000);
+  if (m < 1) return "just now";
+  if (m === 1) return "1 minute ago";
+  if (m < 60) return `${m} minutes ago`;
+  const h = Math.floor(m / 60);
+  if (h === 1) return "1 hour ago";
+  if (h < 24) return `${h} hours ago`;
+  const d = Math.floor(h / 24);
+  return `${d} day${d === 1 ? "" : "s"} ago`;
+}
 
 // Load the Google Maps JS API once (idempotent across remounts).
 function useGoogleMaps(apiKey) {
@@ -49,9 +67,10 @@ export default function CommandCenter() {
   const apiKey = process.env.REACT_APP_MAPS_API_KEY;
   const mapsReady = useGoogleMaps(apiKey);
   const [regions, setRegions] = useState([]);
-  const [intel,   setIntel]   = useState({ briefings: [], executive_summary: null, ai_status: "" });
+  const [intel,   setIntel]   = useState({ briefings: [], executive_summary: null, ai_status: "", generated_at: null, next_compute_at: null });
   const [health,  setHealth]  = useState(null);
-  const [refreshing, setRefreshing] = useState(false);
+  const [refreshing,  setRefreshing]  = useState(false);
+  const [recomputing, setRecomputing] = useState(false);
   const mapRef = useRef(null);
   const mapObj = useRef(null);
   const markers = useRef([]);
@@ -63,6 +82,26 @@ export default function CommandCenter() {
       Api.pulseIntelligence().then((r) => setIntel(r || { briefings: [] })).catch(() => setIntel({ briefings: [] })),
       Api.pulseHealth().then(setHealth).catch(() => setHealth(null)),
     ]).finally(() => setRefreshing(false));
+  };
+  const recompute = async () => {
+    if (recomputing) return;
+    setRecomputing(true);
+    const toastId = toast.loading("Recomputing intelligence with the latest platform data…");
+    try {
+      const fresh = await Api.pulseIntelligenceRecompute();
+      setIntel(fresh);
+      toast.success("Intelligence recomputed", {
+        id: toastId,
+        description: `${fresh.briefings?.length || 0} briefing${fresh.briefings?.length === 1 ? "" : "s"} generated.`,
+      });
+    } catch (e) {
+      toast.error("Recompute failed", {
+        id: toastId,
+        description: e?.response?.data?.detail || e?.message || "Please try again in a minute.",
+      });
+    } finally {
+      setRecomputing(false);
+    }
   };
   useEffect(() => { setTimeout(() => reload(), 0); }, []);
 
@@ -130,6 +169,27 @@ export default function CommandCenter() {
     return a;
   }, {});
 
+  // Next-compute relative time — re-evaluated every 30s via a state tick so
+  // the compiler's purity rule stays satisfied (Date.now() is impure).
+  const [nextComputeLabel, setNextComputeLabel] = useState(null);
+  useEffect(() => {
+    function tick() {
+      if (!intel.next_compute_at) { setNextComputeLabel(null); return; }
+      const next = new Date(intel.next_compute_at).getTime();
+      if (!next) { setNextComputeLabel(null); return; }
+      const diff = next - Date.now();
+      if (diff <= 0) { setNextComputeLabel("any moment"); return; }
+      const m = Math.round(diff / 60000);
+      if (m < 1) setNextComputeLabel("under a minute");
+      else if (m === 1) setNextComputeLabel("1 minute");
+      else if (m < 60) setNextComputeLabel(`${m} minutes`);
+      else setNextComputeLabel(`${Math.round(m / 60)}h`);
+    }
+    tick();
+    const id = setInterval(tick, 30000);
+    return () => clearInterval(id);
+  }, [intel.next_compute_at]);
+
   return (
     <div className="space-y-6" data-testid="command-center">
       {/* Heading */}
@@ -140,12 +200,31 @@ export default function CommandCenter() {
           </div>
           <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Manufacturer Command Center</h1>
           <p className="text-sm text-slate-500 mt-1 max-w-2xl">
-            Live sales activity from BigQuery with Vertex AI proactive intelligence overlaid on the network map.
+            Hourly intelligence snapshot grounded in your live platform data — distributor orders, retailer stockout risk, allocation & fulfillment activity — synthesised by Vertex AI.
           </p>
+          {intel.generated_at && (
+            <div className="text-[11px] text-slate-500 mt-2 flex items-center gap-3">
+              <span>Last computed <span className="font-medium text-slate-700">{relativeFrom(intel.generated_at)}</span></span>
+              {nextComputeLabel && (
+                <span className="text-slate-400">· next auto-refresh in {nextComputeLabel}</span>
+              )}
+            </div>
+          )}
         </div>
-        <Button variant="outline" className="border-slate-200" onClick={reload} disabled={refreshing} data-testid="cc-refresh">
-          <RefreshCw className={`h-4 w-4 mr-1.5 ${refreshing ? "animate-spin" : ""}`} /> Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" className="border-slate-200" onClick={reload} disabled={refreshing} data-testid="cc-refresh">
+            <RefreshCw className={`h-4 w-4 mr-1.5 ${refreshing ? "animate-spin" : ""}`} /> Refresh
+          </Button>
+          <Button
+            className="bg-violet-600 hover:bg-violet-700 text-white"
+            onClick={recompute}
+            disabled={recomputing}
+            data-testid="cc-recompute"
+          >
+            <Zap className={`h-4 w-4 mr-1.5 ${recomputing ? "animate-pulse" : ""}`} />
+            {recomputing ? "Recomputing…" : "Recompute intelligence"}
+          </Button>
+        </div>
       </div>
 
       {/* KPI strip */}
@@ -271,13 +350,16 @@ function BriefingCard({ b }) {
   const [open, setOpen] = useState(false);
   const sev = SEV_STYLES[b.severity] || SEV_STYLES.MEDIUM;
   const SevIcon = sev.Icon;
-  const ev = b.evidence || {};
-  const vel = Number(ev.velocity_ratio_14d || 0);
   const trajectory = b.trajectory_24h || {};
-  const isSpike = (b.signal_type || "").includes("SPIKE");
+  // Backward compat: BQ briefings used product_id/region; new platform
+  // briefings use scope/scope_label.
+  const scopeLabel = b.scope_label || b.product_name || b.product_id || b.region || "—";
+  const scopeKind = b.scope || (b.product_name ? "PRODUCT" : b.region ? "REGION" : "NETWORK");
+  const testKey = (b.scope_label || b.product_id || b.region || "briefing").toString().replace(/\s+/g, "-").toLowerCase();
+  const hasTrajectory = Number(trajectory.expected_units || 0) > 0 || Number(trajectory.expected_revenue_naira || 0) > 0;
 
   return (
-    <li className="px-5 py-4" data-testid={`briefing-${b.product_id}-${b.region}`}>
+    <li className="px-5 py-4" data-testid={`briefing-${testKey}`}>
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
@@ -288,15 +370,11 @@ function BriefingCard({ b }) {
             <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500">
               {(b.signal_type || "").replace(/_/g, " ")}
             </span>
+            <span className="text-[10px] uppercase font-medium tracking-wider text-slate-400">
+              {scopeKind}
+            </span>
           </div>
-          <div className="font-semibold text-slate-900 text-sm mt-1.5">{b.product_name || b.product_id}</div>
-          <div className="text-xs text-slate-500">{b.region}</div>
-        </div>
-        <div className="text-right shrink-0">
-          <div className={`text-lg font-bold leading-none ${isSpike ? "text-rose-600" : "text-amber-600"}`}>
-            {vel.toFixed(1)}×
-          </div>
-          <div className="text-[10px] uppercase tracking-wider text-slate-500 mt-0.5">vs 14d</div>
+          <div className="font-semibold text-slate-900 text-sm mt-1.5">{scopeLabel}</div>
         </div>
       </div>
 
@@ -305,15 +383,6 @@ function BriefingCard({ b }) {
       {b.narrative && (
         <p className="text-[12px] text-slate-600 leading-relaxed mt-1.5">{b.narrative}</p>
       )}
-
-      {/* Mini-evidence strip */}
-      <div className="grid grid-cols-4 gap-2 mt-3">
-        <Stat label="24h Units"     value={num(ev.units_24h)} />
-        <Stat label="14d Avg/Day"   value={Number(ev.avg_daily_13d_excl || 0).toFixed(0)} />
-        <Stat label="Day-on-Day"    value={`${(Number(ev.dod_delta || 0) * 100).toFixed(0)}%`}
-              tint={Number(ev.dod_delta || 0) >= 0 ? "emerald" : "rose"} />
-        <Stat label="z-score"       value={Number(ev.z_score || 0).toFixed(1)} />
-      </div>
 
       {/* Risk chips */}
       {Array.isArray(b.risk_flags) && b.risk_flags.length > 0 && (
@@ -364,8 +433,8 @@ function BriefingCard({ b }) {
             </div>
           )}
 
-          {/* Trajectory */}
-          {trajectory.expected_units != null && (
+          {/* Trajectory — only show if the model produced a non-zero estimate */}
+          {hasTrajectory && (
             <div className="rounded-lg border border-blue-100 bg-blue-50/50 p-3">
               <div className="text-[10px] uppercase tracking-wider font-bold text-blue-700 mb-2 inline-flex items-center gap-1.5">
                 <Gauge className="h-3 w-3" /> 24h forecast · confidence {pct(trajectory.confidence)}
@@ -410,22 +479,6 @@ function BriefingCard({ b }) {
                     </li>
                   ))}
               </ol>
-            </div>
-          )}
-
-          {/* Top driver distributors */}
-          {Array.isArray(ev.top_drivers_24h) && ev.top_drivers_24h.length > 0 && (
-            <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-              <div className="text-[10px] uppercase tracking-wider font-bold text-slate-600 mb-2 inline-flex items-center gap-1.5">
-                <Globe2 className="h-3 w-3" /> Top driver distributors (24h)
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {ev.top_drivers_24h.slice(0, 5).map((d, i) => (
-                  <span key={i} className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-white border border-slate-200">
-                    {(d.distributor_id || "").slice(0, 10)} · {d.events} ev
-                  </span>
-                ))}
-              </div>
             </div>
           )}
         </div>

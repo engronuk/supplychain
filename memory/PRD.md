@@ -975,3 +975,38 @@ Dead Claude Sonnet 4.5 routing path removed and Sabi (the in-store retailer AI a
 | D | anonymous | retailer1's Sabi | 401 | **401** ✅ |
 | 429 path | retailer1 | own Sabi | 503 graceful | **503** ✅ |
 
+
+## 2026-02-10 (e) — Manufacturer Intelligence: platform-grounded + scheduled
+
+The Proactive Intelligence Center was rebuilt to be **grounded in real platform data** and **batch-scheduled** (hourly + on-demand recompute) instead of running Vertex AI per request.
+
+### Backend
+- **`services/pulse_intelligence.gather_platform_signals(mfr_id)`** — pulls a rich evidence pack from MongoDB:
+  - Network size (distributors, retailers)
+  - 24h / 7d order counts + ₦ revenue from `db.orders`
+  - Stock requests from `db.requests`
+  - Allocation backlog & fulfilment activity from `db.order_allocations` and `db.fulfillment_orders`
+  - Stockout risk by region & top products at risk from `db.intel_forecasts`
+  - Retailer churn risk from `db.intel_retailer_health`
+  - Delivery risk from `db.intel_delivery_eta`
+  - Recent anomaly alerts from `db.intel_alerts`
+  - Top distributors by 24h revenue
+  - (Optionally) BigQuery sales-velocity signals as a secondary feed
+- **`compute_intelligence(mfr_id)`** — runs Gemini with a strict JSON schema (`PLATFORM_BRIEFING_SCHEMA`) producing per-(network/region/distributor/product) briefings + executive summary, both anchored to the evidence numbers. Persisted to **`db.pulse_intelligence`** keyed by manufacturer_id.
+- **Evidence-only fallback** still produces structured briefings when Vertex is rate-limited.
+- **Scheduler**: added `job_pulse_intelligence` to `services/intel/scheduler.py` — runs every 60 min (first run T+7 min so it doesn't collide with the existing hourly bundle).
+
+### Endpoints
+- `GET /api/pulse/intelligence` → now reads the latest persisted snapshot from Mongo. Never invokes Vertex AI directly. O(1) reads.
+- `POST /api/pulse/intelligence/recompute` → manufacturer-only, forces an immediate recompute. Returns the fresh payload.
+
+### Frontend (`CommandCenter.jsx`)
+- "Last computed Xm ago · next auto-refresh in 47 minutes" stamp under the heading.
+- New **"Recompute intelligence"** violet CTA button alongside Refresh.
+- `BriefingCard` schema-updated to handle the new `scope` / `scope_label` shape (NETWORK / REGION / DISTRIBUTOR / PRODUCT) and gracefully suppress the BQ-only "velocity ×" badge & trajectory block when not relevant.
+
+### Verified on live preview (Unilever)
+- `ai_status: vertex_ai`, 6 briefings + 1 exec summary
+- All numbers cited match Mongo: 500 retailers at risk (from `intel_forecasts`), 3,072 retailers at high churn risk (from `intel_retailer_health`), 5 fulfillment orders pending (from `fulfillment_orders`), zero 24h orders (from `orders`).
+- Hypotheses cite specific evidence fields from the pack ("orders_count_24h: 0, fulfillment_pending: 5, allocations_pending: 0").
+

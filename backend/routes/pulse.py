@@ -248,54 +248,72 @@ async def alerts_enriched(user: Dict[str, Any] = Depends(get_current_user)):
 
 @router.get("/pulse/intelligence")
 async def intelligence(user: Dict[str, Any] = Depends(get_current_user)):
-    """Proactive Intelligence Center — multi-signal evidence + structured
-    Vertex AI briefings + a network-level executive summary.
+    """Proactive Intelligence Center — read the latest persisted snapshot.
 
-    This is the canonical AI surface for the Manufacturer Command Center.
-    Cached for 90 seconds per manufacturer to stay within Vertex AI quota.
+    Snapshots are computed hourly by the in-process scheduler (see
+    services/intel/scheduler.py:job_pulse_intelligence) AND on-demand via
+    `POST /api/pulse/intelligence/recompute`. This GET never invokes Vertex
+    AI directly — it just returns the most recent persisted briefing.
     """
-    if get_client() is None:
-        raise HTTPException(503, "GCP not configured")
     from services import pulse_intelligence as pi
     from services import vertex_llm
-    import time
 
     mfr = user.get("manufacturer_id") or user.get("organization_id") or ""
-
-    # In-memory cache (TTL 90s). Vertex AI calls cost quota; the underlying
-    # BQ window only refreshes when new events land, so a short cache is safe.
-    global _INTEL_CACHE  # type: ignore[name-defined]
-    try:
-        cache = _INTEL_CACHE
-    except NameError:
-        cache = {}
-        globals()["_INTEL_CACHE"] = cache
-    now = time.time()
-    hit = cache.get(mfr)
-    if hit and (now - hit["t"]) < 300:
-        return {**hit["payload"], "cached": True}
-
-    signals = pi.gather_signals(mfr)
-    if not signals:
-        payload = {
-            "generated_at": datetime.now(timezone.utc).isoformat(),
-            "briefings": [],
-            "executive_summary": None,
-            "signal_count": 0,
-            "vertex_ai_used": vertex_llm.is_configured(),
+    snap = await pi.latest_intelligence(mfr)
+    if snap:
+        return {
+            "generated_at":      snap.get("generated_at"),
+            "next_compute_at":   snap.get("next_compute_at"),
+            "briefings":         snap.get("briefings") or [],
+            "executive_summary": snap.get("executive_summary"),
+            "signal_count":      snap.get("signal_count") or 0,
+            "ai_status":         snap.get("ai_status") or "unknown",
+            "vertex_ai_used":    vertex_llm.is_configured(),
+            "evidence":          snap.get("evidence"),
+            "is_stale":          False,
+            "from_cache":        True,
         }
-        cache[mfr] = {"t": now, "payload": payload}
-        return payload
-
-    intel = await pi.generate_intelligence(signals)
-    payload = {
-        "generated_at":      datetime.now(timezone.utc).isoformat(),
-        "briefings":         intel.get("briefings") or [],
-        "executive_summary": intel.get("executive_summary"),
-        "signal_count":      len(signals),
+    # No snapshot yet — return empty payload so the UI can show
+    # "Computing for the first time…" and the scheduler will fill it shortly.
+    return {
+        "generated_at":      None,
+        "next_compute_at":   None,
+        "briefings":         [],
+        "executive_summary": None,
+        "signal_count":      0,
+        "ai_status":         "not_yet_computed",
         "vertex_ai_used":    vertex_llm.is_configured(),
-        "ai_status":         intel.get("ai_status") or "unknown",
+        "from_cache":        False,
     }
-    cache[mfr] = {"t": now, "payload": payload}
-    return payload
+
+
+@router.post("/pulse/intelligence/recompute")
+async def intelligence_recompute(user: Dict[str, Any] = Depends(get_current_user)):
+    """Force an immediate recompute of the Pulse Intelligence snapshot for
+    this manufacturer. Returns the freshly computed payload.
+
+    Role: manufacturer or super_admin.
+    """
+    role = (user.get("role") or "").lower()
+    if role not in ("manufacturer", "super_admin"):
+        raise HTTPException(403, "Recompute is restricted to manufacturer users.")
+
+    from services import pulse_intelligence as pi
+    from services import vertex_llm
+
+    mfr = user.get("manufacturer_id") or user.get("organization_id") or ""
+    if not mfr:
+        raise HTTPException(400, "Manufacturer context missing")
+    doc = await pi.compute_intelligence(mfr)
+    return {
+        "generated_at":      doc.get("generated_at"),
+        "next_compute_at":   doc.get("next_compute_at"),
+        "briefings":         doc.get("briefings") or [],
+        "executive_summary": doc.get("executive_summary"),
+        "signal_count":      doc.get("signal_count") or 0,
+        "ai_status":         doc.get("ai_status") or "unknown",
+        "vertex_ai_used":    vertex_llm.is_configured(),
+        "evidence":          doc.get("evidence"),
+        "from_cache":        False,
+    }
 

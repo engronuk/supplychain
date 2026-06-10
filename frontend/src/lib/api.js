@@ -161,6 +161,7 @@ export const Api = {
     api.get("/pulse/by-region", { params: { hours } }).then((r) => r.data),
   pulseAlertsEnriched: () => api.get("/pulse/alerts/enriched").then((r) => r.data),
   pulseIntelligence: () => api.get("/pulse/intelligence").then((r) => r.data),
+  pulseIntelligenceRecompute: () => api.post("/pulse/intelligence/recompute").then((r) => r.data),
   updateShipmentStatus: (id, status) =>
     api.patch(`/shipments/${id}/status`, { status }).then((r) => r.data),
 
