@@ -858,3 +858,37 @@ The distributor side of the new order-allocation architecture: they now place pu
 ### Verified end-to-end
 - Logged in as `lagos.distributor@tradekonekt.io`, filled cart (500× Axe Body Spray + 300× Blue Band Margarine = ₦11.2M / 800 units), hit Submit → toast "Order F353DB7E submitted to manufacturer"; cart cleared.
 - The order is now visible to `unilever@tradekonekt.io` in `/manufacturer/allocation` under "New Orders".
+
+---
+
+## 2026-02-10 — GCP Integration Phase 1 (BigQuery + Cloud Run packaging)
+
+Wired the Real-Time Pulse foundation: TradeKonekt now streams sales events from the FastAPI backend into a BigQuery dataset hosted in europe-west2 and is packaged for Cloud Run deployment.
+
+### What shipped
+- **Secret storage**: SA key at `/app/backend/secrets/gcp-sa.json` (chmod 600, gitignored). `backend/.env` sets `GOOGLE_APPLICATION_CREDENTIALS`, `GCP_PROJECT_ID`, `BIGQUERY_DATASET=pulse`, `BIGQUERY_LOCATION=europe-west2`, `GENAI_MODEL_ID=gemini-2.5-flash`, `GOOGLE_GENAI_USE_VERTEXAI=true`.
+- **BigQuery client** (`services/bigquery_client.py`): idempotent dataset+table bootstrap, ADC-aware (uses file in dev, attached SA on Cloud Run), helpers for streaming inserts and parameterised queries.
+- **BigQuery schema** (`project-905e8cc5-7104-437c-825.pulse.sales_events`):
+  - Columns: event_id · region · product_id · product_name · distributor_id · retailer_id · units_sold · value_naira (NUMERIC) · latitude · longitude · occurred_at · ingested_at · manufacturer_id
+  - Partition: `occurred_at` (DAY) · Cluster: `region`, `product_id`
+- **Pulse API** (`routes/pulse.py`):
+  - `GET  /api/pulse/health` — bootstrap + show provisioned table info
+  - `POST /api/pulse/event` — single event streaming insert
+  - `POST /api/pulse/events:batch` — bulk (≤500) streaming insert
+  - `GET  /api/pulse/by-region?hours=24` — regional aggregation for the Command Center map
+  - `GET  /api/pulse/alerts` — proactive-restock candidates (24h velocity ≥ 1.5× 14d trailing avg)
+- **Cloud Run**: `backend/Dockerfile` (multi-stage, gunicorn+uvicorn, secrets stripped at build), `backend/CLOUD_RUN_DEPLOY.md` with full gcloud commands for Artifact Registry, Secret Manager (mongo-url, db-name, jwt-secret), IAM bindings (bigquery.dataEditor, bigquery.jobUser, aiplatform.user, secretmanager.secretAccessor, run.invoker), deploy, and Cloud Scheduler hourly job.
+- **Frontend**: `REACT_APP_MAPS_API_KEY` added to `frontend/.env` (referrer-restricted browser key for the upcoming Command Center map).
+
+### Verified end-to-end
+- `GET /api/pulse/health` provisioned the dataset + table in `europe-west2`.
+- POSTed 6 sales events (1 single + 5 batch). `/api/pulse/by-region?hours=24` returned the proper regional rollup: Lagos ₦11.7M / 670 units, Abuja ₦336K, PH ₦102K, Kano ₦42.5K.
+
+### Phase 2 (next turn)
+- Manufacturer Command Center UI: Google Maps embed with markers + clustering driven by `/api/pulse/by-region`.
+- Vertex AI Gemini call wired to `/api/pulse/alerts` to generate human-readable explanations per alert.
+- Actually deploy to Cloud Run (requires the user to run the gcloud commands in `CLOUD_RUN_DEPLOY.md`; the agent's environment doesn't have gcloud auth).
+- BigQuery alerts persisted in MongoDB so they survive across queries.
+
+### Security reminder
+The SA key was pasted into chat history. **Please rotate it again** in the GCP console and replace `/app/backend/secrets/gcp-sa.json`.

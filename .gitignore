@@ -107,3 +107,8 @@ frontend/node_modules/.cache/default-development/0.pack
 frontend/node_modules/.cache/default-development/7.pack
 frontend/node_modules/.cache/default-development/14.pack
 frontend/node_modules/.cache/default-development/18.pack
+
+# GCP service account keys (NEVER commit)
+backend/secrets/
+secrets/
+frontend/node_modules/.cache/default-development/19.pack
