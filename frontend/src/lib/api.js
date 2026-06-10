@@ -154,6 +154,12 @@ export const Api = {
     api.get("/fulfillment", { params: { ...(warehouse_id ? { warehouse_id } : {}), ...(bucket ? { bucket } : {}) } }).then((r) => r.data),
   fulfillmentAdvance: (id, to) =>
     api.post(`/fulfillment/${id}/advance`, { to }).then((r) => r.data),
+
+  // ---- Real-Time Pulse (GCP) ----
+  pulseHealth: () => api.get("/pulse/health").then((r) => r.data),
+  pulseByRegion: (hours = 24) =>
+    api.get("/pulse/by-region", { params: { hours } }).then((r) => r.data),
+  pulseAlertsEnriched: () => api.get("/pulse/alerts/enriched").then((r) => r.data),
   updateShipmentStatus: (id, status) =>
     api.patch(`/shipments/${id}/status`, { status }).then((r) => r.data),
 

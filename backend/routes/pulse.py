@@ -209,3 +209,38 @@ async def alerts(user: Dict[str, Any] = Depends(get_current_user)):
         logger.exception("[pulse] alerts query failed")
         raise HTTPException(500, f"BigQuery query failed: {e}")
     return {"generated_at": datetime.now(timezone.utc).isoformat(), "alerts": rows}
+
+
+@router.get("/pulse/alerts/enriched")
+async def alerts_enriched(user: Dict[str, Any] = Depends(get_current_user)):
+    """Alerts + one-sentence Gemini explanation per row. Graceful degrade."""
+    raw = await alerts(user)
+    from services import vertex_llm
+    if not vertex_llm.is_configured() or not raw.get("alerts"):
+        return raw
+
+    system = (
+        "You are a supply-chain demand analyst. For each row, return ONE short "
+        "sentence (< 25 words) explaining the spike and the next action. Use ₦ for Naira. "
+        "Return STRICT JSON array of objects with keys 'product_id','region','text' "
+        "in the same order as the input."
+    )
+    import json as _json, re
+    payload = _json.dumps([{
+        "region": r["region"], "product_id": r["product_id"],
+        "product_name": r.get("product_name"),
+        "units_24h": r["units_24h"],
+        "avg_daily_units_14d": float(r["avg_daily_units_14d"] or 0),
+        "velocity_ratio": float(r["velocity_ratio"] or 0),
+    } for r in raw["alerts"]])
+    try:
+        text = await vertex_llm.complete(system=system, user=payload, max_output_tokens=1200, temperature=0.3)
+        m = re.search(r"\[.*\]", text, re.DOTALL)
+        if m:
+            explanations = _json.loads(m.group(0))
+            for r, e in zip(raw["alerts"], explanations):
+                r["explanation"] = (e.get("text") or "").strip()
+    except Exception:
+        logger.exception("[pulse] gemini enrichment failed")
+    return raw
+
