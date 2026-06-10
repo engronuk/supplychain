@@ -892,3 +892,25 @@ Wired the Real-Time Pulse foundation: TradeKonekt now streams sales events from 
 
 ### Security reminder
 The SA key was pasted into chat history. **Please rotate it again** in the GCP console and replace `/app/backend/secrets/gcp-sa.json`.
+
+---
+
+## 2026-02-10 — Manufacturer Command Center (Pulse Phase 2) shipped
+
+The Real-Time Pulse Phase 2 UI is live for manufacturer users:
+
+- **Route**: `/manufacturer/command-center` (wired in `App.js`)
+- **Sidebar nav**: new "Command Center" entry (Globe2 icon) — manufacturer role only — sits above Product Intelligence
+- **Page** (`views/CommandCenter.jsx`):
+   - Hero with "REAL-TIME PULSE · POWERED BY GCP" eyebrow and Refresh button
+   - 4 KPI cards driven by `/api/pulse/by-region?hours=24` — 24h Revenue / Units / Events / Restock-Alert count
+   - **Google Maps JS embed** (loaded via `REACT_APP_MAPS_API_KEY`, dev key for now) centred on Nigeria, one circle per region sized by 24h revenue with click-to-info on Region · Revenue · Units · Events
+   - **Vertex AI Proactive Restock Alerts** panel — fed by `/api/pulse/alerts/enriched`, shows product · region · velocity-ratio × · 24h units vs 14-day baseline · Gemini-generated one-sentence explanation per row
+   - Footer: BigQuery · pulse.sales_events · europe-west2
+- **End-to-end verified**: Lagos ₦984M / 66,434 units / 157 events; Abuja ₦114M; Kano ₦95M; +1 more region. Two Gemini-explained alerts: Knorr Bouillon Cubes (Abuja, 5.74×) and Axe Body Spray (Lagos, 3.55×). Smoke screenshot confirms map markers + alerts panel + KPI strip all populated.
+
+Stack used:
+- BigQuery `pulse.sales_events` (seeded 14 days of synthetic events earlier)
+- Vertex AI `gemini-2.5-flash` via native `google-genai` + ADC
+- Google Maps JS API (client-side, key in `frontend/.env`)
+

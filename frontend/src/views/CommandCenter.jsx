@@ -16,18 +16,18 @@ const num   = (n) => (Number(n) || 0).toLocaleString();
 function useGoogleMaps(apiKey) {
   const [ready, setReady] = useState(!!window.google?.maps);
   useEffect(() => {
-    if (window.google?.maps) { setReady(true); return; }
+    if (window.google?.maps) { setTimeout(() => setReady(true), 0); return; }
     if (!apiKey) return;
     const id = "tk-maps-script";
     if (document.getElementById(id)) {
-      document.getElementById(id).addEventListener("load", () => setReady(true));
+      document.getElementById(id).addEventListener("load", () => setTimeout(() => setReady(true), 0));
       return;
     }
     const s = document.createElement("script");
     s.id = id;
     s.async = true; s.defer = true;
     s.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&v=weekly`;
-    s.onload = () => setReady(true);
+    s.onload = () => setTimeout(() => setReady(true), 0);
     document.head.appendChild(s);
   }, [apiKey]);
   return ready;
@@ -52,7 +52,7 @@ export default function CommandCenter() {
       Api.pulseHealth().then(setHealth).catch(() => setHealth(null)),
     ]).finally(() => setRefreshing(false));
   };
-  useEffect(() => { reload(); }, []);
+  useEffect(() => { setTimeout(() => reload(), 0); }, []);
 
   // Build / refresh map markers
   useEffect(() => {
