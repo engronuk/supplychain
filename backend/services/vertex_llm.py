@@ -180,3 +180,75 @@ async def transcribe_audio(audio_bytes: bytes, mime_type: str = "audio/webm") ->
         config=cfg,
     )
     return (resp.text or "").strip()
+
+
+# ---------------------------------------------------------------------------
+# Structured JSON completion — deterministic schema-conformant output
+# ---------------------------------------------------------------------------
+async def complete_json(
+    *,
+    system: str,
+    user: str,
+    response_schema: Optional[Dict[str, Any]] = None,
+    model: Optional[str] = None,
+    temperature: float = 0.3,
+    max_output_tokens: int = 4096,
+) -> Any:
+    """Run Gemini in JSON-mode and return the parsed payload.
+
+    Uses Vertex AI's controlled-generation feature so the model emits a JSON
+    document conforming to `response_schema` (when supplied). Falls back to a
+    tolerant ``json.loads`` of the first {...}/[...] block if the model
+    sneaks prose around the JSON.
+    """
+    client = get_client()
+    if client is None:
+        raise RuntimeError("Vertex AI is not configured")
+
+    import asyncio
+    import json as _json
+    import re
+
+    cfg = types.GenerateContentConfig(
+        temperature=temperature,
+        max_output_tokens=max_output_tokens,
+        system_instruction=system,
+        response_mime_type="application/json",
+        response_schema=response_schema,
+        thinking_config=types.ThinkingConfig(thinking_budget=0),
+    )
+    contents = [types.Content(role="user", parts=[types.Part(text=user)])]
+    # Retry on 429 (RESOURCE_EXHAUSTED) — Vertex AI quota is per-minute.
+    last_err: Optional[Exception] = None
+    for attempt in range(3):
+        try:
+            resp = await asyncio.to_thread(
+                client.models.generate_content,
+                model=(model or DEFAULT_MODEL),
+                contents=contents,
+                config=cfg,
+            )
+            last_err = None
+            break
+        except Exception as e:
+            last_err = e
+            msg = str(e)
+            if "429" in msg or "RESOURCE_EXHAUSTED" in msg:
+                await asyncio.sleep(2 ** attempt)  # 1s, 2s, 4s
+                continue
+            logger.exception("[vertex_llm] complete_json generate_content failed")
+            raise
+    if last_err is not None:
+        logger.exception("[vertex_llm] complete_json exhausted retries")
+        raise last_err
+
+    text = (resp.text or "").strip()
+    if not text:
+        return None
+    try:
+        return _json.loads(text)
+    except Exception:
+        m = re.search(r"(\{.*\}|\[.*\])", text, re.DOTALL)
+        if m:
+            return _json.loads(m.group(0))
+        raise

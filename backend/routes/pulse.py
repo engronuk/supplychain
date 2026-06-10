@@ -225,7 +225,8 @@ async def alerts_enriched(user: Dict[str, Any] = Depends(get_current_user)):
         "Return STRICT JSON array of objects with keys 'product_id','region','text' "
         "in the same order as the input."
     )
-    import json as _json, re
+    import json as _json
+    import re
     payload = _json.dumps([{
         "region": r["region"], "product_id": r["product_id"],
         "product_name": r.get("product_name"),
@@ -243,4 +244,58 @@ async def alerts_enriched(user: Dict[str, Any] = Depends(get_current_user)):
     except Exception:
         logger.exception("[pulse] gemini enrichment failed")
     return raw
+
+
+@router.get("/pulse/intelligence")
+async def intelligence(user: Dict[str, Any] = Depends(get_current_user)):
+    """Proactive Intelligence Center — multi-signal evidence + structured
+    Vertex AI briefings + a network-level executive summary.
+
+    This is the canonical AI surface for the Manufacturer Command Center.
+    Cached for 90 seconds per manufacturer to stay within Vertex AI quota.
+    """
+    if get_client() is None:
+        raise HTTPException(503, "GCP not configured")
+    from services import pulse_intelligence as pi
+    from services import vertex_llm
+    import time
+
+    mfr = user.get("manufacturer_id") or user.get("organization_id") or ""
+
+    # In-memory cache (TTL 90s). Vertex AI calls cost quota; the underlying
+    # BQ window only refreshes when new events land, so a short cache is safe.
+    global _INTEL_CACHE  # type: ignore[name-defined]
+    try:
+        cache = _INTEL_CACHE
+    except NameError:
+        cache = {}
+        globals()["_INTEL_CACHE"] = cache
+    now = time.time()
+    hit = cache.get(mfr)
+    if hit and (now - hit["t"]) < 300:
+        return {**hit["payload"], "cached": True}
+
+    signals = pi.gather_signals(mfr)
+    if not signals:
+        payload = {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "briefings": [],
+            "executive_summary": None,
+            "signal_count": 0,
+            "vertex_ai_used": vertex_llm.is_configured(),
+        }
+        cache[mfr] = {"t": now, "payload": payload}
+        return payload
+
+    intel = await pi.generate_intelligence(signals)
+    payload = {
+        "generated_at":      datetime.now(timezone.utc).isoformat(),
+        "briefings":         intel.get("briefings") or [],
+        "executive_summary": intel.get("executive_summary"),
+        "signal_count":      len(signals),
+        "vertex_ai_used":    vertex_llm.is_configured(),
+        "ai_status":         intel.get("ai_status") or "unknown",
+    }
+    cache[mfr] = {"t": now, "payload": payload}
+    return payload
 

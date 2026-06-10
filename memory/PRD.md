@@ -925,3 +925,21 @@ User feedback: keep the Command Center accessible from the main Dashboard instea
 - Sidebar Command Center entry removed (it's a tab now); standalone `/manufacturer/command-center` route kept for direct linking.
 - Smoke-tested end-to-end: tab switch toggles between hero + tab content; map + alerts render in the Pulse tab; data-testids `dashboard-tabs`, `dashboard-tab-overview`, `dashboard-tab-pulse` available for automation.
 
+
+## 2026-02-10 (c) — Proactive Intelligence Center fully Vertex-AI driven
+
+The Command Center's "alerts" panel was upgraded from a shallow velocity-ratio list with a one-sentence Gemini caption into a true **Proactive Intelligence Center**.
+
+### Backend
+- **`services/pulse_intelligence.py`** — multi-signal evidence pack from BigQuery: 24h vs 7d vs 14d velocity, day-over-day delta, z-score significance, distributor concentration, regional spread, top-driver distributors. Top 5 signals (by |LN(velocity)|) feed Vertex AI.
+- **Vertex AI structured output** — uses `complete_json(response_schema=…)` with a strict JSON schema. Gemini 2.5 Flash returns, per signal: severity (CRITICAL/HIGH/MEDIUM/INFO), signal_type (DEMAND_SPIKE/SLUMP/STABLE_GROWTH/VOLATILE), headline, evidence-anchored narrative, 2-3 ranked root-cause hypotheses each with `confidence` + `evidence`, 24h trajectory forecast (units + revenue + confidence), 2-4 owner-assigned recommended actions, and snake_case risk_flags. PLUS a network-level `executive_summary` (headline + narrative + themes + top_action) in the same call.
+- **Resilience** — 90s in-memory cache → 5 min cache (Vertex quota tight on newly-billed project), 3-attempt exponential backoff on 429, AND a deterministic evidence-only fallback so the UI always has actionable content if Vertex is rate-limited.
+- **New endpoint**: `GET /api/pulse/intelligence` → `{briefings, executive_summary, signal_count, vertex_ai_used, ai_status, generated_at}`.
+
+### Frontend (`CommandCenter.jsx`)
+- **Executive Briefing card** at the top (violet/indigo gradient with a TOP PRIORITY ACTION band)
+- **Per-signal `BriefingCard`** with severity pill, signal type tag, evidence grid (24h units, 14d avg, day-on-day %, z-score), risk-flag chips, and an "Show AI analysis" expand revealing: ranked hypotheses with confidence bars + evidence sentences, 24h forecast card, priority-ordered Recommended Actions with owner badges, and top-driver distributors.
+- Live AI status pill (`VERTEX AI` violet vs `EVIDENCE MODE` amber when running in fallback).
+
+Smoke-tested end-to-end: Gemini returned 5 fully-populated briefings + executive briefing for Unilever (`ai_status: vertex_ai`). Sample briefing: Knorr Bouillon Cubes · Port Harcourt · CRITICAL DEMAND_SLUMP 0.1× — narrative cites exact numbers (252 units / ₦214,200 / 93.69% drop / velocity 0.0742), hypotheses ranked 90/70/60% each with evidence anchored to the data, 4 risk flags, 24h forecast, owner-assigned actions.
+
