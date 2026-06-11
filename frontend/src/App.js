@@ -31,6 +31,8 @@ import ManufacturerWarehouses, { ManufacturerWarehouseDetail } from "@/views/Man
 import AllocationCenter from "@/views/AllocationCenter";
 import CommandCenter from "@/views/CommandCenter";
 import LogisticsCommandCenter from "@/views/LogisticsCommandCenter";
+import WholesalerDashboard from "@/views/WholesalerDashboard";
+import WholesalerProcurement from "@/views/WholesalerProcurement";
 import WMSLayout from "@/views/wms/WMSLayout";
 import WMSDashboardPage from "@/views/wms/DashboardPage";
 import { InventoryListPage, InventoryDetailPage } from "@/views/wms/InventoryPages";
@@ -49,6 +51,7 @@ function RoleDashboard() {
   if (session.role === "super_admin") return <SuperAdminConsole />;
   if (session.role === "manufacturer") return <ManufacturerDashboard />;
   if (session.role === "distributor") return <DistributorDashboard />;
+  if (session.role === "wholesaler") return <WholesalerDashboard />;
   if (session.role === "warehouse") return <Navigate to="/wms" replace />;
   return <RetailerDashboardV2 />;
 }
@@ -58,6 +61,7 @@ function ProcurementGate() {
   if (!session) return null;
   if (session.role === "distributor") return <DistributorProcurementInbox />;
   if (session.role === "retailer") return <RetailerProcurement />;
+  if (session.role === "wholesaler") return <WholesalerProcurement />;
   // Manufacturers don't procure — for them, the merged "Procurement" workspace
   // is the Shipment Command Center (outbound shipments to distributors).
   if (session.role === "manufacturer") return <ShipmentCommandCenter />;

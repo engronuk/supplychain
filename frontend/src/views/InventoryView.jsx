@@ -11,6 +11,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import RetailerInventoryCommand from "@/views/RetailerInventoryCommand";
+import WholesalerInventory from "@/views/WholesalerInventory";
 
 export default function InventoryView() {
   const { session } = useSession();
@@ -19,6 +20,7 @@ export default function InventoryView() {
   // bookmark should land them on Product Intelligence instead.
   if (role === "manufacturer") return <Navigate to="/product-intelligence" replace />;
   if (role === "retailer") return <RetailerInventoryCommand retailerId={session.entity.id} />;
+  if (role === "wholesaler") return <WholesalerInventory />;
   return <DistributorRetailerInventory session={session} role={role} />;
 }
 

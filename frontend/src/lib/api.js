@@ -69,6 +69,9 @@ export const AuthApi = {
       const list = await api.get("/retailers").then((r) => r.data);
       return list.find((x) => x.id === entityId) || null;
     }
+    if (role === "wholesaler") {
+      return api.get(`/wholesaler/${entityId}`).then((r) => r.data).catch(() => null);
+    }
     return null;
   },
 };
@@ -397,6 +400,35 @@ export const Api = {
     api.get("/intel/external", { params: { role, entity_id } }).then((r) => r.data),
   intelCopilot: (role, entity_id, message, history = [], session_id) =>
     api.post("/intel/copilot", { role, entity_id, message, history, session_id }).then((r) => r.data),
+};
+
+// ============================================================================
+// Wholesaler API (Phase 1: dashboard, inventory, procurement, distributor network)
+// ============================================================================
+export const WholesalerApi = {
+  entity: (wid) => api.get(`/wholesaler/${wid}`).then((r) => r.data),
+  overview: (wid) => api.get(`/wholesaler/${wid}/overview`).then((r) => r.data),
+  inventory: (wid) => api.get(`/wholesaler/${wid}/inventory`).then((r) => r.data),
+  movements: (wid, limit = 50) =>
+    api.get(`/wholesaler/${wid}/inventory/movements`, { params: { limit } }).then((r) => r.data),
+  adjustInventory: (wid, product_id, payload) =>
+    api.post(`/wholesaler/${wid}/inventory/${product_id}/adjust`, payload).then((r) => r.data),
+  receive: (wid, payload) =>
+    api.post(`/wholesaler/${wid}/inventory/receive`, payload).then((r) => r.data),
+  cycleCount: (wid, product_id, payload) =>
+    api.post(`/wholesaler/${wid}/inventory/${product_id}/cycle-count`, payload).then((r) => r.data),
+  purchaseOrders: (wid) =>
+    api.get(`/wholesaler/${wid}/procurement/orders`).then((r) => r.data),
+  createPO: (wid, payload) =>
+    api.post(`/wholesaler/${wid}/procurement/orders`, payload).then((r) => r.data),
+  transitionPO: (wid, po_id, payload) =>
+    api.post(`/wholesaler/${wid}/procurement/orders/${po_id}/transition`, payload).then((r) => r.data),
+  suppliers: (wid) =>
+    api.get(`/wholesaler/${wid}/procurement/suppliers`).then((r) => r.data),
+  catalog: (wid) =>
+    api.get(`/wholesaler/${wid}/procurement/catalog`).then((r) => r.data),
+  distributors: (wid) =>
+    api.get(`/wholesaler/${wid}/distributors`).then((r) => r.data),
 };
 
 export default api;

@@ -15,6 +15,7 @@ import {
   Eye, Boxes, Receipt, Send, Phone, Mail, ArrowUpRight, Download,
 } from "lucide-react";
 import ManufacturerNetworkIntelligence from "./ManufacturerNetworkIntelligence";
+import WholesalerDistributors from "./WholesalerDistributors";
 
 // --- helpers
 const toneFor = (s) =>
@@ -33,7 +34,8 @@ export default function NetworkView() {
   const role = session.role;
   if (role === "manufacturer") return <ManufacturerNetworkIntelligence />;
   if (role === "distributor") return <DistributorNetwork session={session} />;
-  return <div className="p-8 text-slate-500">Network view is only available for manufacturer & distributor roles.</div>;
+  if (role === "wholesaler") return <WholesalerDistributors />;
+  return <div className="p-8 text-slate-500">Network view is only available for manufacturer, distributor & wholesaler roles.</div>;
 }
 
 // ============================================================================

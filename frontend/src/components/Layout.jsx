@@ -64,6 +64,11 @@ function navForRole(role) {
     base.push({ to: "/intel", label: "Intelligence", icon: BrainCircuit });
     base.push({ to: "/network", label: "Retailers", icon: Network });
     base.push({ to: "/procurement", label: "Procurement", icon: ShoppingCart });
+  } else if (role === "wholesaler") {
+    // Wholesaler workspace (Phase 1) — focuses on inventory aggregation,
+    // upstream procurement, and the distributor network they supply.
+    base.push({ to: "/procurement", label: "Procurement", icon: ShoppingCart });
+    base.push({ to: "/network", label: "Distributors", icon: Network });
   } else if (role === "retailer") {
     base.push({ to: "/intel", label: "Intelligence", icon: BrainCircuit });
     base.push({ to: "/sales", label: "Sales Book", icon: Receipt });
