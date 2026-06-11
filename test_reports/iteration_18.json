@@ -1,0 +1,49 @@
+{
+  "summary": "Phase 3B-3E (Inventory Analytics, Forecast Center, Intelligence Center, Control Tower) backend + frontend testing. 32/32 backend tests passing. All required testids present on UI (after correcting tab ids — see notes). Intelligence Center renders with 5 headlines, severity chips and priority chips. Control Tower shows Health Score 81.2/100 EXCELLENT. Phase 3A regression (Distributor Analytics Center, BCG matrix with 6 bubbles, churn list, ranking) still works. Standalone routes /wholesaler/orders and /wholesaler/shipments load. 0 console errors.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "/api/wholesaler/{wid}/analytics",
+        "issue": "Tenant scoping in require_wholesaler_access (backend/routes/_wholesaler_shared.py:58) ALLOWS same-tenant manufacturer/distributor/warehouse to read another wholesaler's analytics (returns 200). The review request stated these should be 403. Cross-tenant access IS correctly blocked (other-tenant wholesaler → 403). If product intent is to block intra-tenant manufacturer/distributor reads of wholesaler analytics, tighten the dependency. Otherwise update the spec — code intent comment explicitly allows same-tenant reads."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Analytics tabs",
+        "issues": [
+          "Review request referenced testids 'tab-inventory' and 'tab-distributors', but the actual rendered testids are 'tab-inv' and 'tab-dist'. Functionality works once correct ids are used. Recommend either renaming the testids or updating the spec for consistency."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_wholesaler_phase3.py",
+    "/app/test_reports/pytest/iter18_phase3.xml"
+  ],
+  "action_items": [
+    "Clarify intended tenant-scoping policy for /api/wholesaler/{wid}/analytics — currently same-tenant manufacturer/distributor get 200, only cross-tenant returns 403. Spec implied 403 across the board.",
+    "Optional: rename frontend tab testids 'tab-inv' → 'tab-inventory' and 'tab-dist' → 'tab-distributors' to match the documented contract."
+  ],
+  "critical_code_review_comments": [
+    "wholesaler_analytics.py is 1938 lines — should be split into separate modules per concern (inventory_intelligence, forecast_intelligence, intelligence_briefing, control_tower) for maintainability.",
+    "Pre-existing eslint warning 'react-hooks/set-state-in-effect' on analytics-load useEffect is harmless but worth refactoring to useReducer or removing the state-in-effect pattern in a future cleanup."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_wholesaler_phase3.py"
+  ],
+  "success_rate": {
+    "backend": "100% (32/32)",
+    "frontend": "100% (all required testids found, 0 console errors)"
+  },
+  "test_credentials": "Used credentials from /app/memory/test_credentials.md (TradeKonekt2026!).",
+  "seed_data_creation": "None — used existing seed.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Phase 3B/3C/3D/3E all green. Backend /api/wholesaler/{wid}/analytics returns inventory.deep, demand_forecast.deep, intelligence, control_tower as expected. Frontend tabs are: tab-overview, tab-inv, tab-dist, tab-orders-analytics, tab-procurement, tab-forecast, tab-control-tower. Intelligence Center route is /wholesaler/intelligence and reuses the analytics endpoint (no separate API). Allocation KPIs route is /api/allocation/kpis (not /api/manufacturer/allocation/kpis as written in spec).",
+  "rca of the issue": "Tenant scoping: backend/routes/_wholesaler_shared.py:58 explicitly returns the user for role in (manufacturer, warehouse, distributor) when their tenant matches the wholesaler's tenant. This is by design per comment 'distributor in same tenant (read-only — they need to be able to POST a new order to a wholesaler)'. The review request stated these should be 403 — this is a spec vs. implementation mismatch, not a bug — main agent to confirm intent."
+}

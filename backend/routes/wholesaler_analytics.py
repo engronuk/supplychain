@@ -45,6 +45,291 @@ def _days_ago_iso(days: int) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Inventory Analytics Center helpers (Phase 3B) — pure math, no AI.
+# ---------------------------------------------------------------------------
+def _dos_band(days_of_supply: Optional[float]) -> str:
+    if days_of_supply is None:
+        return "unknown"
+    if days_of_supply < 7:
+        return "red"
+    if days_of_supply < 21:
+        return "yellow"
+    return "green"
+
+
+def _age_bucket(days: Optional[int]) -> str:
+    if days is None:
+        return "unknown"
+    if days <= 30:
+        return "0_30"
+    if days <= 60:
+        return "31_60"
+    if days <= 90:
+        return "61_90"
+    return "over_90"
+
+
+def _dead_bucket(days_since_movement: Optional[int]) -> Optional[str]:
+    if days_since_movement is None:
+        return None
+    if days_since_movement >= 90:
+        return "dead_90"
+    if days_since_movement >= 60:
+        return "dead_60"
+    if days_since_movement >= 30:
+        return "dead_30"
+    return None
+
+
+def _expiry_bucket(days_to_expiry: Optional[int]) -> Optional[str]:
+    if days_to_expiry is None:
+        return None
+    if days_to_expiry < 0:
+        return "expired"
+    if days_to_expiry <= 30:
+        return "exp_30"
+    if days_to_expiry <= 60:
+        return "exp_60"
+    if days_to_expiry <= 90:
+        return "exp_90"
+    return None
+
+
+def _compute_inventory_intelligence(inventory: List[dict], pmap: Dict[str, dict],
+                                     warehouse_lookup: Dict[str, str]) -> Dict[str, object]:
+    """Inventory Analytics Center math — turnover, days-of-supply with
+    red/yellow/green band, dead-stock 30/60/90 buckets, aging buckets, and
+    expiry-risk dashboard. Pure programmatic logic."""
+    if not inventory:
+        return {
+            "kpis": {
+                "inventory_value": 0.0, "total_units": 0,
+                "turnover_per_year": 0.0, "avg_days_of_supply": None,
+                "stock_coverage_pct": 0.0, "stockout_risk_count": 0,
+                "expiring_value_60d": 0.0,
+            },
+            "days_of_supply": {"green": 0, "yellow": 0, "red": 0,
+                                "items": []},
+            "aging": {"buckets": {"0_30": 0, "31_60": 0, "61_90": 0, "over_90": 0},
+                       "value_by_bucket": {"0_30": 0.0, "31_60": 0.0,
+                                            "61_90": 0.0, "over_90": 0.0}},
+            "dead_stock": {"buckets": {"dead_30": 0, "dead_60": 0, "dead_90": 0},
+                            "value_by_bucket": {"dead_30": 0.0, "dead_60": 0.0,
+                                                 "dead_90": 0.0},
+                            "items": []},
+            "expiry": {"buckets": {"expired": 0, "exp_30": 0, "exp_60": 0, "exp_90": 0},
+                        "value_by_bucket": {"expired": 0.0, "exp_30": 0.0,
+                                             "exp_60": 0.0, "exp_90": 0.0},
+                        "items": []},
+            "turnover_by_category": [], "turnover_by_warehouse": [],
+        }
+
+    now = datetime.now(timezone.utc)
+    items: List[dict] = []
+    total_value = 0.0
+    total_units = 0
+    stockout_risk = 0
+    coverage_ok = 0
+    coverage_total = 0
+    dos_band_counts = {"green": 0, "yellow": 0, "red": 0, "unknown": 0}
+    aging_counts = {"0_30": 0, "31_60": 0, "61_90": 0, "over_90": 0, "unknown": 0}
+    aging_values = {"0_30": 0.0, "31_60": 0.0, "61_90": 0.0, "over_90": 0.0}
+    dead_counts = {"dead_30": 0, "dead_60": 0, "dead_90": 0}
+    dead_values = {"dead_30": 0.0, "dead_60": 0.0, "dead_90": 0.0}
+    expiry_counts = {"expired": 0, "exp_30": 0, "exp_60": 0, "exp_90": 0}
+    expiry_values = {"expired": 0.0, "exp_30": 0.0, "exp_60": 0.0, "exp_90": 0.0}
+    expiring_value_60d = 0.0
+    category_acc: Dict[str, Dict[str, float]] = defaultdict(
+        lambda: {"value": 0.0, "outbound_units": 0.0, "on_hand": 0.0}
+    )
+    warehouse_acc: Dict[str, Dict[str, float]] = defaultdict(
+        lambda: {"value": 0.0, "outbound_units": 0.0, "on_hand": 0.0,
+                  "name": "Unassigned"}
+    )
+
+    dos_values: List[float] = []
+
+    for r in inventory:
+        pid = r.get("product_id")
+        prod = pmap.get(pid) or {}
+        unit_price = float(prod.get("unit_price") or 0)
+        on_hand = int(r.get("quantity") or 0)
+        reserved = int(r.get("reserved") or 0)
+        available = max(0, on_hand - reserved)
+        value = on_hand * unit_price
+        velocity = float(r.get("velocity") or 0)
+        reorder = int(r.get("reorder_level") or 0)
+
+        # Days of supply via velocity (units/day implied by seed).
+        days_of_supply: Optional[float] = None
+        if velocity > 0:
+            days_of_supply = round(available / velocity, 1)
+            dos_values.append(days_of_supply)
+        band = _dos_band(days_of_supply)
+        dos_band_counts[band] = dos_band_counts.get(band, 0) + 1
+
+        # Stockout & coverage signals.
+        if on_hand == 0 or (reorder > 0 and on_hand < reorder):
+            stockout_risk += 1
+        if reorder > 0:
+            coverage_total += 1
+            if on_hand >= reorder:
+                coverage_ok += 1
+
+        # Aging — how long the SKU has been on the books.
+        created = _to_dt(r.get("created_at"))
+        age_days: Optional[int] = (now - created).days if created else None
+        ab = _age_bucket(age_days)
+        aging_counts[ab] = aging_counts.get(ab, 0) + 1
+        if ab in aging_values:
+            aging_values[ab] += value
+
+        # Dead stock — days since last movement.
+        last_mvmt = _to_dt(r.get("last_movement_at")) or created
+        days_since_movement: Optional[int] = (
+            (now - last_mvmt).days if last_mvmt else None
+        )
+        db_bucket = _dead_bucket(days_since_movement)
+        if db_bucket and on_hand > 0:
+            dead_counts[db_bucket] += 1
+            dead_values[db_bucket] += value
+
+        # Expiry risk.
+        exp = _to_dt(r.get("expiry_date"))
+        days_to_expiry: Optional[int] = (
+            (exp - now).days if exp else None
+        )
+        eb = _expiry_bucket(days_to_expiry)
+        if eb and on_hand > 0:
+            expiry_counts[eb] += 1
+            expiry_values[eb] += value
+            if eb in ("expired", "exp_30", "exp_60"):
+                expiring_value_60d += value
+
+        outbound_units_30d = velocity * 30  # implied 30d outbound
+        cat = (prod.get("category") or "Uncategorised").strip() or "Uncategorised"
+        category_acc[cat]["value"] += value
+        category_acc[cat]["outbound_units"] += outbound_units_30d
+        category_acc[cat]["on_hand"] += on_hand
+
+        wh_id = r.get("warehouse_id") or "unassigned"
+        warehouse_acc[wh_id]["value"] += value
+        warehouse_acc[wh_id]["outbound_units"] += outbound_units_30d
+        warehouse_acc[wh_id]["on_hand"] += on_hand
+        warehouse_acc[wh_id]["name"] = warehouse_lookup.get(wh_id, "Unassigned")
+
+        items.append({
+            "product_id": pid,
+            "product_name": prod.get("name") or "?",
+            "sku": prod.get("sku") or "",
+            "category": cat,
+            "warehouse_name": warehouse_lookup.get(wh_id, "Unassigned"),
+            "on_hand": on_hand,
+            "reserved": reserved,
+            "available": available,
+            "reorder_level": reorder,
+            "value": round(value, 2),
+            "velocity": velocity,
+            "days_of_supply": days_of_supply,
+            "dos_band": band,
+            "age_days": age_days,
+            "age_bucket": ab,
+            "days_since_movement": days_since_movement,
+            "dead_bucket": db_bucket,
+            "days_to_expiry": days_to_expiry,
+            "expiry_bucket": eb,
+        })
+        total_value += value
+        total_units += on_hand
+
+    # Aggregate turnover per year. Use velocity-implied 365d outbound.
+    annual_outbound = sum(float(r.get("velocity") or 0) * 365 for r in inventory)
+    turnover_per_year = round(
+        annual_outbound / max(total_units, 1), 2,
+    ) if total_units else 0.0
+    avg_dos = round(sum(dos_values) / len(dos_values), 1) if dos_values else None
+    stock_coverage_pct = (
+        round(coverage_ok / coverage_total * 100, 1)
+        if coverage_total else 0.0
+    )
+
+    # Category / Warehouse rollup with turnover.
+    turnover_by_category = []
+    for cat, agg in sorted(category_acc.items(),
+                            key=lambda x: x[1]["value"], reverse=True):
+        annual = agg["outbound_units"] * (365 / 30)
+        oh = agg["on_hand"] or 1
+        turnover_by_category.append({
+            "category": cat,
+            "value": round(agg["value"], 2),
+            "on_hand": int(agg["on_hand"]),
+            "turnover_per_year": round(annual / oh, 2),
+        })
+    turnover_by_warehouse = []
+    for wh_id, agg in sorted(warehouse_acc.items(),
+                              key=lambda x: x[1]["value"], reverse=True):
+        annual = agg["outbound_units"] * (365 / 30)
+        oh = agg["on_hand"] or 1
+        turnover_by_warehouse.append({
+            "warehouse_id": wh_id,
+            "warehouse_name": agg["name"],
+            "value": round(agg["value"], 2),
+            "on_hand": int(agg["on_hand"]),
+            "turnover_per_year": round(annual / oh, 2),
+        })
+
+    # Slice items for tables.
+    dos_items = sorted(
+        [i for i in items if i["days_of_supply"] is not None],
+        key=lambda x: x["days_of_supply"],
+    )[:25]
+    dead_items = sorted(
+        [i for i in items if i["dead_bucket"] and i["on_hand"] > 0],
+        key=lambda x: x["value"], reverse=True,
+    )[:25]
+    expiry_items = sorted(
+        [i for i in items if i["expiry_bucket"] and i["on_hand"] > 0],
+        key=lambda x: (x["days_to_expiry"] is None, x["days_to_expiry"] or 0),
+    )[:25]
+
+    return {
+        "kpis": {
+            "inventory_value": round(total_value, 2),
+            "total_units": total_units,
+            "turnover_per_year": turnover_per_year,
+            "avg_days_of_supply": avg_dos,
+            "stock_coverage_pct": stock_coverage_pct,
+            "stockout_risk_count": stockout_risk,
+            "expiring_value_60d": round(expiring_value_60d, 2),
+            "dead_stock_value": round(sum(dead_values.values()), 2),
+        },
+        "days_of_supply": {
+            "green": dos_band_counts.get("green", 0),
+            "yellow": dos_band_counts.get("yellow", 0),
+            "red": dos_band_counts.get("red", 0),
+            "unknown": dos_band_counts.get("unknown", 0),
+            "items": dos_items,
+        },
+        "aging": {
+            "buckets": {k: aging_counts[k] for k in ("0_30", "31_60", "61_90", "over_90")},
+            "value_by_bucket": {k: round(v, 2) for k, v in aging_values.items()},
+        },
+        "dead_stock": {
+            "buckets": dead_counts,
+            "value_by_bucket": {k: round(v, 2) for k, v in dead_values.items()},
+            "items": dead_items,
+        },
+        "expiry": {
+            "buckets": expiry_counts,
+            "value_by_bucket": {k: round(v, 2) for k, v in expiry_values.items()},
+            "items": expiry_items,
+        },
+        "turnover_by_category": turnover_by_category[:10],
+        "turnover_by_warehouse": turnover_by_warehouse[:10],
+    }
+
+
+# ---------------------------------------------------------------------------
 # Distributor Analytics Center helpers (Phase 3A) — pure math, no AI.
 # ---------------------------------------------------------------------------
 def _status_bucket(growth_pct: float, revenue: float, recent_orders: int) -> str:
@@ -121,6 +406,665 @@ def _churn_score(growth_pct: float, freq_change_pct: float, days_since_last: int
     if not reasons:
         reasons.append("Healthy purchase pattern across the last 60 days")
     return {"score": score, "level": level, "reasons": reasons}
+
+
+# ---------------------------------------------------------------------------
+# Demand Forecast + Replenishment Intelligence helpers (Phase 3C) — pure math.
+# Lead time + safety factor are configurable constants tuned for the seed.
+# ---------------------------------------------------------------------------
+DEFAULT_LEAD_TIME_DAYS = 7
+SAFETY_FACTOR = 1.5
+
+def _safety_status(on_hand: int, target: float) -> str:
+    if target <= 0:
+        return "unknown"
+    ratio = on_hand / target
+    if ratio < 0.5:
+        return "breach"
+    if ratio < 1.0:
+        return "warn"
+    return "ok"
+
+
+def _replenishment_priority(days_of_cover: Optional[float]) -> Optional[str]:
+    if days_of_cover is None:
+        return None
+    if days_of_cover < 7:
+        return "urgent"
+    if days_of_cover < 14:
+        return "soon"
+    if days_of_cover < 21:
+        return "plan"
+    return None
+
+
+def _compose_control_tower(
+    distributors_deep: Dict[str, object],
+    inventory_deep: Dict[str, object],
+    forecast_deep: Dict[str, object],
+    shipments: List[dict],
+) -> Dict[str, object]:
+    """Phase 3E — Control Tower View. Composite Network Health Score
+    (0–100) plus heat-map matrices for revenue, inventory and demand.
+    Pure rule-based math from the existing analytics blocks."""
+    dist_k = (distributors_deep or {}).get("kpis") or {}
+    inv_k = (inventory_deep or {}).get("kpis") or {}
+    regional = (forecast_deep or {}).get("regional") or []
+    by_category = (inventory_deep or {}).get("turnover_by_category") or []
+    ranking = (distributors_deep or {}).get("ranking") or []
+
+    inventory_health = float(inv_k.get("stock_coverage_pct") or 0)
+    hg = int(dist_k.get("high_growth") or 0)
+    st = int(dist_k.get("stable") or 0)
+    ar = int(dist_k.get("at_risk") or 0)
+    denom = max(1, hg + st + ar)
+    distributor_health = round(
+        max(0.0, min(100.0,
+            ((hg * 1.0 + st * 0.7 + ar * -0.2) / denom) * 100,
+        )), 1,
+    )
+    fulfillment_perf = float(dist_k.get("service_level_pct") or 0)
+    if shipments:
+        valid = [s for s in shipments if s.get("status") != "cancelled"]
+        delivered = sum(1 for s in valid if s.get("status") == "delivered")
+        shipment_reliability = round(
+            (delivered / max(1, len(valid))) * 100, 1,
+        )
+    else:
+        shipment_reliability = 0.0
+
+    composite = round(
+        (inventory_health + distributor_health
+         + fulfillment_perf + shipment_reliability) / 4.0, 1,
+    )
+    if composite >= 80:
+        score_band = "excellent"
+    elif composite >= 60:
+        score_band = "good"
+    elif composite >= 40:
+        score_band = "watch"
+    else:
+        score_band = "critical"
+
+    region_max = max((r.get("revenue_30d") or 0) for r in regional) if regional else 0
+    revenue_heat = [
+        {
+            "label": r["region"],
+            "value": float(r.get("revenue_30d") or 0),
+            "intensity": round((r.get("revenue_30d") or 0) / region_max, 2) if region_max else 0,
+            "growth_pct": r.get("growth_pct") or 0,
+            "risk_level": r.get("risk_level") or "low",
+        }
+        for r in regional
+    ]
+    cat_max = max((c.get("value") or 0) for c in by_category) if by_category else 0
+    inventory_heat = [
+        {
+            "label": c["category"],
+            "value": float(c.get("value") or 0),
+            "intensity": round((c.get("value") or 0) / cat_max, 2) if cat_max else 0,
+            "turnover_per_year": c.get("turnover_per_year") or 0,
+            "on_hand": c.get("on_hand") or 0,
+        }
+        for c in by_category
+    ]
+    dist_max = max((r.get("revenue") or 0) for r in ranking) if ranking else 0
+    distributor_heat = [
+        {
+            "label": r["name"],
+            "value": float(r.get("revenue") or 0),
+            "intensity": round((r.get("revenue") or 0) / dist_max, 2) if dist_max else 0,
+            "growth_pct": r.get("growth_pct") or 0,
+            "status": r.get("status") or "stable",
+            "region": r.get("region") or "—",
+        }
+        for r in ranking[:12]
+    ]
+
+    nodes = []
+    for w in ((inventory_deep or {}).get("turnover_by_warehouse") or [])[:6]:
+        nodes.append({
+            "type": "warehouse",
+            "id": w.get("warehouse_id") or "unassigned",
+            "name": w.get("warehouse_name") or "Warehouse",
+            "value": w.get("value") or 0,
+            "label": f"₦{(w.get('value') or 0):,.0f}",
+        })
+    for r in ranking[:8]:
+        nodes.append({
+            "type": "distributor",
+            "id": r.get("id"),
+            "name": r.get("name"),
+            "value": r.get("revenue") or 0,
+            "region": r.get("region") or "—",
+            "status": r.get("status") or "stable",
+            "growth_pct": r.get("growth_pct") or 0,
+            "label": f"₦{(r.get('revenue') or 0):,.0f}",
+        })
+
+    return {
+        "health_score": {
+            "composite": composite,
+            "band": score_band,
+            "components": {
+                "inventory_health": round(inventory_health, 1),
+                "distributor_health": distributor_health,
+                "fulfillment_performance": round(fulfillment_perf, 1),
+                "shipment_reliability": round(shipment_reliability, 1),
+            },
+        },
+        "heat_maps": {
+            "revenue_by_region": revenue_heat,
+            "inventory_by_category": inventory_heat,
+            "distributor_activity": distributor_heat,
+        },
+        "network": {
+            "nodes": nodes,
+            "summary": {
+                "warehouses": sum(1 for n in nodes if n["type"] == "warehouse"),
+                "distributors": sum(1 for n in nodes if n["type"] == "distributor"),
+                "active_shipments": sum(
+                    1 for s in (shipments or [])
+                    if s.get("status") in ("in_transit", "loaded", "out_for_delivery")
+                ),
+            },
+        },
+    }
+
+
+
+def _compose_intelligence_briefing(
+    distributors_deep: Dict[str, object],
+    inventory_deep: Dict[str, object],
+    forecast_deep: Dict[str, object],
+) -> Dict[str, object]:
+    """Phase 3D — synthesise the Intelligence Center surface from the three
+    deep blocks. Rule-based templating only. No AI involvement."""
+    dist_k = (distributors_deep or {}).get("kpis") or {}
+    inv_k = (inventory_deep or {}).get("kpis") or {}
+    fcst_k = (forecast_deep or {}).get("kpis") or {}
+    churn_rows = (distributors_deep or {}).get("churn") or []
+    bcg_items = ((distributors_deep or {}).get("bcg") or {}).get("items") or []
+    regional = (forecast_deep or {}).get("regional") or []
+    replen = (forecast_deep or {}).get("replenishment") or []
+    safety = (forecast_deep or {}).get("safety") or []
+    dead_items = ((inventory_deep or {}).get("dead_stock") or {}).get("items") or []
+    expiry_items = ((inventory_deep or {}).get("expiry") or {}).get("items") or []
+
+    # Stars + Question Marks + Cash Cows
+    stars = [b for b in bcg_items if b.get("quadrant") == "star"]
+    qmarks = [b for b in bcg_items if b.get("quadrant") == "question_mark"]
+    cash_cows = [b for b in bcg_items if b.get("quadrant") == "cash_cow"]
+
+    headlines: List[str] = []
+
+    if dist_k.get("active_distributors"):
+        headlines.append(
+            f"{dist_k['active_distributors']} active distributors generated "
+            f"₦{(dist_k.get('total_revenue') or 0):,.0f} in revenue over the last 90 days."
+        )
+    growth_n = dist_k.get("high_growth") or 0
+    risk_n = dist_k.get("at_risk") or 0
+    if growth_n or risk_n:
+        headlines.append(
+            f"{growth_n} distributor(s) in the high-growth band · "
+            f"{risk_n} flagged at-risk."
+        )
+    if fcst_k.get("total_projected_revenue_30d"):
+        headlines.append(
+            f"Projected next-30-day revenue: ₦"
+            f"{fcst_k['total_projected_revenue_30d']:,.0f} across "
+            f"{fcst_k.get('products_in_forecast', 0)} SKUs."
+        )
+    urgent = fcst_k.get("urgent_replenishments") or 0
+    if urgent:
+        headlines.append(
+            f"{urgent} SKU(s) projected to stock out within 7 days at current velocity."
+        )
+    if regional:
+        top_reg = max(regional, key=lambda r: r.get("growth_pct") or 0)
+        if (top_reg.get("growth_pct") or 0) > 0:
+            headlines.append(
+                f"Strongest regional growth: {top_reg['region']} "
+                f"(+{top_reg['growth_pct']}% revenue vs prior 30d)."
+            )
+
+    # ---- Opportunities ----------------------------------------------------
+    opportunities: List[dict] = []
+    if stars:
+        opportunities.append({
+            "id": "stars",
+            "title": f"{len(stars)} Star distributor(s) ready to scale",
+            "body": ", ".join(s["name"] for s in stars[:3])
+                     + (" +more" if len(stars) > 3 else ""),
+            "icon": "rocket",
+        })
+    if qmarks:
+        opportunities.append({
+            "id": "question_marks",
+            "title": f"{len(qmarks)} Question Mark distributor(s) — invest to convert to Stars",
+            "body": ", ".join(q["name"] for q in qmarks[:3])
+                     + (" +more" if len(qmarks) > 3 else ""),
+            "icon": "target",
+        })
+    if cash_cows:
+        opportunities.append({
+            "id": "cash_cows",
+            "title": f"{len(cash_cows)} Cash Cow distributor(s) — protect this revenue base",
+            "body": ", ".join(c["name"] for c in cash_cows[:3])
+                     + (" +more" if len(cash_cows) > 3 else ""),
+            "icon": "wallet",
+        })
+    # Regional opportunity
+    growing_regions = [r for r in regional if (r.get("growth_pct") or 0) > 10]
+    if growing_regions:
+        names = ", ".join(r["region"] for r in growing_regions[:3])
+        opportunities.append({
+            "id": "growth_regions",
+            "title": f"{len(growing_regions)} region(s) growing >10%",
+            "body": f"Push stock and promotions in: {names}.",
+            "icon": "trending_up",
+        })
+
+    # ---- Risks ------------------------------------------------------------
+    risks: List[dict] = []
+    high_churn = [c for c in churn_rows if c.get("level") == "high"]
+    if high_churn:
+        risks.append({
+            "id": "churn_high",
+            "title": f"{len(high_churn)} distributor(s) at HIGH churn risk",
+            "body": ", ".join(c["name"] for c in high_churn[:3]),
+            "severity": "high",
+        })
+    medium_churn = [c for c in churn_rows if c.get("level") == "medium"]
+    if medium_churn:
+        risks.append({
+            "id": "churn_medium",
+            "title": f"{len(medium_churn)} distributor(s) at medium churn risk",
+            "body": ", ".join(c["name"] for c in medium_churn[:3]),
+            "severity": "medium",
+        })
+    if inv_k.get("stockout_risk_count"):
+        risks.append({
+            "id": "stockout",
+            "title": f"{inv_k['stockout_risk_count']} SKU(s) below reorder level",
+            "body": f"Coverage rate is {inv_k.get('stock_coverage_pct', 0)}%.",
+            "severity": "high",
+        })
+    if inv_k.get("dead_stock_value"):
+        risks.append({
+            "id": "dead_stock",
+            "title": f"₦{inv_k['dead_stock_value']:,.0f} tied in dead/slow inventory",
+            "body": (
+                f"Top idle SKU: {dead_items[0]['product_name']} "
+                f"({dead_items[0].get('days_since_movement', 0)} idle days, "
+                f"₦{dead_items[0]['value']:,.0f})"
+            ) if dead_items else "Idle SKUs with 30+ days no movement.",
+            "severity": "medium",
+        })
+    if inv_k.get("expiring_value_60d"):
+        risks.append({
+            "id": "expiry",
+            "title": f"₦{inv_k['expiring_value_60d']:,.0f} expiring within 60 days",
+            "body": (
+                f"Top: {expiry_items[0]['product_name']} expires in "
+                f"{expiry_items[0].get('days_to_expiry', 0)}d"
+            ) if expiry_items else "Move expiring SKUs to fast-rotation channels.",
+            "severity": "high",
+        })
+    breached = [s for s in safety if s.get("status") == "breach"]
+    if breached:
+        risks.append({
+            "id": "safety_breach",
+            "title": f"{len(breached)} SKU(s) below safety stock target",
+            "body": ", ".join(b["product_name"] for b in breached[:3]),
+            "severity": "medium",
+        })
+
+    # ---- Recommended Actions ---------------------------------------------
+    actions: List[dict] = []
+    if urgent and replen:
+        top_urgent = next((r for r in replen if r.get("priority") == "urgent"), None)
+        if top_urgent:
+            actions.append({
+                "id": "urgent_replen",
+                "title": f"Place urgent replenishment for {top_urgent['product_name']}",
+                "body": top_urgent.get("message") or "",
+                "priority": "high",
+                "subject_id": top_urgent["product_id"],
+            })
+    if high_churn:
+        top = high_churn[0]
+        actions.append({
+            "id": "rescue_distributor",
+            "title": f"Reach out to {top['name']} (HIGH churn risk · score {top['score']})",
+            "body": "; ".join(top.get("reasons") or []),
+            "priority": "high",
+            "subject_id": top["id"],
+        })
+    if dead_items:
+        top = dead_items[0]
+        actions.append({
+            "id": "clear_dead_stock",
+            "title": f"Promote or transfer {top['product_name']} (₦{top['value']:,.0f} idle)",
+            "body": f"Idle for {top.get('days_since_movement', 0)} days — consider regional transfer or discount.",
+            "priority": "medium",
+            "subject_id": top["product_id"],
+        })
+    if growing_regions:
+        top = growing_regions[0]
+        actions.append({
+            "id": "boost_region",
+            "title": f"Boost {top['region']} inventory allocation",
+            "body": f"Region growing at {top['growth_pct']}% — increase regional stock before next 30d.",
+            "priority": "medium",
+            "subject_id": top.get("region"),
+        })
+    if breached and not urgent:
+        actions.append({
+            "id": "safety_top_up",
+            "title": f"Top up safety stock on {breached[0]['product_name']}",
+            "body": (
+                f"Currently {breached[0]['on_hand']} units · target "
+                f"{breached[0]['target_safety_stock']}."
+            ),
+            "priority": "medium",
+            "subject_id": breached[0]["product_id"],
+        })
+
+    return {
+        "as_of": now_iso(),
+        "headlines": headlines[:5],
+        "opportunities": opportunities[:6],
+        "risks": risks[:6],
+        "actions": actions[:6],
+        "snapshot": {
+            "active_distributors": dist_k.get("active_distributors", 0),
+            "total_revenue_90d": dist_k.get("total_revenue", 0),
+            "inventory_value": inv_k.get("inventory_value", 0),
+            "projected_revenue_30d": fcst_k.get("total_projected_revenue_30d", 0),
+            "urgent_replenishments": urgent,
+            "high_churn": len(high_churn),
+            "safety_breaches": len(breached),
+            "dead_stock_value": inv_k.get("dead_stock_value", 0),
+        },
+    }
+
+
+def _compute_forecast_intelligence(
+    inventory: List[dict],
+    pmap: Dict[str, dict],
+    orders: List[dict],
+    distributors: List[dict],
+) -> Dict[str, object]:
+    """Demand Forecast Center + Replenishment Intelligence math.
+
+    Inputs: full 90d distributor-order history, current wholesaler
+    inventory, product catalogue, distributor list.
+
+    Outputs: 7/30/90-day product forecasts, regional rollup, distributor
+    forecast, replenishment recommendation engine, safety-stock monitor.
+    All rule-based — derived from trailing-window velocity ratios.
+    """
+    now = datetime.now(timezone.utc)
+    last30_start = now - timedelta(days=30)
+    prev30_start = now - timedelta(days=60)
+
+    # ---- Per-product velocity (last 30d vs prior 30d) ---------------------
+    last30_units: Dict[str, int] = defaultdict(int)
+    prev30_units: Dict[str, int] = defaultdict(int)
+    for o in orders:
+        ts = _to_dt(o.get("created_at"))
+        if not ts:
+            continue
+        bucket = "last" if ts >= last30_start else ("prev" if ts >= prev30_start else None)
+        if not bucket:
+            continue
+        for it in (o.get("items") or []):
+            qty = int(it.get("quantity") or 0)
+            if qty <= 0:
+                continue
+            pid = it.get("product_id")
+            if not pid:
+                continue
+            if bucket == "last":
+                last30_units[pid] += qty
+            else:
+                prev30_units[pid] += qty
+
+    inv_by_pid: Dict[str, dict] = {r.get("product_id"): r for r in inventory if r.get("product_id")}
+    pids = set(last30_units) | set(prev30_units) | set(inv_by_pid)
+
+    product_forecasts: List[dict] = []
+    safety_rows: List[dict] = []
+    replenishment_rows: List[dict] = []
+
+    for pid in pids:
+        prod = pmap.get(pid) or {}
+        vel_last = last30_units.get(pid, 0) / 30.0
+        vel_prev = prev30_units.get(pid, 0) / 30.0
+        growth_pct = (
+            ((vel_last - vel_prev) / vel_prev * 100) if vel_prev > 0
+            else (100.0 if vel_last > 0 else 0.0)
+        )
+        on_hand = int(inv_by_pid.get(pid, {}).get("quantity") or 0)
+        days_of_cover = (round(on_hand / vel_last, 1) if vel_last > 0 else None)
+
+        proj7 = round(vel_last * 7, 0)
+        proj30 = round(vel_last * 30, 0)
+        proj90 = round(vel_last * 90, 0)
+
+        unit_price = float(prod.get("unit_price") or 0)
+        category = (prod.get("category") or "Uncategorised").strip() or "Uncategorised"
+
+        target_safety = round(DEFAULT_LEAD_TIME_DAYS * vel_last * SAFETY_FACTOR, 0)
+        safety_status = _safety_status(on_hand, target_safety)
+
+        priority = _replenishment_priority(days_of_cover)
+        suggested_qty = max(0, int(round(proj30 + target_safety - on_hand)))
+        if vel_last > 0 and on_hand > target_safety:
+            days_until_reorder = (on_hand - target_safety) / vel_last
+            order_by = (now + timedelta(days=max(0.0, days_until_reorder - DEFAULT_LEAD_TIME_DAYS))).date().isoformat()
+        elif vel_last > 0:
+            order_by = now.date().isoformat()
+        else:
+            order_by = None
+
+        product_forecasts.append({
+            "product_id": pid,
+            "product_name": prod.get("name") or pid,
+            "sku": prod.get("sku") or "",
+            "category": category,
+            "current_weekly_demand": round(vel_last * 7, 0),
+            "previous_weekly_demand": round(vel_prev * 7, 0),
+            "growth_pct": round(growth_pct, 1),
+            "projected_7d": proj7,
+            "projected_30d": proj30,
+            "projected_90d": proj90,
+            "on_hand": on_hand,
+            "days_of_cover": days_of_cover,
+            "unit_price": unit_price,
+            "projected_revenue_30d": round(proj30 * unit_price, 2),
+        })
+
+        if vel_last > 0 or on_hand > 0:
+            safety_rows.append({
+                "product_id": pid,
+                "product_name": prod.get("name") or pid,
+                "category": category,
+                "on_hand": on_hand,
+                "current_safety_stock": on_hand,
+                "target_safety_stock": int(target_safety),
+                "lead_time_days": DEFAULT_LEAD_TIME_DAYS,
+                "daily_velocity": round(vel_last, 2),
+                "status": safety_status,
+            })
+
+        if priority:
+            replenishment_rows.append({
+                "product_id": pid,
+                "product_name": prod.get("name") or pid,
+                "category": category,
+                "supplier_name": prod.get("manufacturer_name") or "Manufacturer",
+                "manufacturer_id": prod.get("manufacturer_id"),
+                "priority": priority,
+                "on_hand": on_hand,
+                "days_of_cover": days_of_cover,
+                "suggested_quantity": suggested_qty,
+                "order_by": order_by,
+                "message": (
+                    f"Only {days_of_cover}d of cover — order {suggested_qty} units"
+                    if priority == "urgent"
+                    else f"{days_of_cover}d of cover — plan {suggested_qty}-unit replenishment by {order_by}"
+                    if order_by
+                    else f"{days_of_cover}d of cover — plan replenishment"
+                ),
+            })
+
+    product_forecasts.sort(key=lambda r: r["projected_30d"], reverse=True)
+    safety_rows.sort(
+        key=lambda r: (
+            {"breach": 0, "warn": 1, "ok": 2, "unknown": 3}.get(r["status"], 4),
+            -float(r["daily_velocity"] or 0),
+        )
+    )
+    replenishment_rows.sort(
+        key=lambda r: (
+            {"urgent": 0, "soon": 1, "plan": 2}.get(r["priority"], 3),
+            r["days_of_cover"] if r["days_of_cover"] is not None else 999,
+        )
+    )
+
+    # ---- Regional forecast ------------------------------------------------
+    dist_region: Dict[str, str] = {}
+    for d in distributors:
+        dist_region[d.get("id")] = (d.get("region") or "Unknown").strip() or "Unknown"
+
+    region_orders30: Dict[str, Dict[str, float]] = defaultdict(
+        lambda: {"orders": 0, "units": 0, "revenue": 0.0,
+                  "orders_prev": 0, "units_prev": 0, "revenue_prev": 0.0}
+    )
+    for o in orders:
+        ts = _to_dt(o.get("created_at"))
+        if not ts:
+            continue
+        reg = dist_region.get(o.get("distributor_id"), "Unknown")
+        units = sum(int(it.get("quantity") or 0) for it in (o.get("items") or []))
+        rev = float(o.get("total_amount") or 0)
+        if ts >= last30_start:
+            region_orders30[reg]["orders"] += 1
+            region_orders30[reg]["units"] += units
+            region_orders30[reg]["revenue"] += rev
+        elif ts >= prev30_start:
+            region_orders30[reg]["orders_prev"] += 1
+            region_orders30[reg]["units_prev"] += units
+            region_orders30[reg]["revenue_prev"] += rev
+
+    regional_forecast: List[dict] = []
+    for reg, m in region_orders30.items():
+        growth_pct = (
+            ((m["revenue"] - m["revenue_prev"]) / m["revenue_prev"] * 100)
+            if m["revenue_prev"] > 0 else (100.0 if m["revenue"] > 0 else 0.0)
+        )
+        risk = "low"
+        if growth_pct < -15:
+            risk = "high"
+        elif growth_pct < -5:
+            risk = "medium"
+        regional_forecast.append({
+            "region": reg,
+            "orders_30d": int(m["orders"]),
+            "units_30d": int(m["units"]),
+            "revenue_30d": round(m["revenue"], 2),
+            "projected_revenue_30d": round(m["revenue"], 2),
+            "projected_revenue_90d": round(m["revenue"] * 3, 2),
+            "growth_pct": round(growth_pct, 1),
+            "risk_level": risk,
+        })
+    regional_forecast.sort(key=lambda r: r["revenue_30d"], reverse=True)
+
+    # ---- Distributor forecast --------------------------------------------
+    by_dist: Dict[str, List[dict]] = defaultdict(list)
+    for o in orders:
+        did = o.get("distributor_id")
+        if did:
+            by_dist[did].append(o)
+
+    distributor_forecast: List[dict] = []
+    name_map = {d.get("id"): d.get("name") for d in distributors}
+    for d in distributors:
+        did = d.get("id")
+        d_orders = by_dist.get(did, [])
+        last30 = [o for o in d_orders if (_to_dt(o.get("created_at")) or now) >= last30_start]
+        prev30 = [o for o in d_orders
+                   if prev30_start <= (_to_dt(o.get("created_at")) or now) < last30_start]
+        rev_last = sum(float(o.get("total_amount") or 0) for o in last30)
+        rev_prev = sum(float(o.get("total_amount") or 0) for o in prev30)
+        growth_pct = (
+            ((rev_last - rev_prev) / rev_prev * 100) if rev_prev > 0
+            else (100.0 if rev_last > 0 else 0.0)
+        )
+        expected_orders = len(last30)
+        expected_revenue = rev_last
+        timestamps = sorted(_to_dt(o.get("created_at")) for o in d_orders
+                             if _to_dt(o.get("created_at")))
+        gaps = [
+            (timestamps[i + 1] - timestamps[i]).days
+            for i in range(len(timestamps) - 1)
+        ]
+        avg_gap = round(sum(gaps) / len(gaps), 1) if gaps else None
+        last_ts = timestamps[-1] if timestamps else None
+        next_replenishment = (
+            (last_ts + timedelta(days=avg_gap)).date().isoformat()
+            if last_ts and avg_gap else None
+        )
+
+        if expected_orders == 0 and rev_prev == 0:
+            continue
+
+        distributor_forecast.append({
+            "distributor_id": did,
+            "name": name_map.get(did) or "?",
+            "region": (d.get("region") or "Unknown"),
+            "orders_last_30d": len(last30),
+            "revenue_last_30d": round(rev_last, 2),
+            "expected_orders_next_30d": expected_orders,
+            "expected_revenue_next_30d": round(expected_revenue, 2),
+            "growth_pct": round(growth_pct, 1),
+            "avg_order_gap_days": avg_gap,
+            "next_replenishment_est": next_replenishment,
+        })
+    distributor_forecast.sort(key=lambda r: r["expected_revenue_next_30d"],
+                              reverse=True)
+
+    breaches = sum(1 for r in safety_rows if r["status"] == "breach")
+    warns = sum(1 for r in safety_rows if r["status"] == "warn")
+    healthy = sum(1 for r in safety_rows if r["status"] == "ok")
+    urgent_recs = sum(1 for r in replenishment_rows if r["priority"] == "urgent")
+    total_proj_30d = sum(r["projected_30d"] for r in product_forecasts)
+    total_proj_revenue_30d = sum(r["projected_revenue_30d"] for r in product_forecasts)
+
+    return {
+        "kpis": {
+            "total_projected_demand_7d": int(sum(r["projected_7d"] for r in product_forecasts)),
+            "total_projected_demand_30d": int(total_proj_30d),
+            "total_projected_demand_90d": int(sum(r["projected_90d"] for r in product_forecasts)),
+            "total_projected_revenue_30d": round(total_proj_revenue_30d, 2),
+            "products_in_forecast": len(product_forecasts),
+            "safety_stock_breaches": breaches,
+            "safety_stock_warnings": warns,
+            "safety_stock_ok": healthy,
+            "urgent_replenishments": urgent_recs,
+            "total_replenishments": len(replenishment_rows),
+        },
+        "products": product_forecasts[:20],
+        "regional": regional_forecast,
+        "distributors": distributor_forecast[:12],
+        "replenishment": replenishment_rows[:15],
+        "safety": safety_rows[:20],
+    }
+
+
 
 
 def _compute_distributor_intelligence(distributor_perf: List[dict],
@@ -594,6 +1538,17 @@ async def wholesaler_analytics(wholesaler_id: str,
     dead_stock = [r for r in inv_by_value
                   if r["on_hand"] > 0 and r["velocity"] == 0][:6]
 
+    # ---- Phase 3B — Inventory Analytics Center deep block ------------------
+    warehouse_lookup: Dict[str, str] = {}
+    wh_ids = {r.get("warehouse_id") for r in inventory if r.get("warehouse_id")}
+    if wh_ids:
+        whs = await db.warehouses.find(
+            {"id": {"$in": list(wh_ids)}}, {"_id": 0, "id": 1, "name": 1},
+        ).to_list(200)
+        warehouse_lookup = {w["id"]: w.get("name") or "Warehouse" for w in whs}
+    inventory_deep = _compute_inventory_intelligence(inventory, pmap, warehouse_lookup)
+
+
     # ---- Orders -----------------------------------------------------------
     orders = await db.wholesaler_orders.find(
         {"wholesaler_id": wholesaler_id}, {"_id": 0},
@@ -689,6 +1644,26 @@ async def wholesaler_analytics(wholesaler_id: str,
     # and 6-month monthly purchase trend per top distributor. Pure math.
     distributors_deep = _compute_distributor_intelligence(
         distributor_perf, orders, ninety_ago,
+    )
+
+    # ---- Phase 3C — Demand Forecast + Replenishment Intelligence ---------
+    # Pure math against trailing 90d orders + current inventory.
+    forecast_deep = _compute_forecast_intelligence(
+        inventory, pmap, orders_90d, distributor_perf,
+    )
+
+    # ---- Phase 3D — Intelligence Center briefing (rule-based) -------------
+    intelligence_deep = _compose_intelligence_briefing(
+        distributors_deep, inventory_deep, forecast_deep,
+    )
+
+    # ---- Phase 3E — Control Tower View (rule-based composite scoring) ----
+    shipments_90d = await db.wholesaler_shipments.find(
+        {"wholesaler_id": wholesaler_id, "created_at": {"$gte": ninety_ago}},
+        {"_id": 0, "status": 1, "created_at": 1, "id": 1},
+    ).to_list(2000)
+    control_tower = _compose_control_tower(
+        distributors_deep, inventory_deep, forecast_deep, shipments_90d,
     )
 
     # ---- Procurement ------------------------------------------------------
@@ -796,6 +1771,7 @@ async def wholesaler_analytics(wholesaler_id: str,
             "fast_movers": fast_movers,
             "slow_movers": slow_movers,
             "dead_stock": dead_stock,
+            "deep": inventory_deep,
         },
         "orders": {
             "total_90d": len(orders_90d),
@@ -823,7 +1799,10 @@ async def wholesaler_analytics(wholesaler_id: str,
             "horizon_days": 14,
             "rows": forecast,
             "replenishment_recommendations": recs,
+            "deep": forecast_deep,
         },
+        "intelligence": intelligence_deep,
+        "control_tower": control_tower,
     }
 
 
