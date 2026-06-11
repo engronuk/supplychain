@@ -1043,3 +1043,47 @@ Standalone mission-control page at **`/manufacturer/logistics-center`** ("Logist
 **Testing**
 - `/app/backend/tests/test_wholesaler.py` — 17/17 PASS (auth, overview, inventory CRUD, full PO state machine + inventory credit, distributor directory, multi-tenant isolation).
 - Frontend e2e (testing agent iteration_14) — all flows green.
+
+## 2026-06-11 — Wholesaler Workspace · Phase 2
+
+**Distributor Orders, Fulfillment & Shipments** — turns the wholesaler from an inventory holder into a full distribution hub. Pure rule-based logic, no AI (per user instruction).
+
+**Backend** — new `routes/wholesaler_orders.py` (~1260 lines, registered in `server.py`) + shared auth helpers in `routes/_wholesaler_shared.py`.
+
+*Orders* (`/api/wholesaler/{wid}/orders`)
+- `GET /dashboard` — KPIs (new, pending_approval, approved, in_fulfillment, shipped, delivered, backordered) + funnel counts.
+- `GET /` — list with filters (status, distributor_id, region, date_from, date_to).
+- `GET /{oid}` — detail with **rule-based** availability check (per line: requested vs. available/reserved/on_hand) + recommendation (verdict ∈ approve_full | partial | reject_or_backorder | no_items) + risk flags (safety_stock / expiry / demand). Includes any linked fulfillment + shipment.
+- `POST /` — distributor user submits a new order; products are tenant-validated; can't submit on behalf of another distributor.
+- `POST /{oid}/approve` — reserves inventory + creates `wholesaler_fulfillment_orders` in `allocated` + transitions order to `allocated`.
+- `POST /{oid}/reject {reason}` · `POST /{oid}/modify {items, backorder_remainder, note}` (partial fulfilment) · `POST /{oid}/cancel` (releases reservations).
+
+*Fulfillment* (`/api/wholesaler/{wid}/fulfillments`)
+- `GET /` + `GET /{fid}` (with status_history).
+- Workflow: `start-picking` → `complete-picking {items: [{product_id, picked_quantity}]}` → `start-packing` → `complete-packing` → `ready-dispatch` → `dispatch`.
+- `report-shortage {note, items?}` flags the fulfillment without transitioning status.
+- **`dispatch`** creates a `wholesaler_shipments` row (status `loaded`), decrements `inventory.quantity` and `inventory.reserved`, increments `inventory.in_transit`, writes a movement record, and marks the parent order `shipped`.
+
+*Shipments* (`/api/wholesaler/{wid}/shipments`)
+- `GET /dashboard` — KPIs (active, delivered_today, delayed, pending_dispatch, avg_delivery_hours).
+- `GET /` + `GET /{sid}` (with timeline).
+- Transitions: `load` · `start-transit` · `deliver` (settles in_transit, marks order + fulfillment `delivered`).
+- `delay {reason, eta_minutes?}` and `cancel` (cancel from loaded/in_transit returns goods to on-hand).
+
+**Frontend** — 3 new views (Layout & App.js wired):
+- `WholesalerOrders.jsx` — 7-card KPI strip + funnel + queue table + detail modal with availability table, recommendation tone card, risk cards, approve/reject/modify/partial/backorder actions, full timeline.
+- `WholesalerFulfillment.jsx` — queue with progress strips + per-stage modal (Picking with per-line picked_quantity + Report Shortage; Packing list view; Dispatch confirmation).
+- `WholesalerShipments.jsx` — KPI strip + ledger + detail modal with progress strip + timeline + transitions (Load / Start Transit / Deliver / Flag Delay / Cancel).
+
+**Seed** — `services/seed_wholesaler_orders.py` (idempotent, `wholesaler_orders_seed_v1`): 7 orders per wholesaler spread across the funnel (submitted, allocated, picking, packed, shipped, delivered, backordered) + linked fulfillments + 2 shipments per wh.
+
+**Testing**
+- `/app/backend/tests/test_wholesaler_phase2.py` — **30/30 PASS** across `TestOrdersDashboard`, `TestOrderLifecycle`, `TestFulfillment`, `TestShipments`, `TestIsolation`, `TestPhase1Regression` (testing agent iteration_15.json).
+- Frontend e2e all green: `/wholesaler/orders` · `/wholesaler/fulfillment` · `/wholesaler/shipments`.
+
+**Bug fixed during testing**
+- POST `/api/wholesaler/{wid}/shipments/{sid}/delay` and `/cancel` were shadowed by the catch-all `/{action}` route. Fix: `router.add_api_route(...)` for the catch-all registered at EOF, after the explicit `/delay` and `/cancel` declarations.
+
+**Known polish items (cosmetic, not blocking)**
+- Phase 2 modal loading-state dialogs now ship with `<DialogTitle className="sr-only">` to clear Radix accessibility warnings.
+- Shipments KPI strip gained `data-testid="shipments-kpi-strip"`; shipment detail modal renamed to `data-testid="shipment-detail-modal"`.

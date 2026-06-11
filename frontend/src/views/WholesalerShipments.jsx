@@ -72,7 +72,7 @@ export default function WholesalerShipments() {
         }
       />
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3" data-testid="shipments-kpi-strip">
         <KpiCard testid="ship-active" icon={Truck} label="Active Shipments" value={fmtNumber(k.active_shipments)} />
         <KpiCard testid="ship-delivered-today" icon={Activity} label="Delivered Today" value={fmtNumber(k.delivered_today)} tone="positive" />
         <KpiCard testid="ship-delayed" icon={AlertTriangle} label="Delayed" value={fmtNumber(k.delayed_shipments)} tone={k.delayed_shipments > 0 ? "alert" : "default"} />
@@ -169,7 +169,12 @@ function ShipmentModal({ sid, wid, onClose, onChange }) {
   if (!ship) {
     return (
       <Dialog open onOpenChange={(o) => !o && onClose()}>
-        <DialogContent><div className="p-4 text-sm text-slate-500">Loading…</div></DialogContent>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="sr-only">Loading shipment</DialogTitle>
+          </DialogHeader>
+          <div className="p-4 text-sm text-slate-500">Loading…</div>
+        </DialogContent>
       </Dialog>
     );
   }
@@ -191,7 +196,7 @@ function ShipmentModal({ sid, wid, onClose, onChange }) {
 
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" data-testid="shipment-modal">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" data-testid="shipment-detail-modal">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {ship.shipment_number}

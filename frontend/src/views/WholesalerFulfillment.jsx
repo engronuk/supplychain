@@ -157,7 +157,12 @@ function FulfillmentModal({ fid, wid, onClose, onChange }) {
   if (!ful) {
     return (
       <Dialog open onOpenChange={(o) => !o && onClose()}>
-        <DialogContent><div className="p-4 text-sm text-slate-500">Loading…</div></DialogContent>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="sr-only">Loading fulfillment</DialogTitle>
+          </DialogHeader>
+          <div className="p-4 text-sm text-slate-500">Loading…</div>
+        </DialogContent>
       </Dialog>
     );
   }
