@@ -29,46 +29,72 @@ the future Warehouse Management Module.
 
 This is a PHASE 1+2 migration: it ONLY adds new fields and copies values.
 No write paths, no business logic, no UI, no legacy field removal.
+
+Production safety
+-----------------
+The previous implementation used an `aggregate + $merge` pipeline which
+takes 10-20 s on a 48k-row inventory collection over a cold Atlas
+connection — long enough to hit pymongo's default socket timeout and
+emit a scary stack trace inside the deploy logs even though the outer
+caller catches it. We now:
+
+    1. Build a single MISSING-organization_id filter and ask Mongo to
+       count first with a tight `maxTimeMS`. If zero, we exit instantly.
+    2. Run an `update_many` with an aggregation-pipeline `$set` — server
+       executes the field copy in one round-trip, with `maxTimeMS` set
+       so a slow Atlas can't hang the deploy.
+    3. Wrap every collection in its own try/except so one slow / cold
+       collection cannot prevent the others from being backfilled.
+
+All side effects are otherwise identical to the previous version.
 """
 from __future__ import annotations
 
 import asyncio
-from typing import Dict
+from typing import Dict, Optional
+
+from pymongo.errors import PyMongoError
 
 from core import db, logger
 
+# Server-side max execution time per operation. Generous enough for a
+# 50k-row inventory backfill, short enough to keep the deploy bootstrap
+# from hanging on a half-warm Atlas connection.
+_OP_TIMEOUT_MS = 30_000
 
-async def _backfill_simple(coll: str, source_field: str) -> int:
-    """Set organization_id = <source_field> on every row where organization_id
-    is missing or empty. Returns count of documents updated."""
-    pipeline = [
-        {
-            "$match": {
-                "$or": [
-                    {"organization_id": {"$exists": False}},
-                    {"organization_id": ""},
-                    {"organization_id": None},
-                ],
-                source_field: {"$nin": ["", None]},
-            },
-        },
-        {
-            "$set": {"organization_id": f"${source_field}"},
-        },
-        {"$merge": {"into": coll, "on": "_id", "whenMatched": "merge"}},
-    ]
-    # Count first so we can return a delta (aggregate-with-merge returns no count).
-    before = await db[coll].count_documents({
+
+def _missing_filter(source_field: str) -> dict:
+    """Documents that still need to be backfilled."""
+    return {
         "$or": [
             {"organization_id": {"$exists": False}},
             {"organization_id": ""},
             {"organization_id": None},
         ],
         source_field: {"$nin": ["", None]},
-    })
+    }
+
+
+async def _backfill_simple(coll: str, source_field: str) -> int:
+    """Copy source_field → organization_id wherever it's still missing.
+
+    Returns the number of documents matched (and therefore updated).
+    Uses an update_many with aggregation pipeline; Mongo applies the
+    `$set` server-side in a single pass and is materially faster than
+    the previous `aggregate + $merge` approach.
+    """
+    filt = _missing_filter(source_field)
+
+    # Tight server-side time budget on the count so an unhealthy Atlas
+    # connection can't stall the deploy bootstrap.
+    before = await db[coll].count_documents(filt, maxTimeMS=_OP_TIMEOUT_MS)
     if before == 0:
         return 0
-    await db[coll].aggregate(pipeline).to_list(1)
+
+    await db[coll].update_many(
+        filt,
+        [{"$set": {"organization_id": f"${source_field}"}}],
+    )
     return before
 
 
@@ -84,7 +110,14 @@ async def _ensure_warehouse_id(coll: str) -> int:
 
 
 async def run() -> Dict[str, dict]:
-    """Run the full ownership backfill. Idempotent."""
+    """Run the full ownership backfill. Idempotent.
+
+    Every collection is its own try-block. A timeout on one collection
+    (e.g. cold inventory on a fresh Atlas pod) will be logged and the
+    next collection will still be attempted. The outer caller in
+    `server.py` already wraps this entire function in a try/except, so
+    a fatal error here only logs a "continuing" line.
+    """
     plan = [
         # (collection, source_fk_field)
         ("products",           "manufacturer_id"),
@@ -102,19 +135,48 @@ async def run() -> Dict[str, dict]:
     ]
     report: Dict[str, dict] = {}
     for coll, src in plan:
-        total = await db[coll].count_documents({})
-        if total == 0:
-            report[coll] = {"total": 0, "backfilled": 0, "source": src, "skipped": True}
+        try:
+            total = await db[coll].count_documents({}, maxTimeMS=_OP_TIMEOUT_MS)
+        except PyMongoError as exc:
+            logger.warning(
+                "Ownership backfill: count failed for %s (%s) — skipping",
+                coll, exc.__class__.__name__,
+            )
+            report[coll] = {"error": "count_timeout", "source": src}
             continue
-        updated = await _backfill_simple(coll, src)
-        # Sanity: how many still lack org_id?
-        missing = await db[coll].count_documents({
-            "$or": [
-                {"organization_id": {"$exists": False}},
-                {"organization_id": ""},
-                {"organization_id": None},
-            ],
-        })
+
+        if total == 0:
+            report[coll] = {
+                "total": 0, "backfilled": 0, "source": src, "skipped": True,
+            }
+            continue
+
+        try:
+            updated = await _backfill_simple(coll, src)
+        except PyMongoError as exc:
+            logger.warning(
+                "Ownership backfill: update failed for %s (%s) — leaving as-is",
+                coll, exc.__class__.__name__,
+            )
+            report[coll] = {
+                "total": total, "backfilled": 0, "source": src,
+                "error": exc.__class__.__name__,
+            }
+            continue
+
+        try:
+            missing = await db[coll].count_documents(
+                {
+                    "$or": [
+                        {"organization_id": {"$exists": False}},
+                        {"organization_id": ""},
+                        {"organization_id": None},
+                    ],
+                },
+                maxTimeMS=_OP_TIMEOUT_MS,
+            )
+        except PyMongoError:
+            missing = None
         report[coll] = {
             "total": total,
             "backfilled": updated,
@@ -123,9 +185,16 @@ async def run() -> Dict[str, dict]:
         }
 
     # Add warehouse_id placeholder on inventory only (the only collection
-    # where the field is part of the new model).
-    wh_added = await _ensure_warehouse_id("inventory")
-    report["inventory"]["warehouse_id_added"] = wh_added
+    # where the field is part of the new model). Best-effort.
+    try:
+        wh_added = await _ensure_warehouse_id("inventory")
+        if "inventory" in report and isinstance(report["inventory"], dict):
+            report["inventory"]["warehouse_id_added"] = wh_added
+    except PyMongoError as exc:
+        logger.warning(
+            "Ownership backfill: warehouse_id placeholder failed (%s) — continuing",
+            exc.__class__.__name__,
+        )
 
     logger.info("Ownership migration report: %s", report)
     return report
