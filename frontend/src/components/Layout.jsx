@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard,
   Boxes,
-  Truck,
   BarChart3,
   FileText,
   LogOut,
@@ -50,8 +49,9 @@ function navForRole(role) {
   if (role !== "manufacturer") {
     base.push({ to: "/inventory", label: "Inventory", icon: Boxes });
   }
-  base.push({ to: "/shipments", label: "Shipments", icon: Truck });
   if (role === "manufacturer") {
+    // Procurement (which is now the merged Shipment Command Center for mfg)
+    base.push({ to: "/procurement", label: "Procurement", icon: ShoppingCart });
     base.push({ to: "/product-intelligence", label: "Product Intelligence", icon: Sparkles });
     base.push({ to: "/intel", label: "Intelligence", icon: BrainCircuit });
     base.push({ to: "/network-map", label: "Network Map", icon: Radar });

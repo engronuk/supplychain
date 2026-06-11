@@ -8,8 +8,8 @@ import ManufacturerDashboard from "@/views/ManufacturerDashboard";
 import DistributorDashboard from "@/views/DistributorDashboard";
 import RetailerDashboardV2 from "@/views/RetailerDashboardV2";
 import InventoryView from "@/views/InventoryView";
-import ShipmentTracker from "@/views/ShipmentTracker";
 import RetailerProcurement from "@/views/RetailerProcurement";
+import ShipmentCommandCenter from "@/views/ShipmentCommandCenter";
 import RetailerProductDetail from "@/views/RetailerProductDetail";
 import OrganizationManagement from "@/views/OrganizationManagement";
 import DistributorProcurementInbox from "@/views/DistributorProcurementInbox";
@@ -57,7 +57,9 @@ function ProcurementGate() {
   if (!session) return null;
   if (session.role === "distributor") return <DistributorProcurementInbox />;
   if (session.role === "retailer") return <RetailerProcurement />;
-  // Other roles: redirect home.
+  // Manufacturers don't procure — for them, the merged "Procurement" workspace
+  // is the Shipment Command Center (outbound shipments to distributors).
+  if (session.role === "manufacturer") return <ShipmentCommandCenter />;
   return <Navigate to="/dashboard" replace />;
 }
 
@@ -127,7 +129,8 @@ function App() {
               <Route path="/dashboard" element={<RoleDashboard />} />
               <Route path="/product-intelligence" element={<ProductIntelligenceCenter />} />
               <Route path="/inventory" element={<InventoryView />} />
-              <Route path="/shipments" element={<ShipmentTracker />} />
+              {/* Shipments module has been merged into Procurement. */}
+              <Route path="/shipments" element={<Navigate to="/procurement" replace />} />
               <Route path="/requests" element={<Navigate to="/procurement" replace />} />
               <Route path="/procurement" element={<ProcurementGate />} />
               <Route path="/organizations" element={<OrganizationManagement />} />

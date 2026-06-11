@@ -1010,3 +1010,21 @@ The Proactive Intelligence Center was rebuilt to be **grounded in real platform 
 - All numbers cited match Mongo: 500 retailers at risk (from `intel_forecasts`), 3,072 retailers at high churn risk (from `intel_retailer_health`), 5 fulfillment orders pending (from `fulfillment_orders`), zero 24h orders (from `orders`).
 - Hypotheses cite specific evidence fields from the pack ("orders_count_24h: 0, fulfillment_pending: 5, allocations_pending: 0").
 
+
+## 2026-02-11 — Shipments merged into Procurement
+
+The standalone Shipments module has been folded into Procurement across all 3 personas. There is now ONE workspace at `/procurement`.
+
+### Frontend changes
+- **`ShipmentTracker.jsx`** — `ShipmentTrackerLegacy` (the operational pending → in-transit → received ledger + Create-Shipment dialog) is now a named export so the procurement workspaces can embed it.
+- **`DistributorProcurementInbox.jsx`** — new **"Shipments"** tab (alongside Place Order / My Purchase Orders / Retailer Orders / Quote Requests). Renders the legacy shipment ledger so distributors retain the inbound + outbound shipment tracking + Create-Shipment dialog.
+- **`RetailerProcurement.jsx`** — new **"Shipments"** tab (alongside Cart / Purchase Orders / Order History / Supplier Quotes). Same legacy ledger embedded — retailers see inbound shipments + can reorder.
+- **`App.js`** — `ProcurementGate` now routes manufacturers to `ShipmentCommandCenter` (their "procurement" workspace = their outbound shipment command centre). `/shipments` now redirects to `/procurement` for back-compat.
+- **`Layout.jsx`** — removed the standalone "Shipments" sidebar entry; added "Procurement" entry for manufacturers (was already present for distributor/retailer). Removed unused `Truck` import.
+
+### Smoke-tested (live preview)
+- Distributor: Procurement → Shipments tab → 63 shipments rendered with full lifecycle + "New shipment" button ✓
+- Retailer: Procurement → Shipments tab → ledger mounted ✓
+- Manufacturer: Procurement → renders Shipment Command Center with all KPIs + Distributor Orders table + AI Logistics Summary ✓
+- `/shipments` → 301 redirect → `/procurement` ✓
+

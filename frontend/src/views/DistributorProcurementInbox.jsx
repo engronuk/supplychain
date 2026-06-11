@@ -27,6 +27,7 @@ import {
 import { toast } from "sonner";
 import POStatusBadge from "@/components/procurement/POStatusBadge";
 import PODetailDrawer from "@/components/procurement/PODetailDrawer";
+import { ShipmentTrackerLegacy } from "@/views/ShipmentTracker";
 
 const fmtMoney = (n) => `₦${Number(n || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
 const fmtDate = (iso) => iso ? new Date(iso).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" }) : "—";
@@ -77,6 +78,10 @@ export default function DistributorProcurementInbox() {
                          className="rounded-xl px-4 h-10 text-sm font-medium text-slate-600 data-[state=active]:bg-slate-900 data-[state=active]:text-white gap-2">
               <MessageSquareQuote className="h-4 w-4" /> Quote Requests
             </TabsTrigger>
+            <TabsTrigger value="shipments" data-testid="inbox-tab-shipments"
+                         className="rounded-xl px-4 h-10 text-sm font-medium text-slate-600 data-[state=active]:bg-slate-900 data-[state=active]:text-white gap-2">
+              <Truck className="h-4 w-4" /> Shipments
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="place" className="mt-5">
@@ -90,6 +95,10 @@ export default function DistributorProcurementInbox() {
           </TabsContent>
           <TabsContent value="quotes" className="mt-5">
             <DistributorQuoteInbox distributorId={distributorId} />
+          </TabsContent>
+          <TabsContent value="shipments" className="mt-5">
+            {/* Inbound + outbound shipment ledger (legacy Shipments view, now merged here). */}
+            <ShipmentTrackerLegacy />
           </TabsContent>
         </Tabs>
       </div>

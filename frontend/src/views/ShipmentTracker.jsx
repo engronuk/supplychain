@@ -30,7 +30,9 @@ export default function ShipmentTracker() {
   return <ShipmentTrackerLegacy />;
 }
 
-function ShipmentTrackerLegacy() {
+// Exported so the merged Procurement workspace can embed the operational
+// shipment ledger as a "Shipments" tab for distributor and retailer roles.
+export function ShipmentTrackerLegacy() {
   const { session } = useSession();
   const role = session.role;
   const [shipments, setShipments] = useState([]);

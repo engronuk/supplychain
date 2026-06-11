@@ -17,7 +17,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import {
   ShoppingCart, FileText, History, Quote as QuoteIcon,
-  Sparkles, BrainCircuit, Loader2,
+  Sparkles, BrainCircuit, Loader2, Truck,
 } from "lucide-react";
 
 import CartTab from "@/components/procurement/CartTab";
@@ -25,12 +25,14 @@ import PurchaseOrdersTab from "@/components/procurement/PurchaseOrdersTab";
 import OrderHistoryTab from "@/components/procurement/OrderHistoryTab";
 import SupplierQuotesTab from "@/components/procurement/SupplierQuotesTab";
 import AIProcurementAssistant from "@/components/procurement/AIProcurementAssistant";
+import { ShipmentTrackerLegacy } from "@/views/ShipmentTracker";
 
 const TAB_LIST = [
   { value: "cart", label: "Cart", icon: ShoppingCart },
   { value: "orders", label: "Purchase Orders", icon: FileText },
   { value: "history", label: "Order History", icon: History },
   { value: "quotes", label: "Supplier Quotes", icon: QuoteIcon },
+  { value: "shipments", label: "Shipments", icon: Truck },
 ];
 
 export default function RetailerProcurement() {
@@ -124,6 +126,10 @@ export default function RetailerProcurement() {
               </TabsContent>
               <TabsContent value="quotes" className="mt-5">
                 <SupplierQuotesTab retailerId={retailerId} onMutated={onMutated} />
+              </TabsContent>
+              <TabsContent value="shipments" className="mt-5">
+                {/* Inbound shipments ledger (legacy Shipments view, merged into procurement). */}
+                <ShipmentTrackerLegacy />
               </TabsContent>
             </Tabs>
           </div>
