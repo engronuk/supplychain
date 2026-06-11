@@ -1141,3 +1141,33 @@ User feedback round:
 - Wholesaler `/analytics` → 6 tabs render with live KPIs (₦31.95M inventory, 11% fill rate, supplier performance, 12-row demand forecast).
 - Manufacturer login → dashboard scrolls to "Wholesaler Replenishment Requests" with 5 POs (₦18.5M open value).
 - Distributor login → procurement inbox "Wholesalers" tab shows their outbound orders + inbound shipments.
+
+## 2026-06-11 — Wholesaler · Place Order on Behalf + Manufacturer Allocation KPIs + Tenant-Scope Hardening
+
+**Frontend — Place Order on Their Behalf** (`WholesalerDistributorDetail.jsx`)
+- Header now exposes a "Place Order on Their Behalf" button (testid `dd-place-order-btn`) that opens a shadcn Dialog (`dd-place-order-dialog`).
+- Modal: multi-line order builder with product selector populated from wholesaler inventory, qty input with over-stock warning, add/remove lines, priority (normal/high/urgent), requested delivery date, free-text note, live estimated total.
+- Submit → `POST /api/wholesaler/{wid}/orders` → success toast with `WO-####` number, dialog closes, distributor detail page auto-refreshes so the new order surfaces in Order History + 90d trend.
+- API helper added: `WholesalerApi.createOrder(wid, payload)`.
+
+**Backend — Allocation Performance KPIs** (`routes/allocation.py`)
+- New endpoint `GET /api/allocation/kpis?days=30` (default 30, 1–365) returns rule-based metrics derived from `distributor_orders`, `order_allocations`, `fulfillment_orders` — no AI.
+  - `fill_rate_pct` = allocated_units / requested_units across decided orders in window.
+  - `avg_allocation_hours` = mean(allocated_at − created_at).
+  - `back_order_rate_pct` = (back_ordered + partially_allocated) / decided_orders.
+  - `service_level_pct` = % of completed orders delivered within 7 days of submission.
+  - `warehouses[]` leaderboard with fulfillments, delivered, in_progress, on_time_pct (48h SLA target).
+- Helper `_parse_iso()` for safe ISO→datetime parsing.
+
+**Frontend — Allocation KPI strip** (`AllocationCenter.jsx`)
+- New `PerformanceKpiStrip` component renders above the existing 7-bucket nav; 5 KPI tiles (`kpi-fill-rate`, `kpi-allocation-time`, `kpi-backorder-rate`, `kpi-service-level`, `kpi-top-warehouse`) plus a Warehouse Performance leaderboard table (`kpi-warehouse-table`).
+- API helper added: `Api.allocationKpis(days)`.
+
+**SECURITY FIX — Tenant scope hardening** (`routes/allocation.py::_scope_manufacturer`)
+- Before: every authenticated user with a `manufacturer_id` field on their record (which includes distributor / wholesaler / retailer accounts populated for catalog scoping) silently passed and could read manufacturer KPIs.
+- After: explicit role allowlist — only `manufacturer`, `warehouse`, and `super_admin` roles may resolve a scope; downstream roles get HTTP 403. Verified via curl across distributor / wholesaler / manufacturer tokens on `/allocation/kpis`, `/allocation/pool`, `/allocation/summary`.
+
+**Verified live**
+- Wholesaler login → `/wholesaler/distributors/:id` → Place Order modal → submitted 5-unit OMO Detergent order (₦21,000) → WO surfaces in Order History.
+- Manufacturer login → `/manufacturer/allocation` → KPI strip shows Fill 65% · AllocTime 19.5h · BO 6.7% · Service 47.9% · Top Warehouse "Unilever Lagos Warehouse" + 7-row leaderboard.
+- Security regression: distributor + wholesaler tokens now receive 403 on every `/allocation/*` endpoint; manufacturer continues to receive 200.

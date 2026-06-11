@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -408,6 +408,9 @@ export default function WholesalerDistributorDetail() {
         <DialogContent className="max-w-2xl" data-testid="dd-place-order-dialog">
           <DialogHeader>
             <DialogTitle>Place Order for {p.name || "Distributor"}</DialogTitle>
+            <DialogDescription>
+              Draft a replenishment order on behalf of this distributor. Stock is pulled from your hub inventory; the distributor will see this in their procurement inbox once submitted.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
             <div className="grid grid-cols-2 gap-3">

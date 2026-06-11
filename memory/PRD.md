@@ -32,6 +32,9 @@ Manufacturer can see all 91 distributors; Distributor sees all its retailers.
 - Server-enforced status transitions (shipments, distributor orders, wholesaler POs).
 - Inventory automatically adjusted on dispatch, receipt, and PO delivery.
 - Vertex AI Gemini 2.5 Flash drives recommendations; rule-based fallback for cheap views.
+- **NO AI for Wholesaler analytics or Manufacturer allocation/order routing logic** — explicit user rule. Pure programmatic Python.
+- **NO MOCK DATA** — every UI surface reads from MongoDB seed data.
 - Per-role Analytics dashboard + CSV exports.
+- Role-based access enforcement on every cross-tenant endpoint. `/allocation/*` is restricted to manufacturer / warehouse / super_admin only; downstream roles get 403.
 
 See `CHANGELOG.md` for dated implementation history and `ROADMAP.md` for the prioritized backlog.

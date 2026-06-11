@@ -52,11 +52,21 @@ POOL_STATUSES = {
 
 
 async def _scope_manufacturer(user: Dict[str, Any], manufacturer_id: Optional[str]) -> str:
-    """Resolve & enforce manufacturer scope. Defaults to the caller's tenant."""
-    if user.get("role") == "super_admin":
+    """Resolve & enforce manufacturer scope. Defaults to the caller's tenant.
+
+    Only manufacturer and warehouse roles (and super_admin) are allowed to
+    read allocation-center data. Downstream roles (distributor, wholesaler,
+    retailer) carry the parent `manufacturer_id` on their user record for
+    catalog scoping, but they must NOT be able to read upstream KPIs or
+    allocations.
+    """
+    role = user.get("role")
+    if role == "super_admin":
         if not manufacturer_id:
             raise HTTPException(400, "manufacturer_id is required for super_admin callers")
         return manufacturer_id
+    if role not in {"manufacturer", "warehouse"}:
+        raise HTTPException(403, "Manufacturer scope required")
     mfr = user.get("manufacturer_id") or user.get("organization_id")
     if not mfr:
         raise HTTPException(403, "Manufacturer scope required")
@@ -321,7 +331,8 @@ async def allocation_kpis(
         u = _parse_iso(f.get("updated_at"))
         if st == "delivered" and c and u:
             bucket["measured"] += 1
-            if (u - c).total_seconds() <= 5 * 86400:
+            # SLA target: dispatched within 48h of fulfillment creation.
+            if (u - c).total_seconds() <= 48 * 3600:
                 bucket["on_time_count"] += 1
     warehouses: List[Dict[str, Any]] = []
     for w in by_wh.values():
