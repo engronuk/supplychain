@@ -156,7 +156,52 @@ async def seed_demo_users() -> dict:
             manufacturer_id=mfg["id"],
             password_hash=pwd_hash,
         ))
-    # 4. Retailer admins — retailer1..5 under primary distributor
+    # 4. Wholesaler admin — pick the first Lagos-region Unilever wholesaler.
+    #    Wholesalers don't have a legacy `manufacturer_id` field, so we walk
+    #    the organization tree from `organizations` until we hit Unilever.
+    async def _pick_unilever_wholesaler() -> dict | None:
+        whs = await db.organizations.find(
+            {"organization_type": "wholesaler",
+             "region": {"$regex": "lagos", "$options": "i"}},
+            {"_id": 0, "id": 1, "organization_name": 1,
+             "organization_code": 1, "parent_organization_id": 1},
+        ).to_list(50)
+
+        async def _walk_to_mfr(pid: str) -> str | None:
+            seen: set[str] = set()
+            while pid and pid not in seen:
+                seen.add(pid)
+                p = await db.organizations.find_one(
+                    {"id": pid}, {"_id": 0, "id": 1, "organization_type": 1,
+                                  "parent_organization_id": 1},
+                )
+                if not p:
+                    return None
+                if p.get("organization_type") == "manufacturer":
+                    return p["id"]
+                pid = p.get("parent_organization_id")
+            return None
+
+        for w in whs:
+            if "test wholesaler" in (w.get("organization_name") or "").lower():
+                continue                                       # skip placeholder rows
+            mfr = await _walk_to_mfr(w.get("parent_organization_id"))
+            if mfr == mfg["id"]:
+                return w
+        return None
+
+    unilever_wh = await _pick_unilever_wholesaler()
+    if unilever_wh:
+        accounts.append(_build_user(
+            email="unilever.wholesaler@tradekonekt.io",
+            name=f"{unilever_wh['organization_name']} Admin",
+            role="wholesaler",
+            entity_id=unilever_wh["id"],
+            manufacturer_id=mfg["id"],
+            password_hash=pwd_hash,
+        ))
+
+    # 5. Retailer admins — retailer1..5 under primary distributor
     for idx, r in enumerate(retailers, start=1):
         accounts.append(_build_user(
             email=f"retailer{idx}@tradekonekt.io",
