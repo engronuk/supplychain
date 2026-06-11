@@ -429,6 +429,38 @@ export const WholesalerApi = {
     api.get(`/wholesaler/${wid}/procurement/catalog`).then((r) => r.data),
   distributors: (wid) =>
     api.get(`/wholesaler/${wid}/distributors`).then((r) => r.data),
+
+  // Phase 2 — Distributor Orders / Fulfillment / Shipments
+  ordersDashboard: (wid) =>
+    api.get(`/wholesaler/${wid}/orders/dashboard`).then((r) => r.data),
+  listOrders: (wid, params = {}) =>
+    api.get(`/wholesaler/${wid}/orders`, { params }).then((r) => r.data),
+  orderDetail: (wid, oid) =>
+    api.get(`/wholesaler/${wid}/orders/${oid}`).then((r) => r.data),
+  approveOrder: (wid, oid) =>
+    api.post(`/wholesaler/${wid}/orders/${oid}/approve`).then((r) => r.data),
+  rejectOrder: (wid, oid, reason) =>
+    api.post(`/wholesaler/${wid}/orders/${oid}/reject`, { reason }).then((r) => r.data),
+  modifyOrder: (wid, oid, payload) =>
+    api.post(`/wholesaler/${wid}/orders/${oid}/modify`, payload).then((r) => r.data),
+  cancelOrder: (wid, oid) =>
+    api.post(`/wholesaler/${wid}/orders/${oid}/cancel`).then((r) => r.data),
+
+  listFulfillments: (wid, params = {}) =>
+    api.get(`/wholesaler/${wid}/fulfillments`, { params }).then((r) => r.data),
+  fulfillmentDetail: (wid, fid) =>
+    api.get(`/wholesaler/${wid}/fulfillments/${fid}`).then((r) => r.data),
+  fulfillmentAction: (wid, fid, action, payload = {}) =>
+    api.post(`/wholesaler/${wid}/fulfillments/${fid}/${action}`, payload).then((r) => r.data),
+
+  shipmentsDashboard: (wid) =>
+    api.get(`/wholesaler/${wid}/shipments/dashboard`).then((r) => r.data),
+  listShipments: (wid, params = {}) =>
+    api.get(`/wholesaler/${wid}/shipments`, { params }).then((r) => r.data),
+  shipmentDetail: (wid, sid) =>
+    api.get(`/wholesaler/${wid}/shipments/${sid}`).then((r) => r.data),
+  shipmentAction: (wid, sid, action, payload = {}) =>
+    api.post(`/wholesaler/${wid}/shipments/${sid}/${action}`, payload).then((r) => r.data),
 };
 
 export default api;

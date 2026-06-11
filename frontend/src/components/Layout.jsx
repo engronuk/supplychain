@@ -65,9 +65,12 @@ function navForRole(role) {
     base.push({ to: "/network", label: "Retailers", icon: Network });
     base.push({ to: "/procurement", label: "Procurement", icon: ShoppingCart });
   } else if (role === "wholesaler") {
-    // Wholesaler workspace (Phase 1) — focuses on inventory aggregation,
-    // upstream procurement, and the distributor network they supply.
+    // Wholesaler workspace (Phase 1 + Phase 2) — inventory hub + order
+    // fulfilment & shipment execution.
     base.push({ to: "/procurement", label: "Procurement", icon: ShoppingCart });
+    base.push({ to: "/wholesaler/orders", label: "Distributor Orders", icon: ClipboardList });
+    base.push({ to: "/wholesaler/fulfillment", label: "Fulfillment", icon: Receipt });
+    base.push({ to: "/wholesaler/shipments", label: "Shipments", icon: Truck });
     base.push({ to: "/network", label: "Distributors", icon: Network });
   } else if (role === "retailer") {
     base.push({ to: "/intel", label: "Intelligence", icon: BrainCircuit });

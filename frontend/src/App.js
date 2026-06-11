@@ -33,6 +33,9 @@ import CommandCenter from "@/views/CommandCenter";
 import LogisticsCommandCenter from "@/views/LogisticsCommandCenter";
 import WholesalerDashboard from "@/views/WholesalerDashboard";
 import WholesalerProcurement from "@/views/WholesalerProcurement";
+import WholesalerOrders from "@/views/WholesalerOrders";
+import WholesalerFulfillment from "@/views/WholesalerFulfillment";
+import WholesalerShipments from "@/views/WholesalerShipments";
 import WMSLayout from "@/views/wms/WMSLayout";
 import WMSDashboardPage from "@/views/wms/DashboardPage";
 import { InventoryListPage, InventoryDetailPage } from "@/views/wms/InventoryPages";
@@ -156,6 +159,10 @@ function App() {
               <Route path="/sales" element={<SalesBookView />} />
               <Route path="/intel" element={<IntelligenceCenter />} />
               <Route path="/reports" element={<ReportsView />} />
+              {/* Wholesaler Phase 2 — distributor orders, fulfillment, shipments */}
+              <Route path="/wholesaler/orders" element={<WholesalerOrders />} />
+              <Route path="/wholesaler/fulfillment" element={<WholesalerFulfillment />} />
+              <Route path="/wholesaler/shipments" element={<WholesalerShipments />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

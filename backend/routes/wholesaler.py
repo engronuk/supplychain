@@ -23,65 +23,15 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field
 
 from core import db, new_id, now_iso
+from routes._wholesaler_shared import (
+    get_wholesaler_org as _get_wholesaler,
+    require_wholesaler_access as _require_wholesaler_access,
+    tenant_id_for as _tenant_id,
+    walk_to_manufacturer as _walk_to_manufacturer,
+)
 from services.auth import get_current_user
 
 router = APIRouter()
-
-
-async def _require_wholesaler_access(wholesaler_id: str, request: Request) -> dict:
-    """Authn + tenant-isolation guard for every wholesaler endpoint.
-
-    Rules:
-      * super_admin — full access.
-      * manufacturer / warehouse — read access to wholesalers within their
-        tenant (same root manufacturer).
-      * wholesaler — only their own workspace.
-      * everyone else — 403.
-    """
-    user = await get_current_user(request)
-    role = user.get("role")
-    if role == "super_admin":
-        return user
-    org = await db.organizations.find_one(
-        {"id": wholesaler_id, "organization_type": "wholesaler"}, {"_id": 0},
-    )
-    if not org:
-        raise HTTPException(404, "Wholesaler not found")
-    if role == "wholesaler":
-        if user.get("entity_id") != wholesaler_id:
-            raise HTTPException(403, "Not authorised for this wholesaler")
-        return user
-    if role in ("manufacturer", "warehouse"):
-        # Same tenant subtree (walk up to manufacturer)
-        target_tenant = await _walk_to_manufacturer(org)
-        user_tenant = await _walk_to_manufacturer(
-            await db.organizations.find_one(
-                {"id": user.get("entity_id")}, {"_id": 0},
-            ) or {}
-        )
-        if not target_tenant or target_tenant != user_tenant:
-            raise HTTPException(403, "Wholesaler outside your tenant")
-        return user
-    raise HTTPException(403, "Role not permitted")
-
-
-async def _walk_to_manufacturer(org: dict) -> str:
-    pid = org.get("parent_organization_id")
-    seen: set[str] = set()
-    if org.get("organization_type") == "manufacturer":
-        return org.get("id", "")
-    while pid and pid not in seen:
-        seen.add(pid)
-        p = await db.organizations.find_one(
-            {"id": pid}, {"_id": 0, "id": 1, "organization_type": 1,
-                          "parent_organization_id": 1},
-        )
-        if not p:
-            break
-        if p.get("organization_type") == "manufacturer":
-            return p["id"]
-        pid = p.get("parent_organization_id")
-    return ""
 
 # ---- helpers ---------------------------------------------------------------
 
@@ -120,31 +70,11 @@ def _spark(series: List[float], length: int = 12) -> List[float]:
 
 
 async def _get_wholesaler(wid: str) -> dict:
-    org = await db.organizations.find_one(
-        {"id": wid, "organization_type": "wholesaler"}, {"_id": 0}
-    )
-    if not org:
-        raise HTTPException(404, "Wholesaler not found")
-    return org
-
-
-async def _tenant_id(wholesaler: dict) -> str:
-    """Walk up the org tree to the manufacturer root."""
-    parent_id = wholesaler.get("parent_organization_id")
-    seen = set()
-    while parent_id and parent_id not in seen:
-        seen.add(parent_id)
-        p = await db.organizations.find_one(
-            {"id": parent_id}, {"_id": 0, "organization_type": 1,
-                                "parent_organization_id": 1, "id": 1},
-        )
-        if not p:
-            break
-        if p.get("organization_type") == "manufacturer":
-            return p["id"]
-        parent_id = p.get("parent_organization_id")
-    # Fall back to legacy mirror
-    return wholesaler.get("manufacturer_id") or ""
+    """Local re-export of the shared helper (imported with same alias above).
+    Kept so existing call sites keep working without further edits.
+    """
+    from routes._wholesaler_shared import get_wholesaler_org
+    return await get_wholesaler_org(wid)
 
 
 # ---- ENTITY ENDPOINT (used by frontend SessionContext.fetchEntity) ---------

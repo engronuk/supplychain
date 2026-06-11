@@ -43,6 +43,7 @@ from routes import (
     stock_requests,
     uploads,
     wholesaler,
+    wholesaler_orders,
     wms,
 )
 from services.intel.scheduler import start_scheduler, stop_scheduler
@@ -93,6 +94,7 @@ for r in (
     seed_route.router,
     uploads.router,
     wholesaler.router,
+    wholesaler_orders.router,
     wms.router,
 ):
     api_router.include_router(r)
@@ -243,6 +245,15 @@ async def _background_bootstrap():
             logger.info("Wholesaler workspace seeded: %s", result)
     except Exception:
         logger.exception("Wholesaler seed failed (continuing)")
+
+    # Wholesaler orders / fulfillments / shipments (Phase 2 — distributor → wh).
+    try:
+        from services.seed_wholesaler_orders import seed_wholesaler_orders
+        result = await seed_wholesaler_orders()
+        if result.get("orders"):
+            logger.info("Wholesaler orders seeded: %s", result)
+    except Exception:
+        logger.exception("Wholesaler orders seed failed (continuing)")
 
     # Universal organizations backfill (foundation refactor — additive).
     try:
