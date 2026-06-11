@@ -9,7 +9,7 @@ _Last updated: 2026-06-11 — Phase 3 Wholesaler Intelligence Layer (3A → 3E) 
 - **Wholesaler · Phase 3B** — Inventory Analytics Center (Days of Supply red/yellow/green · Dead Stock 30/60/90 · Aging 0-30/31-60/61-90/90+ · Expiry Risk · Turnover by category & warehouse).
 - **Wholesaler · Phase 3C** — Demand Forecast (7/30/90d product · regional · distributor) + Replenishment Recommendation Engine + Safety Stock Monitoring.
 - **Wholesaler · Phase 3D** — Intelligence Center page (`/wholesaler/intelligence`) — rule-based Executive Briefing, Opportunities, Risks (severity-tagged), Recommended Actions (priority-tagged). NO AI.
-- **Wholesaler · Phase 3E** — Control Tower View — Network Health Score 0-100 + 3 heat maps + network nodes.
+- **Wholesaler · Phase 3E** — Control Tower View — Network Health Score 0-100 + 3 heat maps + network nodes + **live Google Map** (wired to existing REACT_APP_MAPS_API_KEY, pulls real DB data via city centroid lookup; trucks animate based on elapsed/ETA; demand overlay toggles).
 - **Manufacturer · Allocation KPIs** — Fill Rate, Allocation Time, Back-Order Rate, Service Level, Warehouse Performance leaderboard at `/manufacturer/allocation`.
 - **Security: `/allocation/*` + `/wholesaler/{wid}/analytics` + `/wholesaler/{wid}/distributors/{did}/detail`** role-locked to owner/super_admin.
 

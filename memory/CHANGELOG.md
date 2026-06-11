@@ -1180,6 +1180,7 @@ User feedback round:
 - **Network Health Score** 0–100 composite (Inventory Health 25% + Distributor Health 25% + Fulfillment Performance 25% + Shipment Reliability 25%) with band classification (excellent / good / watch / critical) + per-component progress bars.
 - 3 Heat Maps: Revenue Concentration by region, Inventory Allocation by category, Distributor Activity (top 12) — intensity-scaled bars.
 - Network nodes summary with warehouse + distributor cards colour-coded by status (high_growth / at_risk / stable).
+- **Live Google Map** wired to `GET /api/wholesaler/{wid}/control-tower/map`. Hub + distributors plotted via Nigerian city centroid lookup (`services/ng_geocode.py` — 40+ cities, 36 states, 6 regions, state→region map). Active shipments produce animated truck markers that interpolate position via `elapsed/(elapsed+eta_minutes)`. Demand overlay circles toggle on/off. Auto-refreshes every 30s. Map auto-fits to all markers (max zoom 12) via new `autoFit` prop on the shared LogisticsMap.
 
 **SECURITY — Wholesaler privacy hardening** (`routes/_wholesaler_shared.py`)
 - New `require_wholesaler_owner` dependency for private analytics surfaces. Applied to `/wholesaler/{wid}/analytics` and `/wholesaler/{wid}/distributors/{did}/detail`. Same-tenant distributors / manufacturers / warehouses now get 403; only wholesaler-self and super_admin get 200. Other wholesaler endpoints (e.g., order placement) keep the previous `require_wholesaler_access` so distributors can still place orders against a wholesaler.
