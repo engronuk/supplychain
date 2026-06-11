@@ -13,8 +13,9 @@ import {
   Boxes, Activity, TrendingUp, TrendingDown, AlertTriangle, Users,
   Truck, Package, Sparkles, Wallet, ShoppingCart, Target, Gauge,
   ShieldCheck, Repeat, AlertCircle, Clock, Snowflake, FlaskConical,
-  Calendar, LayoutGrid, Building2,
+  Calendar, LayoutGrid, Building2, Map as MapIcon,
 } from "lucide-react";
+import WholesalerControlTowerMap from "./wholesaler/WholesalerControlTowerMap";
 
 export default function WholesalerAnalytics() {
   const { session } = useSession();
@@ -1364,6 +1365,18 @@ function ControlTower({ control }) {
           subFormatter={(r) => `${r.region}`}
         />
       </div>
+
+      {/* Live geo map */}
+      <Card data-testid="ct-map">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <MapIcon className="h-4 w-4 text-indigo-600" /> Live Supply Chain Map
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <WholesalerControlTowerMap />
+        </CardContent>
+      </Card>
 
       {/* Network nodes summary */}
       <Card data-testid="ct-network">

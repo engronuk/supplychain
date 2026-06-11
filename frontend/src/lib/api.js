@@ -437,6 +437,8 @@ export const WholesalerApi = {
     api.get(`/wholesaler/${wid}/analytics`).then((r) => r.data),
 
   // Phase 2 — Distributor Orders / Fulfillment / Shipments
+  controlTowerMap: (wid) =>
+    api.get(`/wholesaler/${wid}/control-tower/map`).then((r) => r.data),
   ordersDashboard: (wid) =>
     api.get(`/wholesaler/${wid}/orders/dashboard`).then((r) => r.data),
   listOrders: (wid, params = {}) =>

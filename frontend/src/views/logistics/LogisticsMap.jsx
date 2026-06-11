@@ -55,7 +55,7 @@ function etaLabel(mins) {
   return h ? `${h}h ${m}m` : `${m}m`;
 }
 
-export const LogisticsMap = ({ warehouses, routes, trucks, demandOverlay, onViewWarehouse }) => {
+export const LogisticsMap = ({ warehouses, routes, trucks, demandOverlay, onViewWarehouse, autoFit = false }) => {
   const apiKey = process.env.REACT_APP_MAPS_API_KEY;
   const mapsReady = useGoogleMaps(apiKey);
   const mapRef = useRef(null);
@@ -204,10 +204,29 @@ export const LogisticsMap = ({ warehouses, routes, trucks, demandOverlay, onView
       demandShapes.current.push(circle);
     });
 
+    // ---- Auto-fit bounds when requested -----------------------------------
+    if (autoFit) {
+      const bounds = new g.LatLngBounds();
+      (warehouses || []).forEach((w) => {
+        if (w.lat != null && w.lng != null) bounds.extend({ lat: w.lat, lng: w.lng });
+      });
+      (routes || []).forEach((r) => {
+        if (r?.to?.lat != null) bounds.extend({ lat: r.to.lat, lng: r.to.lng });
+      });
+      if (!bounds.isEmpty()) {
+        map.fitBounds(bounds, { top: 60, right: 40, bottom: 40, left: 40 });
+        const max_zoom_listener = g.event.addListenerOnce(map, "idle", () => {
+          if (map.getZoom() > 12) map.setZoom(12);
+        });
+        // Auto-cancel after a second so manual zoom isn't fought by the listener.
+        setTimeout(() => g.event.removeListener(max_zoom_listener), 1500);
+      }
+    }
+
     return () => {
       if (animTimer.current) { clearInterval(animTimer.current); animTimer.current = null; }
     };
-  }, [mapsReady, warehouses, routes, trucks, demandOverlay, showDemand]);
+  }, [mapsReady, warehouses, routes, trucks, demandOverlay, showDemand, autoFit]);
 
   return (
     <div className="rounded-xl bg-white border border-slate-200/80 shadow-sm overflow-hidden" data-testid="logistics-map-card">

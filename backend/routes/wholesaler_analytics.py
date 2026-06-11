@@ -23,6 +23,7 @@ from routes._wholesaler_shared import (
     walk_to_manufacturer,
 )
 from services.auth import get_current_user
+from services.ng_geocode import lookup_coords, lookup_region, region_for_state
 
 router = APIRouter()
 
@@ -1936,3 +1937,204 @@ async def distributor_outbound_wholesaler_orders(distributor_id: str,
         "shipments": shipments[:200],
         "as_of": now_iso(),
     }
+
+# ---------------------------------------------------------------------------
+# Phase 3E (live) — Control Tower geo map. Resolves coordinates from
+# stored lat/lng (shipments) or the Nigerian city-centroid table for orgs
+# that only carry city/state. Pure DB read, no external geocoding calls.
+# ---------------------------------------------------------------------------
+@router.get("/wholesaler/{wholesaler_id}/control-tower/map")
+async def control_tower_map(wholesaler_id: str,
+                             _user: dict = Depends(require_wholesaler_owner)):
+    wholesaler = await get_wholesaler_org(wholesaler_id)
+    if not wholesaler:
+        raise HTTPException(404, "Wholesaler not found")
+
+    hub_lat, hub_lng = lookup_coords(
+        wholesaler.get("city"), wholesaler.get("state"),
+    )
+
+    # ---- Distributors ----------------------------------------------------
+    # A distributor "belongs" to a wholesaler when it has placed orders with
+    # them. Parent-organization linkage doesn't hold here (distributors are
+    # typically children of a manufacturer, not the wholesaler).
+    cust_ids = await db.wholesaler_orders.distinct(
+        "distributor_id", {"wholesaler_id": wholesaler_id},
+    )
+    dist_orgs = await db.organizations.find(
+        {"id": {"$in": cust_ids}, "organization_type": "distributor"},
+        {"_id": 0, "id": 1, "organization_name": 1, "organization_type": 1,
+         "city": 1, "state": 1, "region": 1, "metadata": 1},
+    ).to_list(200) if cust_ids else []
+
+    # 90d revenue per distributor for health colouring + bubble sizing.
+    ninety_ago = _days_ago_iso(90)
+    rev_pipe = [
+        {"$match": {"wholesaler_id": wholesaler_id,
+                     "created_at": {"$gte": ninety_ago},
+                     "status": "delivered"}},
+        {"$group": {"_id": "$distributor_id",
+                     "revenue": {"$sum": "$total_amount"},
+                     "orders": {"$sum": 1}}},
+    ]
+    rev_by_dist: Dict[str, Dict[str, float]] = {}
+    async for r in db.wholesaler_orders.aggregate(rev_pipe):
+        if r.get("_id"):
+            rev_by_dist[r["_id"]] = {
+                "revenue": float(r.get("revenue") or 0),
+                "orders": int(r.get("orders") or 0),
+            }
+    rev_values = [v["revenue"] for v in rev_by_dist.values() if v["revenue"] > 0]
+    rev_max = max(rev_values) if rev_values else 0
+
+    distributor_nodes: List[dict] = []
+    for d in dist_orgs:
+        lat, lng = lookup_coords(d.get("city"), d.get("state"))
+        rev_info = rev_by_dist.get(d["id"], {"revenue": 0, "orders": 0})
+        rev = rev_info["revenue"]
+        if rev_max:
+            ratio = rev / rev_max
+            if ratio >= 0.6:
+                health = "healthy"
+            elif ratio >= 0.2:
+                health = "low"
+            else:
+                health = "critical"
+        else:
+            health = "healthy" if rev_info["orders"] > 0 else "low"
+        distributor_nodes.append({
+            "id": d["id"],
+            "name": d.get("organization_name") or "Distributor",
+            "type": d.get("organization_type") or "distributor",
+            "lat": lat, "lng": lng,
+            "city": d.get("city") or "—", "region": d.get("region") or "—",
+            "revenue_90d": rev,
+            "orders_90d": rev_info["orders"],
+            "health": health,
+        })
+
+    # ---- Active shipments (in_transit / loaded / out_for_delivery) -------
+    ship_status_active = {"in_transit", "loaded", "out_for_delivery"}
+    shipments = await db.wholesaler_shipments.find(
+        {"wholesaler_id": wholesaler_id,
+         "status": {"$in": list(ship_status_active | {"delivered"})},
+         "created_at": {"$gte": ninety_ago}},
+        {"_id": 0},
+    ).sort("created_at", -1).to_list(50)
+
+    routes: List[dict] = []
+    trucks: List[dict] = []
+    name_by_dist = {n["id"]: n for n in distributor_nodes}
+    for s in shipments:
+        did = s.get("distributor_id")
+        dist_meta = name_by_dist.get(did) or {}
+        origin_lat = s.get("origin_lat") if s.get("origin_lat") is not None else hub_lat
+        origin_lng = s.get("origin_lng") if s.get("origin_lng") is not None else hub_lng
+        dest_lat = s.get("destination_lat")
+        dest_lng = s.get("destination_lng")
+        if dest_lat is None or dest_lng is None:
+            dest_lat = dist_meta.get("lat", hub_lat)
+            dest_lng = dist_meta.get("lng", hub_lng)
+        status = s.get("status") or "in_transit"
+        # Route line — only show active shipments.
+        if status in ship_status_active:
+            routes.append({
+                "id": s.get("id"),
+                "tracking_code": s.get("shipment_number") or s.get("id", "")[:8],
+                "from": {"lat": origin_lat, "lng": origin_lng,
+                          "name": wholesaler.get("organization_name") or "Hub"},
+                "to": {"lat": dest_lat, "lng": dest_lng,
+                        "name": dist_meta.get("name")
+                                  or (s.get("distributor") or {}).get("name")
+                                  or "Distributor"},
+                "units": int(s.get("total_units") or 0),
+                "status": "delayed" if (s.get("eta_minutes") or 0) < 0 else status,
+            })
+        # Truck marker — animate along the line for in-transit shipments,
+        # park at destination for delivered.
+        if status == "delivered":
+            t_lat, t_lng = dest_lat, dest_lng
+            truck_status = "stopped"
+        else:
+            # Linear interpolation based on elapsed share of journey.
+            created = _to_dt(s.get("created_at"))
+            eta_min = s.get("eta_minutes")
+            if created and eta_min and eta_min > 0:
+                elapsed = (datetime.now(timezone.utc) - created).total_seconds() / 60.0
+                share = max(0.0, min(0.95, elapsed / (elapsed + eta_min)))
+            else:
+                share = 0.5
+            t_lat = origin_lat + (dest_lat - origin_lat) * share
+            t_lng = origin_lng + (dest_lng - origin_lng) * share
+            truck_status = "in_transit"
+        trucks.append({
+            "id": s.get("id"),
+            "code": s.get("shipment_number") or (s.get("id") or "")[:6],
+            "lat": t_lat, "lng": t_lng,
+            "status": truck_status,
+            "origin_name": wholesaler.get("organization_name") or "Hub",
+            "dest_name": dist_meta.get("name")
+                          or (s.get("distributor") or {}).get("name")
+                          or "Distributor",
+            "eta_minutes": s.get("eta_minutes"),
+        })
+
+    # ---- Demand overlay (regional revenue % over last 30d) ---------------
+    thirty_ago = _days_ago_iso(30)
+    dist_region_map: Dict[str, str] = {}
+    for d in dist_orgs:
+        # Prefer explicit `region`, else map state → region, else stash city
+        # as a leaf so we still get a centroid on the map.
+        reg = (d.get("region") or "").strip().lower()
+        if not reg:
+            reg = (region_for_state(d.get("state")) or "").lower()
+        if not reg:
+            reg = (region_for_state(d.get("city")) or "").lower()
+        if not reg:
+            reg = (d.get("city") or "Unknown").strip().lower()
+        dist_region_map[d["id"]] = reg
+
+    region_rev: Dict[str, float] = defaultdict(float)
+    async for o in db.wholesaler_orders.find(
+        {"wholesaler_id": wholesaler_id, "created_at": {"$gte": thirty_ago}},
+        {"_id": 0, "distributor_id": 1, "total_amount": 1},
+    ):
+        reg = dist_region_map.get(o.get("distributor_id"), "unknown")
+        region_rev[reg] += float(o.get("total_amount") or 0)
+    total_region_rev = sum(region_rev.values()) or 1.0
+
+    demand_overlay: List[dict] = []
+    for reg, rev in region_rev.items():
+        coords = lookup_region(reg) or lookup_coords(reg, default=(None, None))
+        if not coords or coords[0] is None:
+            continue
+        demand_overlay.append({
+            "region": reg.title(),
+            "lat": coords[0], "lng": coords[1],
+            "pct": round(rev / total_region_rev * 100, 1),
+            "revenue_30d": round(rev, 2),
+        })
+
+    return {
+        "as_of": now_iso(),
+        "hub": {
+            "id": wholesaler_id,
+            "name": wholesaler.get("organization_name") or "Hub",
+            "lat": hub_lat, "lng": hub_lng,
+            "city": wholesaler.get("city") or "",
+            "region": wholesaler.get("region") or "",
+            "units": 0,
+            "health": "healthy",
+            "low_stock_skus": 0, "total_skus": 0,
+        },
+        "distributors": distributor_nodes,
+        "routes": routes,
+        "trucks": trucks,
+        "demand_overlay": demand_overlay,
+        "summary": {
+            "distributors": len(distributor_nodes),
+            "active_shipments": len(routes),
+            "delivered_recent": sum(1 for s in shipments if s.get("status") == "delivered"),
+        },
+    }
+

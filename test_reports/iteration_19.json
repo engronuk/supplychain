@@ -1,0 +1,46 @@
+{
+  "summary": "Phase 3E live Control Tower Map end-to-end testing. Backend: 20/20 pytest passing on /api/wholesaler/{wid}/control-tower/map covering shape, 6 distributors derived from wholesaler_orders (not parent_org), MUTKEEM healthy + 5 critical, in-transit truck interpolation strictly between endpoints, delivered trucks pinned to destination, tenant scoping (403 for distributor/manufacturer/other-wholesaler), graceful empty-arrays response for tenant2 wholesaler. Frontend: Control Tower tab on /analytics renders ct-map > ct-live-map > logistics-map-card > logistics-map (Google Maps canvas), with map-demand-toggle working. Footer matches spec exactly: '7 warehouses · 1 active lanes · 1 trucks moving'. Static ct-network + ct-network-graph still render below the live map. Regressions clean: Intelligence Center (briefing/opportunities/risks/actions via ic-* testids), tab-inv and tab-forecast still functional.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Intelligence Center",
+        "issues": [
+          "Review spec referenced testids 'intel-briefing/intel-opportunities/intel-risks/intel-actions' but actual testids are 'ic-briefing/ic-opportunities/ic-risks/ic-actions'. Functionality intact — naming-only discrepancy."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_wholesaler_phase3e_map.py",
+    "/app/test_reports/pytest/iter19_phase3e_map.xml"
+  ],
+  "action_items": [
+    "Optional: align Intelligence Center testids to documented contract (rename ic-* -> intel-* or vice-versa).",
+    "Optional (pre-existing): split wholesaler_analytics.py (2141 lines) into per-concern modules.",
+    "Optional (pre-existing): pre-existing react-hooks/set-state-in-effect eslint warning on WholesalerAnalytics.jsx remains harmless."
+  ],
+  "critical_code_review_comments": [
+    "control_tower_map endpoint cleanly separates concerns: distributors derived via wholesaler_orders.distinct() + organizations.find() (no parent_org coupling), 90d revenue aggregation drives bubble sizing + health colouring, truck interpolation uses elapsed/(elapsed+eta_minutes) clamped to 0.0-0.95 (good safety bounds), demand overlay regions resolved via region OR state->region OR city fallback chain.",
+    "ng_geocode.py is in-memory only (no external API calls) — fast, deterministic, and consistent with 'no AI / pure DB' design constraint.",
+    "wholesaler_analytics.py grown to 2141 lines (was 1938) — splitting recommended on a future refactor sprint."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_wholesaler_phase3e_map.py"
+  ],
+  "success_rate": {
+    "backend": "100% (20/20)",
+    "frontend": "100% (all required testids present, footer matches spec, demand toggle works, regressions clean)"
+  },
+  "test_credentials": "Used /app/memory/test_credentials.md — TradeKonekt2026! shared password. Confirmed wholesaler (unilever.wholesaler@), manufacturer (unilever@), distributor (lagos.distributor@), tenant2 wholesaler (lagos.wholesaler@).",
+  "seed_data_creation": "None — used existing Mongo seed.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Phase 3E (live map) GREEN. Endpoint: GET /api/wholesaler/{wid}/control-tower/map (require_wholesaler_owner — strict, no same-tenant read-through). Frontend tabs on /analytics: tab-overview, tab-inv, tab-dist, tab-orders-analytics, tab-procurement, tab-forecast, tab-control-tower. Map block testids: ct-map > ct-live-map > logistics-map-card > logistics-map; toggle: map-demand-toggle. Static graph: ct-network > ct-network-graph (still below live map). Intelligence Center testids are ic-* not intel-*. Distributor names in DB are fuller than review spec abbreviations ('ABIZZARI SABO AND BROTHERS' vs 'ABIZZARI SABO'); tests use prefix-matching.",
+  "rca of the issue": "No bugs found in Phase 3E. The two initial test failures were spec/reality drift (distributor full org names vs abbreviations in review request) — corrected by using prefix matching in the test, endpoint behaviour itself is correct."
+}
