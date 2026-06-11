@@ -1218,3 +1218,32 @@ User feedback round:
 - Wholesaler login → `/wholesaler/distributors/:id` → Place Order modal → submitted 5-unit OMO Detergent order (₦21,000) → WO surfaces in Order History.
 - Manufacturer login → `/manufacturer/allocation` → KPI strip shows Fill 65% · AllocTime 19.5h · BO 6.7% · Service 47.9% · Top Warehouse "Unilever Lagos Warehouse" + 7-row leaderboard.
 - Security regression: distributor + wholesaler tokens now receive 403 on every `/allocation/*` endpoint; manufacturer continues to receive 200.
+
+
+## Updates (2026-06-11) — TradeKonekt Activity Simulator (Super Admin)
+
+**Backend — Activity Simulator** (`services/simulator.py`, `services/simulator_generators.py`, `routes/admin_simulator.py`, `server.py`)
+- Background asyncio loop owned by FastAPI lifespan. Cadence Low=10m / Medium=3m / High=1m (user-confirmed). Auto-starts on boot via `get_simulator_runtime().start()` hook in `server.py`.
+- Six generators all stamp `generated_by="SYSTEM_SIMULATOR"` on every emitted doc:
+  - `retail_sale` → inserts `retail_sales` + decrements `inventory` + audit row in `inventory_movements`.
+  - `distributor_order` → inserts `distributor_orders` in `approved` state + mirrors `order_allocations` for the Allocation Center KPIs.
+  - `shipment` → fresh `shipments` doc, status=in_transit, ETA randomised.
+  - `inventory_transfer` → debit warehouse, credit dst entity, insert `inventory_transfers`.
+  - `replenishment_request` → low-stock signal.
+  - `intel_event` → notification feed entry (shipment delay / stockout risk / demand spike / low inventory).
+- Tenant isolation enforced via `_resolve_tenant()` — walks `parent_organization_id` up to the manufacturer (max 6 hops) and stamps `manufacturer_id` on every record so cross-tenant leakage is impossible.
+- Tag-based scope — only organizations with `simulation_participant=true` are touched.
+- New API endpoints under `/api/admin/simulator` (super-admin only): `GET /` (status), `POST /toggle`, `POST /level`, `POST /tick` (force one cycle), `GET /events` (run log), `DELETE /purge` (hard wipe), `POST /participants/tag` (manual flag), `POST /participants/seed-demo` (idempotent curated seed across Unilever + Flour Mills), `POST /participants/clear` (untag all).
+- Purge is keyed on the SYSTEM_SIMULATOR marker — preserves participant flags and the singleton settings doc.
+
+**Frontend — Super Admin Console refactor + Simulation Control Panel** (`views/SuperAdminConsole.jsx`, `views/SuperAdminSimulator.jsx`, `lib/api.js`)
+- `SuperAdminConsole` is now a tabbed shell hosting **Impersonate** (the original account-switcher) and **Simulator** (the new control panel). Impersonate flow untouched.
+- `SuperAdminSimulator.jsx` (single file): 4 KPI cards (Status / Cadence / Last tick / Events generated), enable/disable Switch, 3-button Activity Level chooser, Force-Tick button, Participants card (by-type breakdown + 5-col roster + Seed-demo / Untag-all actions), Generated-data card (per-collection counts + Purge button with AlertDialog confirm), Recent Runs table. Auto-polls every 15s; optimistic UI updates on toggle / level change so the status badge doesn't lag the 15s poll.
+- New `SimApi` block in `lib/api.js` wraps every simulator endpoint.
+
+**Verified live** (testing agent iteration_20 — 10/10 backend pytest + 100% frontend Playwright)
+- Seed-demo tags 385 entities (13 primary + 372 cascaded retailers) across both tenants. Re-running is idempotent.
+- Force tick generates 7 events in a single low-cadence cycle. Every generated doc carries `generated_by="SYSTEM_SIMULATOR"`.
+- Tenant isolation: Unilever retailer's retail_sales carry Unilever id; Flour Mills distributor orders carry Flour Mills id.
+- Purge: 20 docs deleted across 9 collections; total_ticks/total_events reset; participant tags preserved.
+- 403 for non-super-admin roles on every `/api/admin/simulator/*` route.

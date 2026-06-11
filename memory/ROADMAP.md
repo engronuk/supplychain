@@ -1,6 +1,6 @@
 # TradeKonekt — Roadmap & Backlog
 
-_Last updated: 2026-06-11 — Phase 3 Wholesaler Intelligence Layer (3A → 3E) shipped. Network Health Score: 81.2/100 EXCELLENT on Lagos Wholesale Hub A._
+_Last updated: 2026-06-11 — TradeKonekt Activity Simulator shipped. Super Admin can tag participants, set cadence (Low/Med/High), force ticks, inspect run log + per-collection counts, and hard-purge SYSTEM_SIMULATOR-tagged data._
 
 ## ✅ Done
 - **Wholesaler · Phase 1** — Dashboard, Inventory, Procurement, Distributor Network.
@@ -12,14 +12,16 @@ _Last updated: 2026-06-11 — Phase 3 Wholesaler Intelligence Layer (3A → 3E) 
 - **Wholesaler · Phase 3E** — Control Tower View — Network Health Score 0-100 + 3 heat maps + network nodes + **live Google Map** (wired to existing REACT_APP_MAPS_API_KEY, pulls real DB data via city centroid lookup; trucks animate based on elapsed/ETA; demand overlay toggles).
 - **Manufacturer · Allocation KPIs** — Fill Rate, Allocation Time, Back-Order Rate, Service Level, Warehouse Performance leaderboard at `/manufacturer/allocation`.
 - **Security: `/allocation/*` + `/wholesaler/{wid}/analytics` + `/wholesaler/{wid}/distributors/{did}/detail`** role-locked to owner/super_admin.
+- **Activity Simulator (Super Admin)** — background loop generates retail sales, distributor orders + allocations, shipments, transfers, replenishments, intel events on a Low/Med/High cadence. Tagged participants across both Unilever + Flour Mills tenants; tenant isolation enforced via parent-chain walk; one-click purge of every SYSTEM_SIMULATOR doc; idempotent demo-seeder.
 
 ## 🟡 P1
-- In-app notifications feed (distributor / manufacturer / warehouse / wholesaler) for allocation, transfer, replenishment, order events.
+- In-app notifications feed (distributor / manufacturer / warehouse / wholesaler) for allocation, transfer, replenishment, order events. (Simulator already emits the source events into `notifications` — the UI feed is what's left.)
 - **Refactor `wholesaler_analytics.py` (1938 lines)** into per-concern modules: `wholesaler_distributor_analytics.py`, `wholesaler_inventory_analytics.py`, `wholesaler_forecast.py`, `wholesaler_intelligence.py`, `wholesaler_control_tower.py`.
 - Refactor `WholesalerAnalytics.jsx` (~1480 lines) — extract each tab into its own file.
 - Refactor `routes/wholesaler_orders.py` (1264 lines) and `routes/allocation.py` (812 lines) per the 700-line guideline.
 - Distributor reorder shortcut ("Reorder this PO" button) on `/procurement` cards.
 - Push allocation_kpis + forecast math into Mongo aggregation pipelines (currently O(n) in Python on up to 5k orders).
+- **Simulator polish** (testing agent comments): use `$inc` for `total_ticks`/`total_events` to remove read-then-write race; expose a public `tick()` on `SimulatorRuntime` instead of touching `_tick`; parallelise the 9 `count_documents` in `simulator_status` with `asyncio.gather`.
 
 ## 🟢 P2
 - Promotions Workspace (drafts exist; needs a management UI).

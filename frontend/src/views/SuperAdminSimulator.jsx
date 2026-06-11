@@ -131,12 +131,18 @@ export default function SuperAdminSimulator() {
 
   const onToggle = async (next) => {
     setBusy("toggle");
+    // Optimistic: reflect the new enabled state immediately so the Status
+    // KPI doesn't sit on 'Starting…' until the 15s poll catches up.
+    setStatus((s) =>
+      s ? { ...s, settings: { ...s.settings, enabled: next }, running: next } : s,
+    );
     try {
       await SimApi.toggle(next);
       toast.success(next ? "Simulator resumed" : "Simulator paused");
-      await refresh();
+      refresh();
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Toggle failed");
+      refresh(); // server is source of truth; reconcile on error
     } finally {
       setBusy("");
     }
@@ -144,12 +150,17 @@ export default function SuperAdminSimulator() {
 
   const onLevel = async (lvl) => {
     setBusy(`level-${lvl}`);
+    // Optimistic: snap the active cadence chip immediately.
+    setStatus((s) =>
+      s ? { ...s, settings: { ...s.settings, activity_level: lvl } } : s,
+    );
     try {
       await SimApi.level(lvl);
       toast.success(`Cadence → ${lvl}`);
-      await refresh();
+      refresh();
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Level change failed");
+      refresh();
     } finally {
       setBusy("");
     }
