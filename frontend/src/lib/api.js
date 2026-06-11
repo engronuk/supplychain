@@ -429,6 +429,10 @@ export const WholesalerApi = {
     api.get(`/wholesaler/${wid}/procurement/catalog`).then((r) => r.data),
   distributors: (wid) =>
     api.get(`/wholesaler/${wid}/distributors`).then((r) => r.data),
+  distributorDetail: (wid, did) =>
+    api.get(`/wholesaler/${wid}/distributors/${did}/detail`).then((r) => r.data),
+  analytics: (wid) =>
+    api.get(`/wholesaler/${wid}/analytics`).then((r) => r.data),
 
   // Phase 2 — Distributor Orders / Fulfillment / Shipments
   ordersDashboard: (wid) =>
@@ -461,6 +465,14 @@ export const WholesalerApi = {
     api.get(`/wholesaler/${wid}/shipments/${sid}`).then((r) => r.data),
   shipmentAction: (wid, sid, action, payload = {}) =>
     api.post(`/wholesaler/${wid}/shipments/${sid}/${action}`, payload).then((r) => r.data),
+};
+
+// Cross-persona surfacing
+export const CrossPersonaApi = {
+  manufacturerWholesalerPos: (mid) =>
+    api.get(`/manufacturer/${mid}/wholesaler-pos`).then((r) => r.data),
+  distributorWholesalerOrders: (did) =>
+    api.get(`/distributor/${did}/wholesaler-orders`).then((r) => r.data),
 };
 
 export default api;

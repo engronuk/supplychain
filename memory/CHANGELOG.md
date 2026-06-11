@@ -1087,3 +1087,57 @@ Standalone mission-control page at **`/manufacturer/logistics-center`** ("Logist
 **Known polish items (cosmetic, not blocking)**
 - Phase 2 modal loading-state dialogs now ship with `<DialogTitle className="sr-only">` to clear Radix accessibility warnings.
 - Shipments KPI strip gained `data-testid="shipments-kpi-strip"`; shipment detail modal renamed to `data-testid="shipment-detail-modal"`.
+
+## 2026-06-11 — Wholesaler IA Cleanup · Merged Procurement Hub
+
+User feedback round:
+1. Merge Distributor Orders + Fulfillment + Shipments into a single tabbed module under Procurement.
+2. Drop the Organizations link from the wholesaler sidebar.
+3. Confirm all data flows from MongoDB (no mock data anywhere).
+
+**Frontend**
+- New `WholesalerProcurementHub.jsx` — a single page with 4 tabs (Purchase Orders / Distributor Orders / Fulfillment / Shipments). Each tab pill shows a **live count from the database** (open POs, open distributor orders, open fulfillments, active shipments) — fetched via existing `/api/wholesaler/{id}/...` endpoints.
+- Existing pages (`WholesalerProcurement`, `WholesalerOrders`, `WholesalerFulfillment`, `WholesalerShipments`) gained an `embedded` prop. When `embedded`, they drop their own `PageHeader` and outer padding and emit a compact action bar so they nest cleanly inside the Hub. No data-fetching logic changed.
+- `App.js`: `ProcurementGate` routes wholesaler role to the Hub; legacy direct links (`/wholesaler/orders`, `/wholesaler/fulfillment`, `/wholesaler/shipments`) now redirect to `/procurement?tab=<...>`.
+- `Layout.jsx`: wholesaler sidebar collapsed to **Dashboard · Inventory · Procurement · Distributors · Analytics · Reports**. Organizations link removed for wholesaler role.
+
+**Data audit**
+- Every wholesaler view reads exclusively from MongoDB via the `/api/wholesaler/...` endpoints. No hard-coded data anywhere in the frontend bundle.
+- Phase 1 + Phase 2 seeds (`seed_wholesaler.py`, `seed_wholesaler_orders.py`) write real DB records and are idempotent.
+
+**Verified end-to-end**
+- All 4 tabs load real DB data, switching between them updates URL `?tab=...` and the badge counts.
+
+## 2026-06-11 — Wholesaler · Distributor Detail + Analytics + Cross-Persona Surfacing
+
+User feedback round:
+1. Distributor module should drill into a fresh detail page per distributor.
+2. Analytics page wasn't wired for wholesaler — build it out with pure DB analytics (no AI).
+3. Wholesaler POs must reflect on the Manufacturer dashboard; distributor orders must show on the Distributor pages; everything alive.
+
+**Backend** — new `routes/wholesaler_analytics.py` (registered in `server.py`):
+- `GET /api/wholesaler/{wid}/distributors/{did}/detail` — 360° distributor profile + KPIs (orders 90d/30d, revenue, units, AOV, fill rate, avg delivery hours, inventory health) + order history + shipment history + top products + 90d daily trend + status distribution. Tenant-guarded.
+- `GET /api/wholesaler/{wid}/analytics` — comprehensive analytics:
+  * Inventory: total/reserved/in-transit/damaged, turnover (90d), days-of-supply, ABC classification, fast/slow/dead movers.
+  * Orders: 90d/30d totals, revenue trend (vs prev-30), fill rate, daily trend, status distribution.
+  * Distributors: top, fastest growing, declining (period-over-period revenue).
+  * Procurement: open/total POs, avg lead time, supplier performance (PO count/value/fill-rate).
+  * Demand Forecast: rule-based 14-day projection per SKU (velocity from trailing 30d), days-of-cover, replenishment recommendations (urgent_reorder / reorder).
+- `GET /api/manufacturer/{mid}/wholesaler-pos` — manufacturer view of inbound wholesaler POs (KPIs + PO list with wholesaler enrichment).
+- `GET /api/distributor/{did}/wholesaler-orders` — distributor view of orders/fulfillments/shipments they've placed against wholesalers.
+
+**Frontend**
+- `WholesalerDistributorDetail.jsx` — fresh page at `/wholesaler/distributors/:distributorId` with profile/contact cards, 8-KPI strip, 90-day order trend chart, top products, status distribution, order history table, shipment history table. Distributor table rows in `WholesalerDistributors.jsx` are now clickable.
+- `WholesalerAnalytics.jsx` — 6-tab layout (Overview / Inventory / Distributors / Orders / Procurement / Demand Forecast). All rendered from the new `/analytics` endpoint. Pure rule-based analytics — no AI.
+- `AnalyticsView.jsx` — `wholesaler` role now routes to `WholesalerAnalytics`.
+- `CrossPersonaWidgets.jsx` — `ManufacturerWholesalerPosWidget` and `DistributorWholesalerOrdersWidget` reusable cards.
+- `ManufacturerDashboard.jsx` — embeds `ManufacturerWholesalerPosWidget` between the Supply Chain Pipeline and Network Alerts (Flour Mills dashboard now shows live wholesaler POs).
+- `DistributorProcurementInbox.jsx` — adds a new "Wholesalers" tab surfacing the distributor's outbound orders + inbound shipments from wholesalers.
+
+**Data audit** — every new page fetches live from MongoDB. No mock data anywhere. Cross-persona widgets prove the entire wholesaler workflow flows back to both upstream (manufacturer) and downstream (distributor) views.
+
+**Verified live**
+- Wholesaler login → `/network` → click row → detail loads with 17 orders, 6 shipments, ₦10.3M revenue (90d), top 6 products.
+- Wholesaler `/analytics` → 6 tabs render with live KPIs (₦31.95M inventory, 11% fill rate, supplier performance, 12-row demand forecast).
+- Manufacturer login → dashboard scrolls to "Wholesaler Replenishment Requests" with 5 POs (₦18.5M open value).
+- Distributor login → procurement inbox "Wholesalers" tab shows their outbound orders + inbound shipments.

@@ -16,6 +16,7 @@ import { RefreshPill } from "@/components/RefreshPill";
 import { toast } from "sonner";
 import { STATE_PATHS, STATE_ZONE, VIEWBOX as NG_VIEWBOX } from "@/lib/nigeriaStates";
 import CommandCenter from "@/views/CommandCenter";
+import { ManufacturerWholesalerPosWidget } from "@/views/CrossPersonaWidgets";
 import {
   TrendingUp, TrendingDown, Sparkles, Bell,
   Store, Warehouse, Activity, Truck, Package, AlertTriangle,
@@ -128,6 +129,9 @@ export default function ManufacturerDashboard() {
 
         {/* 7 — SUPPLY CHAIN PIPELINE (animated flow) */}
         <SupplyChainPipeline pipeline={data.pipeline} />
+
+        {/* Wholesaler Replenishment Requests — cross-persona widget */}
+        <ManufacturerWholesalerPosWidget manufacturerId={session?.entity?.id} />
 
         {/* 8 — ACTIONABLE NETWORK ALERTS */}
         <ActionableAlertsCard alerts={data.alerts} atRisk={data.coverage_kpis.distributor_performance.at_risk} />

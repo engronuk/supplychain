@@ -54,7 +54,7 @@ const PRIORITY_TONE = {
   urgent: "bg-rose-100 text-rose-700",
 };
 
-export default function WholesalerOrders() {
+export default function WholesalerOrders({ embedded = false }) {
   const { session } = useSession();
   const wid = session?.entity?.id;
   const [dashboard, setDashboard] = useState(null);
@@ -95,16 +95,25 @@ export default function WholesalerOrders() {
   const k = dashboard.kpis;
 
   return (
-    <div className="p-6 md:p-8 space-y-6" data-testid="wholesaler-orders">
-      <PageHeader
-        title="Distributor Orders"
-        subtitle="Incoming orders from your regional distributor network."
-        action={
+    <div className={embedded ? "space-y-6" : "p-6 md:p-8 space-y-6"} data-testid="wholesaler-orders">
+      {!embedded && (
+        <PageHeader
+          title="Distributor Orders"
+          subtitle="Incoming orders from your regional distributor network."
+          action={
+            <Button variant="outline" size="sm" onClick={refresh} data-testid="orders-refresh">
+              <RefreshCw className="h-4 w-4 mr-1.5" /> Refresh
+            </Button>
+          }
+        />
+      )}
+      {embedded && (
+        <div className="flex justify-end">
           <Button variant="outline" size="sm" onClick={refresh} data-testid="orders-refresh">
             <RefreshCw className="h-4 w-4 mr-1.5" /> Refresh
           </Button>
-        }
-      />
+        </div>
+      )}
 
       {/* KPI strip */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3" data-testid="orders-kpi-strip">

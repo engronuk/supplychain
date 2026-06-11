@@ -36,6 +36,9 @@ import WholesalerProcurement from "@/views/WholesalerProcurement";
 import WholesalerOrders from "@/views/WholesalerOrders";
 import WholesalerFulfillment from "@/views/WholesalerFulfillment";
 import WholesalerShipments from "@/views/WholesalerShipments";
+import WholesalerProcurementHub from "@/views/WholesalerProcurementHub";
+import WholesalerDistributorDetail from "@/views/WholesalerDistributorDetail";
+import WholesalerAnalytics from "@/views/WholesalerAnalytics";
 import WMSLayout from "@/views/wms/WMSLayout";
 import WMSDashboardPage from "@/views/wms/DashboardPage";
 import { InventoryListPage, InventoryDetailPage } from "@/views/wms/InventoryPages";
@@ -64,7 +67,7 @@ function ProcurementGate() {
   if (!session) return null;
   if (session.role === "distributor") return <DistributorProcurementInbox />;
   if (session.role === "retailer") return <RetailerProcurement />;
-  if (session.role === "wholesaler") return <WholesalerProcurement />;
+  if (session.role === "wholesaler") return <WholesalerProcurementHub />;
   // Manufacturers don't procure — for them, the merged "Procurement" workspace
   // is the Shipment Command Center (outbound shipments to distributors).
   if (session.role === "manufacturer") return <ShipmentCommandCenter />;
@@ -159,10 +162,12 @@ function App() {
               <Route path="/sales" element={<SalesBookView />} />
               <Route path="/intel" element={<IntelligenceCenter />} />
               <Route path="/reports" element={<ReportsView />} />
-              {/* Wholesaler Phase 2 — distributor orders, fulfillment, shipments */}
-              <Route path="/wholesaler/orders" element={<WholesalerOrders />} />
-              <Route path="/wholesaler/fulfillment" element={<WholesalerFulfillment />} />
-              <Route path="/wholesaler/shipments" element={<WholesalerShipments />} />
+              {/* Wholesaler Phase 2 — direct deep-links into the merged
+                  Procurement Hub tabs. Sidebar only shows /procurement now. */}
+              <Route path="/wholesaler/orders" element={<Navigate to="/procurement?tab=orders" replace />} />
+              <Route path="/wholesaler/fulfillment" element={<Navigate to="/procurement?tab=fulfillment" replace />} />
+              <Route path="/wholesaler/shipments" element={<Navigate to="/procurement?tab=shipments" replace />} />
+              <Route path="/wholesaler/distributors/:distributorId" element={<WholesalerDistributorDetail />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

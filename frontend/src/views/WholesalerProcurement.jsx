@@ -45,7 +45,7 @@ const ACTIONS_BY_STATUS = {
   cancelled:  [],
 };
 
-export default function WholesalerProcurement() {
+export default function WholesalerProcurement({ embedded = false }) {
   const { session } = useSession();
   const wid = session?.entity?.id;
   const [pos, setPos] = useState([]);
@@ -79,21 +79,33 @@ export default function WholesalerProcurement() {
   }, [pos]);
 
   return (
-    <div className="p-6 md:p-8 space-y-6" data-testid="wholesaler-procurement">
-      <PageHeader
-        title="Procurement Workspace"
-        subtitle="Replenish your aggregation hub — order from the manufacturer or warehouse network."
-        action={
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={refresh} data-testid="po-refresh">
-              <RefreshCw className="h-4 w-4 mr-1.5" /> Refresh
-            </Button>
-            <Button size="sm" onClick={() => setCreating(true)} data-testid="po-new-btn">
-              <Plus className="h-4 w-4 mr-1.5" /> New Purchase Order
-            </Button>
-          </div>
-        }
-      />
+    <div className={embedded ? "space-y-6" : "p-6 md:p-8 space-y-6"} data-testid="wholesaler-procurement">
+      {!embedded && (
+        <PageHeader
+          title="Procurement Workspace"
+          subtitle="Replenish your aggregation hub — order from the manufacturer or warehouse network."
+          action={
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={refresh} data-testid="po-refresh">
+                <RefreshCw className="h-4 w-4 mr-1.5" /> Refresh
+              </Button>
+              <Button size="sm" onClick={() => setCreating(true)} data-testid="po-new-btn">
+                <Plus className="h-4 w-4 mr-1.5" /> New Purchase Order
+              </Button>
+            </div>
+          }
+        />
+      )}
+      {embedded && (
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" size="sm" onClick={refresh} data-testid="po-refresh">
+            <RefreshCw className="h-4 w-4 mr-1.5" /> Refresh
+          </Button>
+          <Button size="sm" onClick={() => setCreating(true)} data-testid="po-new-btn">
+            <Plus className="h-4 w-4 mr-1.5" /> New Purchase Order
+          </Button>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <KpiCard

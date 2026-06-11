@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useSession } from "@/context/SessionContext";
 import { WholesalerApi } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +13,7 @@ import { Network, Users, Sparkles, Activity, TrendingUp } from "lucide-react";
 export default function WholesalerDistributors() {
   const { session } = useSession();
   const wid = session?.entity?.id;
+  const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -125,7 +127,12 @@ export default function WholesalerDistributors() {
                 </thead>
                 <tbody>
                   {rows.map((d) => (
-                    <tr key={d.id} className="border-b border-slate-100 hover:bg-slate-50" data-testid={`dist-row-${d.code || d.id}`}>
+                    <tr
+                      key={d.id}
+                      onClick={() => navigate(`/wholesaler/distributors/${d.id}`)}
+                      className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer"
+                      data-testid={`dist-row-${d.code || d.id}`}
+                    >
                       <td className="py-2 px-3 font-medium text-slate-800">{d.name}</td>
                       <td className="py-2 px-3 text-slate-500 text-xs">{d.code || "—"}</td>
                       <td className="py-2 px-3 text-slate-600">{d.city || "—"}</td>

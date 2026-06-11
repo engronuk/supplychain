@@ -33,7 +33,7 @@ const STAGE_TONE = {
   delivered:  "bg-emerald-100 text-emerald-700",
 };
 
-export default function WholesalerFulfillment() {
+export default function WholesalerFulfillment({ embedded = false }) {
   const { session } = useSession();
   const wid = session?.entity?.id;
   const [rows, setRows] = useState([]);
@@ -56,16 +56,25 @@ export default function WholesalerFulfillment() {
     : rows.filter((r) => r.status === statusFilter);
 
   return (
-    <div className="p-6 md:p-8 space-y-6" data-testid="wholesaler-fulfillment">
-      <PageHeader
-        title="Fulfillment Workflow"
-        subtitle="Pick, pack, and dispatch approved distributor orders."
-        action={
+    <div className={embedded ? "space-y-6" : "p-6 md:p-8 space-y-6"} data-testid="wholesaler-fulfillment">
+      {!embedded && (
+        <PageHeader
+          title="Fulfillment Workflow"
+          subtitle="Pick, pack, and dispatch approved distributor orders."
+          action={
+            <Button variant="outline" size="sm" onClick={refresh} data-testid="ful-refresh">
+              <RefreshCw className="h-4 w-4 mr-1.5" /> Refresh
+            </Button>
+          }
+        />
+      )}
+      {embedded && (
+        <div className="flex justify-end">
           <Button variant="outline" size="sm" onClick={refresh} data-testid="ful-refresh">
             <RefreshCw className="h-4 w-4 mr-1.5" /> Refresh
           </Button>
-        }
-      />
+        </div>
+      )}
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">

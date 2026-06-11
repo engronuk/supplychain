@@ -31,7 +31,7 @@ const SHIP_TONE = {
   failed:     "bg-rose-100 text-rose-700",
 };
 
-export default function WholesalerShipments() {
+export default function WholesalerShipments({ embedded = false }) {
   const { session } = useSession();
   const wid = session?.entity?.id;
   const [dashboard, setDashboard] = useState(null);
@@ -61,16 +61,25 @@ export default function WholesalerShipments() {
   const k = dashboard.kpis;
 
   return (
-    <div className="p-6 md:p-8 space-y-6" data-testid="wholesaler-shipments">
-      <PageHeader
-        title="Shipment Management"
-        subtitle="Outbound shipments from your aggregation hub to distributors."
-        action={
+    <div className={embedded ? "space-y-6" : "p-6 md:p-8 space-y-6"} data-testid="wholesaler-shipments">
+      {!embedded && (
+        <PageHeader
+          title="Shipment Management"
+          subtitle="Outbound shipments from your aggregation hub to distributors."
+          action={
+            <Button variant="outline" size="sm" onClick={refresh} data-testid="ship-refresh">
+              <RefreshCw className="h-4 w-4 mr-1.5" /> Refresh
+            </Button>
+          }
+        />
+      )}
+      {embedded && (
+        <div className="flex justify-end">
           <Button variant="outline" size="sm" onClick={refresh} data-testid="ship-refresh">
             <RefreshCw className="h-4 w-4 mr-1.5" /> Refresh
           </Button>
-        }
-      />
+        </div>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3" data-testid="shipments-kpi-strip">
         <KpiCard testid="ship-active" icon={Truck} label="Active Shipments" value={fmtNumber(k.active_shipments)} />

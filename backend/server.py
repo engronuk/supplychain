@@ -43,6 +43,7 @@ from routes import (
     stock_requests,
     uploads,
     wholesaler,
+    wholesaler_analytics,
     wholesaler_orders,
     wms,
 )
@@ -94,6 +95,7 @@ for r in (
     seed_route.router,
     uploads.router,
     wholesaler.router,
+    wholesaler_analytics.router,
     wholesaler_orders.router,
     wms.router,
 ):

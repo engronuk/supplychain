@@ -36,8 +36,11 @@ const INSIGHT_ICONS = {
 
 const CHART_COLORS = ["#6366f1", "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899"];
 
+import WholesalerAnalytics from "./WholesalerAnalytics";
+
 export default function AnalyticsView() {
   const { session } = useSession();
+  if (session.role === "wholesaler") return <WholesalerAnalytics />;
   if (session.role === "distributor") {
     return <DistributorExecutiveAnalytics session={session} />;
   }

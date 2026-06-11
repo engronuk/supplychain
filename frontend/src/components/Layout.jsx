@@ -65,12 +65,9 @@ function navForRole(role) {
     base.push({ to: "/network", label: "Retailers", icon: Network });
     base.push({ to: "/procurement", label: "Procurement", icon: ShoppingCart });
   } else if (role === "wholesaler") {
-    // Wholesaler workspace (Phase 1 + Phase 2) — inventory hub + order
-    // fulfilment & shipment execution.
+    // Wholesaler workspace — single Procurement Hub tab houses purchase
+    // orders, distributor orders, fulfillment, and outbound shipments.
     base.push({ to: "/procurement", label: "Procurement", icon: ShoppingCart });
-    base.push({ to: "/wholesaler/orders", label: "Distributor Orders", icon: ClipboardList });
-    base.push({ to: "/wholesaler/fulfillment", label: "Fulfillment", icon: Receipt });
-    base.push({ to: "/wholesaler/shipments", label: "Shipments", icon: Truck });
     base.push({ to: "/network", label: "Distributors", icon: Network });
   } else if (role === "retailer") {
     base.push({ to: "/intel", label: "Intelligence", icon: BrainCircuit });
@@ -79,11 +76,9 @@ function navForRole(role) {
   }
   base.push({ to: "/analytics", label: "Analytics", icon: BarChart3 });
   base.push({ to: "/reports", label: "Reports", icon: FileText });
-  // Universal Organization Management — visible to supply-chain participants
-  // who can manage downstream (manufacturer / distributor / wholesaler).
-  // super_admin already has it added in the early-return branch above.
-  // Retailer & logistics_provider don't see it (no management rights yet).
-  if (["manufacturer", "distributor", "wholesaler"].includes(role)) {
+  // Universal Organization Management — visible only to manufacturer &
+  // distributor. Wholesalers operate as a single org and don't need this.
+  if (["manufacturer", "distributor"].includes(role)) {
     base.push({ to: "/organizations", label: "Organizations", icon: NetworkIcon });
   }
   return base;
