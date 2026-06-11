@@ -30,6 +30,7 @@ import ProductIntelligenceCenter from "@/views/ProductIntelligenceCenter";
 import ManufacturerWarehouses, { ManufacturerWarehouseDetail } from "@/views/ManufacturerWarehouses";
 import AllocationCenter from "@/views/AllocationCenter";
 import CommandCenter from "@/views/CommandCenter";
+import LogisticsCommandCenter from "@/views/LogisticsCommandCenter";
 import WMSLayout from "@/views/wms/WMSLayout";
 import WMSDashboardPage from "@/views/wms/DashboardPage";
 import { InventoryListPage, InventoryDetailPage } from "@/views/wms/InventoryPages";
@@ -139,6 +140,7 @@ function App() {
               <Route path="/manufacturer/warehouses/:id" element={<ManufacturerWarehouseDetail />} />
               <Route path="/manufacturer/allocation" element={<AllocationCenter />} />
               <Route path="/manufacturer/command-center" element={<CommandCenter />} />
+              <Route path="/manufacturer/logistics-center" element={<LogisticsCommandCenter />} />
               <Route path="/network/retailer/:retailerId" element={<DistributorRetailerDetail />} />
               <Route path="/inventory/product/:productId" element={<InventoryProductGate />} />
               <Route path="/products/:productId" element={<ProductCommandCenter />} />

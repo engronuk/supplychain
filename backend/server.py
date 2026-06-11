@@ -27,6 +27,7 @@ from routes import (
     hierarchy,
     intel,
     inventory,
+    logistics,
     manufacturer,
     notifications,
     organizations,
@@ -78,6 +79,7 @@ for r in (
     distributor_os.router,
     allocation.router,
     fulfillment.router,
+    logistics.router,
     pulse.router,
     shipment_command.router,
     manufacturer.router,
@@ -213,6 +215,15 @@ async def _background_bootstrap():
             logger.info("Distributor orders seeded: %s", result)
     except Exception:
         logger.exception("Distributor order seed failed (continuing)")
+
+    # Logistics Command Center fleet / transfers / replenishment queue.
+    try:
+        from services.seed_logistics import seed_logistics
+        result = await seed_logistics()
+        if any(result.values()):
+            logger.info("Logistics seeded: %s", result)
+    except Exception:
+        logger.exception("Logistics seed failed (continuing)")
 
     # Retailer Procurement workspace (POs + supplier quotes).
     try:

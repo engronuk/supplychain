@@ -155,6 +155,20 @@ export const Api = {
   fulfillmentAdvance: (id, to) =>
     api.post(`/fulfillment/${id}/advance`, { to }).then((r) => r.data),
 
+  // ---- Logistics Command Center ----
+  logisticsOverview: () => api.get("/logistics/overview").then((r) => r.data),
+  logisticsTransfers: () => api.get("/logistics/transfers").then((r) => r.data),
+  logisticsCreateTransfer: (payload) =>
+    api.post("/logistics/transfers", payload).then((r) => r.data),
+  logisticsAdvanceTransfer: (id, action) =>
+    api.patch(`/logistics/transfers/${id}/advance`, { action }).then((r) => r.data),
+  logisticsDecideRequest: (id, action, quantity) =>
+    api.post(`/logistics/requests/${id}/decide`, { action, quantity }).then((r) => r.data),
+  logisticsAiRecompute: () =>
+    api.post("/logistics/ai-recommendation/recompute").then((r) => r.data),
+  logisticsAiExecute: () =>
+    api.post("/logistics/ai-recommendation/execute").then((r) => r.data),
+
   // ---- Real-Time Pulse (GCP) ----
   pulseHealth: () => api.get("/pulse/health").then((r) => r.data),
   pulseByRegion: (hours = 24) =>

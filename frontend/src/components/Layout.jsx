@@ -26,6 +26,7 @@ import {
   ShoppingCart,
   Network as NetworkIcon,
   Globe2,
+  Truck,
 } from "lucide-react";
 
 const ROLE_ICON = {
@@ -50,6 +51,7 @@ function navForRole(role) {
     base.push({ to: "/inventory", label: "Inventory", icon: Boxes });
   }
   if (role === "manufacturer") {
+    base.push({ to: "/manufacturer/logistics-center", label: "Logistics Center", icon: Truck });
     // Procurement (which is now the merged Shipment Command Center for mfg)
     base.push({ to: "/procurement", label: "Procurement", icon: ShoppingCart });
     base.push({ to: "/product-intelligence", label: "Product Intelligence", icon: Sparkles });

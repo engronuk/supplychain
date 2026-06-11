@@ -1,0 +1,58 @@
+{
+  "summary": "Full end-to-end review of the new Manufacturer Logistics Command Center (/manufacturer/logistics-center). Created /app/backend/tests/test_logistics.py — 15/15 pass (overview shape, transfers CRUD + insufficient-stock 400 + same-src/dst 400, advance deliver/cancel, replenishment approve/reject + already-decided 400, Vertex AI recompute + execute + double-execute 400, multi-tenant isolation Unilever vs Flour Mills). Frontend: page renders with data-testid='logistics-command-center', all 7 KPI cards present and populated (Total Inventory 183.9K, Warehouses 7, Open Orders 86, etc.), Google Map renders with 7 warehouse markers + 12 lanes + 8 trucks, alerts panel populated with working Critical/Warning/Info filter chips, AI recommendation card (data-testid='ai-recommendation-card') invokes Vertex AI on recompute (~5-30s) and shows from→to warehouses, allocation queue has 6 Approve/Partial/Reject buttons, 3 Authorization tabs (warehouse/distributor/wholesaler) switch correctly, Create Transfer dialog opens with data-testid='transfer-submit-btn', 8 transfer-deliver-* buttons present, Quick Actions panel renders, KPI Warehouses drill-down navigates to /manufacturer/warehouses (correctly shows 7 warehouses). Regression check: /manufacturer/warehouses still works (7 warehouses listed with codes/locations/values).",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "AI Recommendation card (LogisticsActionPanels.jsx)",
+        "issue": "When backend clamps quantity to 0 (source warehouse drained — common after several executions in dev), the card displays 'Move 0 units of <product>' while the AI narrative still says e.g. 'Transfer 855 units…'. The ai-execute-btn remains clickable but the backend returns 400 'Recommendation has no transferable quantity'. UX: when clamped_quantity == 0, hide/disable Execute and surface a helper like 'Insufficient stock — recompute'.",
+        "selector": "[data-testid=\"ai-recommendation-card\"] [data-testid=\"ai-execute-btn\"]",
+        "priority": "MEDIUM"
+      },
+      {
+        "component": "Sidebar Logistics Center nav item (Layout.jsx)",
+        "issue": "data-testid attribute contains a space ('nav-logistics center') — atypical and brittle for selector targeting. Recommend renaming to 'nav-logistics-center' (kebab-case) for consistency with other testids in the codebase.",
+        "selector": "[data-testid=\"nav-logistics center\"]",
+        "priority": "LOW"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_scenarios_executed": [
+    {"name": "Backend pytest /app/backend/tests/test_logistics.py (15 tests)", "result": "15/15 PASS in 48s"},
+    {"name": "GET /api/logistics/overview shape (kpis x7 + map + alerts sorted critical-first + allocation_queue + authorization x3 + pipeline monotonic + forecast + transfers)", "result": "PASS"},
+    {"name": "POST /api/logistics/transfers — same src/dst 400, qty > available 400, valid create returns TRF-xxx in_transit with vehicle assigned, source inventory decremented", "result": "PASS"},
+    {"name": "PATCH /api/logistics/transfers/{id}/advance deliver -> status delivered + destination credited + truck freed; cancel -> source restored; second deliver -> 400", "result": "PASS"},
+    {"name": "POST /api/logistics/requests/{id}/decide approve warehouse req creates transfer; reject sets status; double-decide 400", "result": "PASS"},
+    {"name": "POST /api/logistics/ai-recommendation/recompute returned ai_status='vertex_ai', valid from!=to + product name; execute created TRF-xxx; double-execute returned 400", "result": "PASS"},
+    {"name": "Multi-tenant isolation — flour.admin sees zero overlap of warehouses/trucks with Unilever", "result": "PASS"},
+    {"name": "Frontend login as unilever@tradekonekt.io, sidebar 'Logistics Center' link navigates to /manufacturer/logistics-center, all 8 testids confirmed (logistics-command-center, logistics-map, 7 kpi-*, alerts-filter-critical/warning, ai-recommendation-card, ai-recompute-btn, auth-tab-{warehouse,distributor,wholesaler}, transfers-create-btn, transfer-submit-btn)", "result": "PASS"},
+    {"name": "Frontend AI recompute -> Vertex AI -> ai-execute-btn rendered -> click execute completed", "result": "PASS (note quantity-0 display caveat)"},
+    {"name": "Frontend KPI drill-down: kpi-warehouses -> /manufacturer/warehouses (7 warehouses listed correctly)", "result": "PASS"},
+    {"name": "Regression — /manufacturer/warehouses still renders 7 warehouses with codes/locations/values", "result": "PASS"}
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_logistics.py",
+    "/app/test_reports/pytest/logistics_results.xml"
+  ],
+  "action_items": [
+    "Hide/disable the Execute Transfer button when the AI recommendation's clamped quantity is 0 (or auto-trigger a recompute) — currently the narrative says e.g. 855 units while card displays 'Move 0 units' and execute 400s.",
+    "Rename sidebar testid from 'nav-logistics center' (with space) to 'nav-logistics-center' for consistency.",
+    "Optional: surface ai_status badge color (Vertex AI vs fallback_rules) so ops can tell when graceful degradation kicked in."
+  ],
+  "critical_code_review_comments": [
+    "logistics.py is 970 lines — consider splitting into routes/logistics_overview.py + routes/logistics_transfers.py + routes/logistics_ai.py to honour the <700 line guideline.",
+    "_create_transfer mutates inventory (decrement) and inserts shipment + transfer_orders + vehicle update across 4 collections without a transaction. If any later step fails, source stock is silently decremented with no transfer record. Consider wrapping in an async MongoDB transaction or compensating cleanup.",
+    "AI quantity clamp at line 914: rec['quantity'] = 0 when source empty results in a stored recommendation that cannot be executed — see frontend bug above. Better to reject the recommendation and fall back to rule-based selection of a different product."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_logistics.py (new)"
+  ],
+  "success_rate": { "backend": "100% (15/15)", "frontend": "100% (all flows verified)" },
+  "test_credentials": "unilever@tradekonekt.io / TradeKonekt2026! (manufacturer tenant 1, 7 warehouses); flour.admin@tradekonekt.io / TradeKonekt2026! (manufacturer tenant 2, isolation check)",
+  "seed_data_creation": "None — tests use existing demo seed. TEST_-prefixed transfer reasons used so they can be filtered out of dashboards if needed.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend tests are stable at 15/15. The AI execute flow can show 'Move 0 units' on subsequent recomputes when source stock has been drained — this is correct backend clamp behaviour but a frontend UX miss. Vertex AI typically completes in 4-8s but can take up to 60s under 429 quota retries. Some Unilever warehouses (South East/West/South/North East) legitimately have 0 stock, so health='critical' on those is correct."
+}
