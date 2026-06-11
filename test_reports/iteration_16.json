@@ -1,0 +1,71 @@
+{
+  "summary": "Verified (a) wholesaler 'Place Order on Their Behalf' modal and POST /api/wholesaler/{wid}/orders, (b) GET /api/wholesaler/{wid}/distributors/{did}/detail surfaces newly-placed orders, and (c) GET /api/allocation/kpis + the new Performance KPI strip on /manufacturer/allocation. Backend: 5/6 pytest pass; 1 failure exposes a real tenant-scoping bug (a distributor user can call /api/allocation/kpis and receive Unilever's KPIs — HTTP 200 instead of 403). Frontend: both Place-Order modal flow and Allocation KPI strip render and behave per the spec.",
+  "backend_issues": {
+    "critical": [
+      {
+        "endpoint": "GET /api/allocation/kpis",
+        "issue": "Tenant-scope bypass. A distributor caller (lagos.distributor@tradekonekt.io) gets HTTP 200 with the parent manufacturer's KPIs (fill_rate 65%, requested 37935, etc). Root cause: routes/allocation.py::_scope_manufacturer (line 54) accepts any role with `user.manufacturer_id` or `user.organization_id` populated — distributor user records carry the parent manufacturer_id and silently pass. The same helper guards /allocation/pool, /allocation/summary, /allocation/recommendation, /allocation/decisions, /allocation/orders/* — so the leak is broader than /kpis. Fix: add an explicit role allowlist (e.g., allow only role in {'manufacturer','super_admin'}; warehouse role with explicit org scope) BEFORE returning mfr id.",
+        "priority": "CRITICAL"
+      }
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Place Order on Their Behalf modal",
+        "issues": [
+          "Requested Delivery Date uses the native HTML <input type='date'> (mm/dd/yyyy browser picker) instead of the shadcn Calendar component used elsewhere — inconsistent UX.",
+          "Console: 'DialogContent requires a DialogTitle for accessibility' — repeats the same Radix accessibility miss flagged in iteration 15. Add VisuallyHidden DialogTitle/Description."
+        ]
+      },
+      {
+        "screen": "Allocation Center → Warehouse Performance leaderboard",
+        "issues": [
+          "All 7 warehouses display On-Time % = 100.0. Likely the 5-day window in routes/allocation.py L324 ((u - c).total_seconds() <= 5*86400) is too lax and every measured delivered fulfillment falls under it; consider tightening to 48h or making the threshold per-region. Verify with a SLA-breaching fulfillment to make sure the calc isn't accidentally always-true."
+        ]
+      }
+    ]
+  },
+  "test_scenarios_executed": [
+    {"name": "pytest TestDistributorDetail.test_detail_returns_kpis_and_history", "result": "PASS"},
+    {"name": "pytest TestPlaceOrderOnBehalf.test_create_order — wholesaler POST /orders w/ items[5 units] → WO-2026-022x submitted, line_total 5×₦4200=₦21000", "result": "PASS"},
+    {"name": "pytest TestPlaceOrderOnBehalf.test_new_order_surfaces_in_detail — newly created order shows up in detail.orders[]", "result": "PASS"},
+    {"name": "pytest TestAllocationKPIs.test_payload_shape — manufacturer caller, all 10 kpi keys + warehouses[] shape", "result": "PASS"},
+    {"name": "pytest TestAllocationKPIs.test_distributor_forbidden — expected 403, got 200 with real KPI data", "result": "FAIL — security gap"},
+    {"name": "pytest TestAllocationKPIs.test_super_admin_requires_manufacturer_id — 400 w/o id, 200 w/ id", "result": "PASS"},
+    {"name": "Frontend wholesaler: open dialog (8 testids present), add+remove 2nd line, empty-submit error toast, select product + qty=5, total ₦21,000, submit → 'Order WO-2026-0223 placed' toast, dialog closed", "result": "PASS"},
+    {"name": "Frontend manufacturer /manufacturer/allocation: allocation-kpi-strip + 5 tiles render (Fill 65%, AllocTime 19.5h, BO 6.7%, Service 47.9%, Top Warehouse), kpi-warehouse-table 7 rows, 7 bucket cards still present (no regression)", "result": "PASS"}
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_place_order_and_alloc_kpis.py",
+    "/app/test_reports/pytest/iter16.xml"
+  ],
+  "action_items": [
+    "FIX backend: harden _scope_manufacturer in /app/backend/routes/allocation.py to reject non-manufacturer (and non-super_admin) roles. Currently distributor + wholesaler + retailer can all read manufacturer allocation data because their user record carries the parent manufacturer_id.",
+    "Swap the native date input in the Place-Order dialog (line ~422 in WholesalerDistributorDetail.jsx) for the shadcn Calendar / Popover used elsewhere in the codebase.",
+    "Add VisuallyHidden DialogTitle + DialogDescription to the Place-Order Radix Dialog to clear the accessibility console warning.",
+    "Tune the 'on-time' threshold for the Warehouse Performance leaderboard — 5-day window currently yields 100% across all 7 warehouses, making the metric uninformative."
+  ],
+  "critical_code_review_comments": [
+    "routes/allocation.py is 812 lines — exceeds the 700-line guideline. New KPI block (~190-360) is a natural extraction candidate (allocation_kpis.py).",
+    "_scope_manufacturer is the single line of defense for ~12 endpoints and trusts a per-user `manufacturer_id` field that is populated for downstream roles. Add a role allowlist and unit test for each non-manufacturer role explicitly.",
+    "allocation_kpis loads up to 5000 orders, 10000 allocations, 5000 fulfillments and computes in Python. For a real tenant this scales O(n) per request — consider a Mongo aggregation pipeline ($group on status + $lookup to order_allocations) to push the math server-side.",
+    "_parse_iso silently swallows ISO parse errors — log a warning so silently-bad timestamps don't get excluded from KPI windows.",
+    "Service-Level uses delivered_at OR dispatched_at as the completion timestamp. Dispatched is not the same as delivered; either compute two metrics or always require delivered_at to be present for 'completed' orders.",
+    "Warehouse on-time uses fulfillment_orders.updated_at as the proxy for the SLA stop-clock — updated_at can be mutated by any later status change. Prefer a dedicated `delivered_at` field on fulfillment_orders.",
+    "EB001 lint warning in allocation.py force_back_order remains (pre-existing, not from this change — confirmed in spec)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_place_order_and_alloc_kpis.py (new — 6 pytest cases)"
+  ],
+  "success_rate": {"backend": "83% (5/6)", "frontend": "100% (place-order modal e2e PASS, allocation KPI strip + leaderboard PASS, no regression on 7 bucket cards)"},
+  "test_credentials": "unilever@tradekonekt.io (mfr), unilever.wholesaler@tradekonekt.io (wholesaler WID d81efddf-...), lagos.distributor@tradekonekt.io (used to repro the 200 bypass), admin@tradekonekt.io (super_admin). All shared password TradeKonekt2026!.",
+  "seed_data_creation": "Pytest + Playwright together created 2 extra distributor_orders (WO-2026-0222 / WO-2026-0223) for SUARA & CO. under Lagos Wholesale Hub A, status=submitted, total ₦21,000 each. Tagged with note 'TEST_pytest place-on-behalf'.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "1) The single backend failure (test_distributor_forbidden) is a REAL bug not a test-side issue — distributor receives 200 with manufacturer KPI data; do NOT loosen the test assertion. Same _scope_manufacturer helper guards every other /allocation/* endpoint so once fixed, also re-test /allocation/pool and /allocation/summary against a distributor token. 2) The place-order modal works end-to-end; on subsequent runs use distributor d95dc722-679b-4ece-ab5e-af5e0dedd8ce (SUARA & CO.) under WID d81efddf-... — products via /api/wholesaler/{wid}/procurement/catalog (NOT /products which 404s). 3) priority enum is 'normal' | 'high' | 'urgent' (NOT 'standard'). 4) wholesaler distributor-detail route is /wholesaler/distributors/:did, NOT /network/:did as stated in the spec.",
+  "rca of the issue": "Bug: GET /api/allocation/kpis (and ~11 other allocation endpoints) leak manufacturer KPI data to distributor callers. Repro: POST /api/auth/login {email:'lagos.distributor@tradekonekt.io',password:'TradeKonekt2026!'} → use the access_token to GET /api/allocation/kpis?days=30 → 200 with Unilever's fill rate, units, warehouse leaderboard, etc. Root cause: routes/allocation.py::_scope_manufacturer (lines 54-65) checks only `if user.role == 'super_admin'`, then returns `user.manufacturer_id or user.organization_id` without a role allowlist. Distributor user records carry the parent manufacturer_id (used elsewhere for catalog/tenant scoping), so the helper happily returns Unilever's mfr id and every downstream query is scoped correctly to the leaking tenant. Mitigation: insert a role check immediately after the super_admin branch — `if user.get('role') not in {'manufacturer','warehouse'}: raise HTTPException(403, 'Manufacturer scope required')` — and add pytest coverage for each non-manufacturer role per endpoint."
+}

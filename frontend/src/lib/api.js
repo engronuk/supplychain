@@ -133,6 +133,8 @@ export const Api = {
 
   // ---- Manufacturer Order Allocation Center ----
   allocationSummary: () => api.get("/allocation/summary").then((r) => r.data),
+  allocationKpis: (days = 30) =>
+    api.get("/allocation/kpis", { params: { days } }).then((r) => r.data),
   allocationPool: (bucket) =>
     api.get("/allocation/pool", { params: bucket ? { bucket } : {} }).then((r) => r.data),
   allocationOrderDetail: (id) => api.get(`/allocation/orders/${id}`).then((r) => r.data),
@@ -441,6 +443,8 @@ export const WholesalerApi = {
     api.get(`/wholesaler/${wid}/orders`, { params }).then((r) => r.data),
   orderDetail: (wid, oid) =>
     api.get(`/wholesaler/${wid}/orders/${oid}`).then((r) => r.data),
+  createOrder: (wid, payload) =>
+    api.post(`/wholesaler/${wid}/orders`, payload).then((r) => r.data),
   approveOrder: (wid, oid) =>
     api.post(`/wholesaler/${wid}/orders/${oid}/approve`).then((r) => r.data),
   rejectOrder: (wid, oid, reason) =>

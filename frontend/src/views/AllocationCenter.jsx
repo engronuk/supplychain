@@ -16,6 +16,7 @@ import {
   Inbox, Clock, CheckCircle2, Truck, PackageCheck, Ban, AlertTriangle,
   ArrowLeftRight, X, Sparkles, Wand2, Search, ChevronRight, Send,
   RotateCcw, ShieldX, ClipboardList, MapPin, Wallet, Package, ArrowRight,
+  Gauge, Timer, ShieldCheck, Warehouse,
 } from "lucide-react";
 import { Api } from "../lib/api";
 import { Button } from "../components/ui/button";
@@ -35,6 +36,7 @@ const num   = (n) => (Number(n) || 0).toLocaleString();
 
 export default function AllocationCenter() {
   const [summary, setSummary] = useState({});
+  const [kpis, setKpis] = useState(null);
   const [bucket, setBucket] = useState("new");
   const [rows, setRows] = useState([]);
   const [q, setQ] = useState("");
@@ -45,6 +47,7 @@ export default function AllocationCenter() {
     Promise.all([
       Api.allocationSummary().then(setSummary).catch(() => setSummary({})),
       Api.allocationPool(bucket).then(setRows).catch(() => setRows([])),
+      Api.allocationKpis(30).then(setKpis).catch(() => setKpis(null)),
     ]).finally(() => setLoading(false));
   };
   useEffect(() => {
@@ -52,6 +55,7 @@ export default function AllocationCenter() {
     Promise.all([
       Api.allocationSummary().then((d) => !cancelled && setSummary(d)).catch(() => !cancelled && setSummary({})),
       Api.allocationPool(bucket).then((d) => !cancelled && setRows(d)).catch(() => !cancelled && setRows([])),
+      Api.allocationKpis(30).then((d) => !cancelled && setKpis(d)).catch(() => !cancelled && setKpis(null)),
     ]).finally(() => !cancelled && setLoading(false));
     return () => { cancelled = true; };
   }, [bucket]);
@@ -79,6 +83,9 @@ export default function AllocationCenter() {
           </Button>
         </div>
       </div>
+
+      {/* Performance KPI strip — pure rule-based (no AI) */}
+      <PerformanceKpiStrip kpis={kpis} />
 
       {/* KPI strip */}
       <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3">
@@ -173,6 +180,151 @@ function BucketCard({ bucket, count, active, onClick }) {
       </div>
       <div className="text-xs font-medium text-slate-700 mt-3">{bucket.label}</div>
     </button>
+  );
+}
+
+function PerformanceKpiStrip({ kpis }) {
+  const k = kpis?.kpis;
+  const warehouses = kpis?.warehouses || [];
+  const days = kpis?.window_days || 30;
+
+  // Tone helpers so good performance reads as green, weak as rose, neutral as slate.
+  const tone = (good, warn, value) => {
+    if (value == null) return "slate";
+    if (value >= good) return "emerald";
+    if (value >= warn) return "amber";
+    return "rose";
+  };
+  const inverseTone = (low, mid, value) => {
+    if (value == null) return "slate";
+    if (value <= low) return "emerald";
+    if (value <= mid) return "amber";
+    return "rose";
+  };
+  const fillTone = tone(85, 60, k?.fill_rate_pct);
+  const allocTone = inverseTone(4, 12, k?.avg_allocation_hours);
+  const backTone = inverseTone(5, 15, k?.back_order_rate_pct);
+  const serviceTone = tone(85, 60, k?.service_level_pct);
+
+  return (
+    <div className="rounded-xl border border-slate-200/80 bg-white shadow-sm p-4 md:p-5"
+      data-testid="allocation-kpi-strip">
+      <div className="flex items-center justify-between gap-3 flex-wrap mb-3">
+        <div>
+          <div className="text-xs uppercase tracking-wider font-medium text-slate-500">
+            Allocation Performance · last {days} days
+          </div>
+          <div className="text-sm text-slate-600">
+            Rule-based metrics derived from your order, allocation and fulfillment timestamps.
+          </div>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-3">
+        <KpiTile
+          testid="kpi-fill-rate"
+          Icon={Gauge}
+          tint={fillTone}
+          label="Fill Rate"
+          value={k ? `${k.fill_rate_pct}%` : "—"}
+          hint={k ? `${(k.allocated_units || 0).toLocaleString()} of ${(k.requested_units || 0).toLocaleString()} units allocated` : ""}
+        />
+        <KpiTile
+          testid="kpi-allocation-time"
+          Icon={Timer}
+          tint={allocTone}
+          label="Avg Allocation Time"
+          value={k?.avg_allocation_hours != null ? `${k.avg_allocation_hours}h` : "—"}
+          hint="From order submitted → allocation decided"
+        />
+        <KpiTile
+          testid="kpi-backorder-rate"
+          Icon={AlertTriangle}
+          tint={backTone}
+          label="Back-Order Rate"
+          value={k ? `${k.back_order_rate_pct}%` : "—"}
+          hint={k ? `${k.back_orders || 0} of ${k.decided_orders || 0} decided orders` : ""}
+        />
+        <KpiTile
+          testid="kpi-service-level"
+          Icon={ShieldCheck}
+          tint={serviceTone}
+          label="Service Level"
+          value={k ? `${k.service_level_pct}%` : "—"}
+          hint={k ? `${k.on_time_orders || 0} of ${k.completed_orders || 0} completed within 7 days` : ""}
+        />
+        <KpiTile
+          testid="kpi-top-warehouse"
+          Icon={Warehouse}
+          tint="indigo"
+          label="Top Warehouse"
+          value={warehouses[0]?.warehouse_name?.split(" ").slice(0, 3).join(" ") || "—"}
+          hint={
+            warehouses[0]
+              ? `${warehouses[0].fulfillments} fulfillments · ${warehouses[0].delivered} delivered`
+              : "No fulfillment activity yet"
+          }
+        />
+      </div>
+      {warehouses.length > 0 && (
+        <div className="mt-4 border-t border-slate-100 pt-3">
+          <div className="text-xs uppercase tracking-wider font-medium text-slate-500 mb-2">
+            Warehouse Performance
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm" data-testid="kpi-warehouse-table">
+              <thead className="text-xs text-slate-500">
+                <tr>
+                  <th className="text-left font-medium py-1">Warehouse</th>
+                  <th className="text-right font-medium py-1">Fulfillments</th>
+                  <th className="text-right font-medium py-1">Delivered</th>
+                  <th className="text-right font-medium py-1">In Progress</th>
+                  <th className="text-right font-medium py-1">On-Time %</th>
+                </tr>
+              </thead>
+              <tbody>
+                {warehouses.map((w) => (
+                  <tr key={w.warehouse_id} className="border-t border-slate-100">
+                    <td className="py-2 text-slate-800">{w.warehouse_name}</td>
+                    <td className="py-2 text-right text-slate-700">{w.fulfillments}</td>
+                    <td className="py-2 text-right text-emerald-700 font-medium">{w.delivered}</td>
+                    <td className="py-2 text-right text-slate-600">{w.in_progress}</td>
+                    <td className="py-2 text-right font-medium text-slate-800">
+                      {w.on_time_pct != null ? `${w.on_time_pct}%` : "—"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function KpiTile({ testid, Icon, tint, label, value, hint }) {
+  const C = {
+    emerald: "bg-emerald-50 text-emerald-600 ring-emerald-200",
+    amber: "bg-amber-50 text-amber-600 ring-amber-200",
+    rose: "bg-rose-50 text-rose-600 ring-rose-200",
+    indigo: "bg-indigo-50 text-indigo-600 ring-indigo-200",
+    slate: "bg-slate-100 text-slate-500 ring-slate-200",
+  }[tint] || "bg-slate-100 text-slate-500 ring-slate-200";
+  return (
+    <div className="rounded-lg border border-slate-200 bg-white p-3" data-testid={testid}>
+      <div className="flex items-center justify-between gap-2">
+        <div className={`h-7 w-7 rounded-md grid place-items-center ${C}`}>
+          <Icon className="h-3.5 w-3.5" />
+        </div>
+        <span className="text-xl font-bold text-slate-900 leading-none">{value}</span>
+      </div>
+      <div className="text-[11px] font-medium text-slate-700 mt-3 uppercase tracking-wider">
+        {label}
+      </div>
+      {hint && (
+        <div className="text-[11px] text-slate-500 mt-0.5 leading-snug">{hint}</div>
+      )}
+    </div>
   );
 }
 

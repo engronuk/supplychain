@@ -2,15 +2,25 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useSession } from "@/context/SessionContext";
 import { WholesalerApi } from "@/lib/api";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import {
   PageHeader, KpiCard, fmtCurrency, fmtNumber, EmptyState,
 } from "./wholesaler/ui";
 import {
   ChevronLeft, Activity, ClipboardList, Truck, Package, TrendingUp,
-  CalendarDays, Phone, Mail, MapPin, Wallet,
+  CalendarDays, Phone, Mail, MapPin, Wallet, Plus,
 } from "lucide-react";
 
 const STATUS_TONE = {
@@ -42,6 +52,14 @@ export default function WholesalerDistributorDetail() {
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [placingOrder, setPlacingOrder] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [inventory, setInventory] = useState([]);
+  const [orderLines, setOrderLines] = useState([{ product_id: "", quantity: 1 }]);
+  const [orderPriority, setOrderPriority] = useState("normal");
+  const [orderNote, setOrderNote] = useState("");
+  const [orderDeliveryDate, setOrderDeliveryDate] = useState("");
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     if (!wid || !distributorId) return;
@@ -50,7 +68,65 @@ export default function WholesalerDistributorDetail() {
       .then(setData)
       .catch(() => setData(null))
       .finally(() => setLoading(false));
-  }, [wid, distributorId]);
+  }, [wid, distributorId, reloadKey]);
+
+  // Lazy-load wholesaler inventory the first time the modal opens
+  useEffect(() => {
+    if (!placingOrder || !wid || inventory.length > 0) return;
+    WholesalerApi.inventory(wid)
+      .then((res) => setInventory(res?.rows || []))
+      .catch(() => setInventory([]));
+  }, [placingOrder, wid, inventory.length]);
+
+  const resetOrderForm = () => {
+    setOrderLines([{ product_id: "", quantity: 1 }]);
+    setOrderPriority("normal");
+    setOrderNote("");
+    setOrderDeliveryDate("");
+  };
+
+  const addLine = () =>
+    setOrderLines((prev) => [...prev, { product_id: "", quantity: 1 }]);
+  const removeLine = (idx) =>
+    setOrderLines((prev) => (prev.length === 1 ? prev : prev.filter((_, i) => i !== idx)));
+  const updateLine = (idx, key, value) =>
+    setOrderLines((prev) =>
+      prev.map((ln, i) => (i === idx ? { ...ln, [key]: value } : ln)),
+    );
+
+  const orderTotal = orderLines.reduce((sum, ln) => {
+    const inv = inventory.find((r) => r.product_id === ln.product_id);
+    const price = inv?.unit_price || 0;
+    return sum + price * (parseInt(ln.quantity, 10) || 0);
+  }, 0);
+
+  const submitOrder = async () => {
+    const items = orderLines
+      .filter((ln) => ln.product_id && parseInt(ln.quantity, 10) > 0)
+      .map((ln) => ({ product_id: ln.product_id, quantity: parseInt(ln.quantity, 10) }));
+    if (items.length === 0) {
+      toast.error("Add at least one product with quantity > 0");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await WholesalerApi.createOrder(wid, {
+        distributor_id: distributorId,
+        items,
+        priority: orderPriority,
+        requested_delivery_date: orderDeliveryDate || null,
+        note: orderNote || null,
+      });
+      toast.success(`Order ${res?.order_number || ""} placed`);
+      setPlacingOrder(false);
+      resetOrderForm();
+      setReloadKey((k) => k + 1);
+    } catch (e) {
+      toast.error(e?.response?.data?.detail || "Failed to place order");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   if (loading || !data) {
     return (
@@ -78,6 +154,14 @@ export default function WholesalerDistributorDetail() {
       <PageHeader
         title={p.name || "Distributor"}
         subtitle={`${p.code || "—"} · ${p.city ? `${p.city}, ` : ""}${p.region || "—"}`}
+        action={
+          <Button
+            onClick={() => setPlacingOrder(true)}
+            data-testid="dd-place-order-btn"
+          >
+            <Plus className="h-4 w-4 mr-1.5" /> Place Order on Their Behalf
+          </Button>
+        }
       />
 
       {/* Profile + Contact */}
@@ -313,11 +397,161 @@ export default function WholesalerDistributorDetail() {
           )}
         </CardContent>
       </Card>
+      {/* Place Order Modal */}
+      <Dialog
+        open={placingOrder}
+        onOpenChange={(open) => {
+          setPlacingOrder(open);
+          if (!open) resetOrderForm();
+        }}
+      >
+        <DialogContent className="max-w-2xl" data-testid="dd-place-order-dialog">
+          <DialogHeader>
+            <DialogTitle>Place Order for {p.name || "Distributor"}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-xs">Priority</Label>
+                <Select value={orderPriority} onValueChange={setOrderPriority}>
+                  <SelectTrigger data-testid="dd-po-priority">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="normal">Normal</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="urgent">Urgent</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Requested Delivery Date</Label>
+                <Input
+                  type="date"
+                  value={orderDeliveryDate}
+                  onChange={(e) => setOrderDeliveryDate(e.target.value)}
+                  data-testid="dd-po-delivery-date"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">Order Lines</Label>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={addLine}
+                  data-testid="dd-po-add-line"
+                >
+                  <Plus className="h-3.5 w-3.5 mr-1" /> Add line
+                </Button>
+              </div>
+              {orderLines.map((ln, idx) => {
+                const inv = inventory.find((r) => r.product_id === ln.product_id);
+                const available = inv?.available ?? 0;
+                const overStock = inv && parseInt(ln.quantity, 10) > available;
+                return (
+                  <div
+                    key={idx}
+                    className="grid grid-cols-12 gap-2 items-end border border-slate-200 rounded-md p-2"
+                    data-testid={`dd-po-line-${idx}`}
+                  >
+                    <div className="col-span-7">
+                      <Label className="text-[10px] uppercase text-slate-500">Product</Label>
+                      <Select
+                        value={ln.product_id}
+                        onValueChange={(v) => updateLine(idx, "product_id", v)}
+                      >
+                        <SelectTrigger data-testid={`dd-po-product-${idx}`}>
+                          <SelectValue placeholder="Select product" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {inventory.map((r) => (
+                            <SelectItem key={r.product_id} value={r.product_id}>
+                              {r.product_name} — {fmtNumber(r.available)} avail · {fmtCurrency(r.unit_price)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="col-span-3">
+                      <Label className="text-[10px] uppercase text-slate-500">Quantity</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        value={ln.quantity}
+                        onChange={(e) => updateLine(idx, "quantity", e.target.value)}
+                        data-testid={`dd-po-qty-${idx}`}
+                        className={overStock ? "border-amber-400" : ""}
+                      />
+                      {overStock && (
+                        <div className="text-[10px] text-amber-600 mt-0.5">
+                          Exceeds available ({available})
+                        </div>
+                      )}
+                    </div>
+                    <div className="col-span-2 text-right">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => removeLine(idx)}
+                        disabled={orderLines.length === 1}
+                        data-testid={`dd-po-remove-${idx}`}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div>
+              <Label className="text-xs">Note</Label>
+              <Textarea
+                rows={2}
+                value={orderNote}
+                onChange={(e) => setOrderNote(e.target.value)}
+                placeholder="Optional context (sales call, promo, etc.)"
+                data-testid="dd-po-note"
+              />
+            </div>
+
+            <div className="flex items-center justify-between text-sm border-t pt-3">
+              <span className="text-slate-500">Estimated total</span>
+              <span className="font-semibold text-slate-800" data-testid="dd-po-total">
+                {fmtCurrency(orderTotal)}
+              </span>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setPlacingOrder(false);
+                resetOrderForm();
+              }}
+              disabled={submitting}
+              data-testid="dd-po-cancel"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={submitOrder}
+              disabled={submitting}
+              data-testid="dd-po-submit"
+            >
+              {submitting ? "Placing…" : "Place Order"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
-
-/** Lightweight inline trend renderer (no external chart lib needed). */
 function MiniTrend({ rows }) {
   const max = Math.max(...rows.map((r) => r.orders), 1);
   return (

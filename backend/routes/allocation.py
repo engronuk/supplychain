@@ -24,7 +24,7 @@ Side collections:
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -179,6 +179,184 @@ async def allocation_summary(
         {"manufacturer_id": mfr, "status": "pending", "created_at": {"$gte": today_iso}}
     )
     return out
+
+
+# ---------------------------------------------------------------------------
+# 2.5) Allocation performance KPIs — Fill Rate, Allocation Time, Back-Order
+# Rate, Service Level, and Warehouse Performance leaderboard.
+# Pure programmatic computation against `distributor_orders`,
+# `order_allocations` and `fulfillment_orders`. No AI.
+# ---------------------------------------------------------------------------
+def _parse_iso(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except Exception:
+        return None
+
+
+@router.get("/allocation/kpis")
+async def allocation_kpis(
+    days: int = Query(30, ge=1, le=365),
+    manufacturer_id: Optional[str] = None,
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    """Return performance KPIs for the manufacturer's allocation pipeline.
+
+    All numbers are rule-based — derived from order, allocation and
+    fulfillment timestamps. No AI involvement.
+    """
+    mfr = await _scope_manufacturer(user, manufacturer_id)
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+    since_iso = since.isoformat()
+
+    orders = await db.distributor_orders.find(
+        {"manufacturer_id": mfr, "created_at": {"$gte": since_iso}},
+        {"_id": 0},
+    ).to_list(5000)
+    order_ids = [o["id"] for o in orders]
+
+    # --- Fill Rate ---------------------------------------------------------
+    # requested_units = total qty across all decided orders in window
+    # allocated_units = sum of allocation.lines[].quantity for those orders
+    decided_statuses = {
+        "allocated", "partially_allocated", "fulfillment_in_progress",
+        "completed", "back_ordered",
+    }
+    decided_orders = [o for o in orders if o.get("status") in decided_statuses]
+    requested_units = sum(
+        int(it.get("quantity") or 0)
+        for o in decided_orders for it in (o.get("items") or [])
+    )
+    allocations: List[Dict[str, Any]] = []
+    if order_ids:
+        allocations = await db.order_allocations.find(
+            {"manufacturer_id": mfr, "order_id": {"$in": order_ids}},
+            {"_id": 0},
+        ).to_list(10000)
+    allocated_units = sum(
+        int(ln.get("quantity") or 0)
+        for a in allocations for ln in (a.get("lines") or [])
+    )
+    fill_rate_pct = (
+        round(min(100.0, allocated_units / requested_units * 100), 1)
+        if requested_units else 0.0
+    )
+
+    # --- Allocation Time ---------------------------------------------------
+    # Avg hours between order.created_at and the earliest allocation
+    # decided_at for that order.
+    earliest_by_order: Dict[str, datetime] = {}
+    for a in allocations:
+        oid = a.get("order_id")
+        ts = _parse_iso(a.get("decided_at"))
+        if not oid or not ts:
+            continue
+        if oid not in earliest_by_order or ts < earliest_by_order[oid]:
+            earliest_by_order[oid] = ts
+    alloc_times_h: List[float] = []
+    for o in orders:
+        oid = o["id"]
+        c = _parse_iso(o.get("created_at"))
+        d = earliest_by_order.get(oid)
+        if c and d and d >= c:
+            alloc_times_h.append((d - c).total_seconds() / 3600.0)
+    avg_allocation_hours = (
+        round(sum(alloc_times_h) / len(alloc_times_h), 1)
+        if alloc_times_h else None
+    )
+
+    # --- Back-Order Rate ---------------------------------------------------
+    # Out of all orders that reached a decision, what fraction landed in
+    # back_ordered or partially_allocated.
+    decided_total = len(decided_orders)
+    back_orders = sum(
+        1 for o in decided_orders
+        if o.get("status") in ("back_ordered", "partially_allocated")
+    )
+    back_order_rate_pct = (
+        round(back_orders / decided_total * 100, 1) if decided_total else 0.0
+    )
+
+    # --- Service Level -----------------------------------------------------
+    # % of completed orders delivered within 7 days of submission. Falls
+    # back to 0 when no completed orders exist in the window.
+    completed = [o for o in orders if o.get("status") == "completed"]
+    on_time = 0
+    for o in completed:
+        c = _parse_iso(o.get("created_at"))
+        d = _parse_iso(o.get("delivered_at")) or _parse_iso(o.get("dispatched_at"))
+        if c and d and (d - c).total_seconds() <= 7 * 86400:
+            on_time += 1
+    service_level_pct = (
+        round(on_time / len(completed) * 100, 1) if completed else 0.0
+    )
+
+    # --- Warehouse Performance leaderboard ---------------------------------
+    # Per warehouse: fulfillments handled, delivered count, on-time-dispatch %
+    fos = await db.fulfillment_orders.find(
+        {"manufacturer_id": mfr, "created_at": {"$gte": since_iso}},
+        {"_id": 0},
+    ).to_list(5000)
+    by_wh: Dict[str, Dict[str, Any]] = {}
+    for f in fos:
+        wid = f.get("warehouse_id") or "unknown"
+        bucket = by_wh.setdefault(wid, {
+            "warehouse_id": wid,
+            "warehouse_name": f.get("warehouse_name") or "Unknown",
+            "fulfillments": 0,
+            "delivered": 0,
+            "in_progress": 0,
+            "on_time_count": 0,
+            "measured": 0,
+        })
+        bucket["fulfillments"] += 1
+        st = f.get("status")
+        if st == "delivered":
+            bucket["delivered"] += 1
+        elif st in ("pending_picking", "picking", "picked", "loaded"):
+            bucket["in_progress"] += 1
+        c = _parse_iso(f.get("created_at"))
+        u = _parse_iso(f.get("updated_at"))
+        if st == "delivered" and c and u:
+            bucket["measured"] += 1
+            if (u - c).total_seconds() <= 5 * 86400:
+                bucket["on_time_count"] += 1
+    warehouses: List[Dict[str, Any]] = []
+    for w in by_wh.values():
+        on_time_pct = (
+            round(w["on_time_count"] / w["measured"] * 100, 1)
+            if w["measured"] else None
+        )
+        warehouses.append({
+            "warehouse_id": w["warehouse_id"],
+            "warehouse_name": w["warehouse_name"],
+            "fulfillments": w["fulfillments"],
+            "delivered": w["delivered"],
+            "in_progress": w["in_progress"],
+            "on_time_pct": on_time_pct,
+        })
+    warehouses.sort(key=lambda x: (x["delivered"], x["fulfillments"]),
+                    reverse=True)
+
+    return {
+        "window_days": days,
+        "as_of": now_iso(),
+        "kpis": {
+            "fill_rate_pct": fill_rate_pct,
+            "requested_units": requested_units,
+            "allocated_units": allocated_units,
+            "avg_allocation_hours": avg_allocation_hours,
+            "back_order_rate_pct": back_order_rate_pct,
+            "back_orders": back_orders,
+            "decided_orders": decided_total,
+            "service_level_pct": service_level_pct,
+            "completed_orders": len(completed),
+            "on_time_orders": on_time,
+        },
+        "warehouses": warehouses[:8],
+    }
 
 
 # ---------------------------------------------------------------------------
