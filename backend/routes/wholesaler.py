@@ -19,12 +19,69 @@ from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from typing import List, Literal, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, ConfigDict, Field
 
 from core import db, new_id, now_iso
+from services.auth import get_current_user
 
 router = APIRouter()
+
+
+async def _require_wholesaler_access(wholesaler_id: str, request: Request) -> dict:
+    """Authn + tenant-isolation guard for every wholesaler endpoint.
+
+    Rules:
+      * super_admin — full access.
+      * manufacturer / warehouse — read access to wholesalers within their
+        tenant (same root manufacturer).
+      * wholesaler — only their own workspace.
+      * everyone else — 403.
+    """
+    user = await get_current_user(request)
+    role = user.get("role")
+    if role == "super_admin":
+        return user
+    org = await db.organizations.find_one(
+        {"id": wholesaler_id, "organization_type": "wholesaler"}, {"_id": 0},
+    )
+    if not org:
+        raise HTTPException(404, "Wholesaler not found")
+    if role == "wholesaler":
+        if user.get("entity_id") != wholesaler_id:
+            raise HTTPException(403, "Not authorised for this wholesaler")
+        return user
+    if role in ("manufacturer", "warehouse"):
+        # Same tenant subtree (walk up to manufacturer)
+        target_tenant = await _walk_to_manufacturer(org)
+        user_tenant = await _walk_to_manufacturer(
+            await db.organizations.find_one(
+                {"id": user.get("entity_id")}, {"_id": 0},
+            ) or {}
+        )
+        if not target_tenant or target_tenant != user_tenant:
+            raise HTTPException(403, "Wholesaler outside your tenant")
+        return user
+    raise HTTPException(403, "Role not permitted")
+
+
+async def _walk_to_manufacturer(org: dict) -> str:
+    pid = org.get("parent_organization_id")
+    seen: set[str] = set()
+    if org.get("organization_type") == "manufacturer":
+        return org.get("id", "")
+    while pid and pid not in seen:
+        seen.add(pid)
+        p = await db.organizations.find_one(
+            {"id": pid}, {"_id": 0, "id": 1, "organization_type": 1,
+                          "parent_organization_id": 1},
+        )
+        if not p:
+            break
+        if p.get("organization_type") == "manufacturer":
+            return p["id"]
+        pid = p.get("parent_organization_id")
+    return ""
 
 # ---- helpers ---------------------------------------------------------------
 
@@ -94,7 +151,8 @@ async def _tenant_id(wholesaler: dict) -> str:
 
 
 @router.get("/wholesaler/{wholesaler_id}")
-async def get_wholesaler(wholesaler_id: str):
+async def get_wholesaler(wholesaler_id: str,
+                         _user: dict = Depends(_require_wholesaler_access)):
     org = await _get_wholesaler(wholesaler_id)
     return {
         "id": org["id"],
@@ -111,7 +169,8 @@ async def get_wholesaler(wholesaler_id: str):
 
 
 @router.get("/wholesaler/{wholesaler_id}/overview")
-async def wholesaler_overview(wholesaler_id: str):
+async def wholesaler_overview(wholesaler_id: str,
+                              _user: dict = Depends(_require_wholesaler_access)):
     wh = await _get_wholesaler(wholesaler_id)
     tenant_id = await _tenant_id(wh)
     region = wh.get("region") or ""
@@ -334,7 +393,8 @@ class CycleCountPayload(BaseModel):
 
 
 @router.get("/wholesaler/{wholesaler_id}/inventory")
-async def list_inventory(wholesaler_id: str):
+async def list_inventory(wholesaler_id: str,
+                         _user: dict = Depends(_require_wholesaler_access)):
     wh = await _get_wholesaler(wholesaler_id)
     tenant_id = await _tenant_id(wh)
     rows = await db.inventory.find(
@@ -413,7 +473,8 @@ async def _log_movement(wholesaler_id: str, product_id: str,
 
 @router.post("/wholesaler/{wholesaler_id}/inventory/{product_id}/adjust")
 async def adjust_inventory(wholesaler_id: str, product_id: str,
-                           payload: InventoryAdjustPayload):
+                           payload: InventoryAdjustPayload,
+                           _user: dict = Depends(_require_wholesaler_access)):
     await _get_wholesaler(wholesaler_id)
     existing = await db.inventory.find_one(
         {"owner_type": "wholesaler", "owner_id": wholesaler_id, "product_id": product_id},
@@ -447,19 +508,22 @@ async def adjust_inventory(wholesaler_id: str, product_id: str,
 
 
 @router.post("/wholesaler/{wholesaler_id}/inventory/receive")
-async def receive_inventory(wholesaler_id: str, payload: InventoryReceivePayload):
+async def receive_inventory(wholesaler_id: str, payload: InventoryReceivePayload,
+                            user: dict = Depends(_require_wholesaler_access)):
     """Manual goods-receipt: increment available stock and log a movement."""
     return await adjust_inventory(
         wholesaler_id, payload.product_id,
         InventoryAdjustPayload(delta=payload.quantity, reason="receive",
                                note=payload.note or payload.source,
                                actor=payload.actor),
+        _user=user,
     )
 
 
 @router.post("/wholesaler/{wholesaler_id}/inventory/{product_id}/cycle-count")
 async def cycle_count(wholesaler_id: str, product_id: str,
-                      payload: CycleCountPayload):
+                      payload: CycleCountPayload,
+                      _user: dict = Depends(_require_wholesaler_access)):
     await _get_wholesaler(wholesaler_id)
     row = await db.inventory.find_one(
         {"owner_type": "wholesaler", "owner_id": wholesaler_id,
@@ -482,7 +546,8 @@ async def cycle_count(wholesaler_id: str, product_id: str,
 
 
 @router.get("/wholesaler/{wholesaler_id}/inventory/movements")
-async def list_movements(wholesaler_id: str, limit: int = 50):
+async def list_movements(wholesaler_id: str, limit: int = 50,
+                         _user: dict = Depends(_require_wholesaler_access)):
     await _get_wholesaler(wholesaler_id)
     rows = await db.wholesaler_inventory_movements.find(
         {"wholesaler_id": wholesaler_id}, {"_id": 0},
@@ -546,7 +611,8 @@ _ACTION_TO_STATUS = {
 
 
 @router.get("/wholesaler/{wholesaler_id}/procurement/orders")
-async def list_purchase_orders(wholesaler_id: str):
+async def list_purchase_orders(wholesaler_id: str,
+                               _user: dict = Depends(_require_wholesaler_access)):
     await _get_wholesaler(wholesaler_id)
     pos = await db.wholesaler_purchase_orders.find(
         {"wholesaler_id": wholesaler_id}, {"_id": 0},
@@ -578,7 +644,8 @@ async def list_purchase_orders(wholesaler_id: str):
 
 
 @router.post("/wholesaler/{wholesaler_id}/procurement/orders")
-async def create_purchase_order(wholesaler_id: str, payload: POCreatePayload):
+async def create_purchase_order(wholesaler_id: str, payload: POCreatePayload,
+                                _user: dict = Depends(_require_wholesaler_access)):
     wh = await _get_wholesaler(wholesaler_id)
     # Validate supplier exists
     sup = await db.organizations.find_one(
@@ -587,6 +654,17 @@ async def create_purchase_order(wholesaler_id: str, payload: POCreatePayload):
     )
     if not sup:
         raise HTTPException(404, "Supplier not found")
+
+    # Tenant-validate product_ids — every line must belong to the
+    # wholesaler's parent manufacturer's catalog.
+    tenant_id = await _tenant_id(wh)
+    if tenant_id:
+        product_ids = [it.product_id for it in payload.items]
+        valid = await db.products.count_documents(
+            {"id": {"$in": product_ids}, "manufacturer_id": tenant_id}
+        )
+        if valid != len(set(product_ids)):
+            raise HTTPException(400, "One or more products are not in your tenant catalog")
 
     items_out = []
     total = 0.0
@@ -607,7 +685,7 @@ async def create_purchase_order(wholesaler_id: str, payload: POCreatePayload):
         "id": new_id(),
         "po_number": po_number,
         "wholesaler_id": wholesaler_id,
-        "tenant_id": await _tenant_id(wh),
+        "tenant_id": tenant_id,
         "supplier_id": payload.supplier_id,
         "supplier_type": payload.supplier_type,
         "supplier_name": sup.get("organization_name", ""),
@@ -628,7 +706,8 @@ async def create_purchase_order(wholesaler_id: str, payload: POCreatePayload):
 
 @router.post("/wholesaler/{wholesaler_id}/procurement/orders/{po_id}/transition")
 async def transition_po(wholesaler_id: str, po_id: str,
-                        payload: POTransitionPayload):
+                        payload: POTransitionPayload,
+                        _user: dict = Depends(_require_wholesaler_access)):
     await _get_wholesaler(wholesaler_id)
     po = await db.wholesaler_purchase_orders.find_one(
         {"id": po_id, "wholesaler_id": wholesaler_id}, {"_id": 0}
@@ -697,7 +776,8 @@ async def transition_po(wholesaler_id: str, po_id: str,
 
 
 @router.get("/wholesaler/{wholesaler_id}/procurement/suppliers")
-async def list_suppliers(wholesaler_id: str):
+async def list_suppliers(wholesaler_id: str,
+                         _user: dict = Depends(_require_wholesaler_access)):
     """Return suppliers a wholesaler can buy from: manufacturer + the
     region's warehouse(s) within the same tenant."""
     wh = await _get_wholesaler(wholesaler_id)
@@ -729,7 +809,8 @@ async def list_suppliers(wholesaler_id: str):
 
 
 @router.get("/wholesaler/{wholesaler_id}/procurement/catalog")
-async def list_catalog(wholesaler_id: str):
+async def list_catalog(wholesaler_id: str,
+                       _user: dict = Depends(_require_wholesaler_access)):
     """Products this wholesaler can order from upstream (tenant scoped)."""
     wh = await _get_wholesaler(wholesaler_id)
     tenant_id = await _tenant_id(wh)
@@ -754,7 +835,8 @@ async def list_catalog(wholesaler_id: str):
 
 
 @router.get("/wholesaler/{wholesaler_id}/distributors")
-async def list_distributors_served(wholesaler_id: str):
+async def list_distributors_served(wholesaler_id: str,
+                                   _user: dict = Depends(_require_wholesaler_access)):
     wh = await _get_wholesaler(wholesaler_id)
     region = wh.get("region") or ""
     tenant_id = await _tenant_id(wh)

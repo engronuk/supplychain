@@ -1015,3 +1015,31 @@ Standalone mission-control page at **`/manufacturer/logistics-center`** ("Logist
 - **`GET /api/logistics/trucks`** — lightweight tenant-scoped fleet positions; frontend polls it every 30 s (`LogisticsCommandCenter.jsx`) and merges into the map without a full overview reload.
 - Verified live: scheduler tick advanced TK-019 0.66→0.718 with ETA countdown; arrival branches tested for both linked and unlinked trucks; 30 s browser poll observed on the preview.
 - Known demo quirk: the boot-time demo **date refresh** rebases `shipments` timestamps, so freshly mirrored transfer shipments can appear "4+ days in transit" and trip the delayed-shipment alert. Cosmetic in demo data.
+
+## 2026-06-11 — Wholesaler Workspace · Phase 1
+**New persona workspace.** Wholesaler users (e.g. `lagos.wholesaler@tradekonekt.io`, Lagos Wholesale Hub · WHO-0030) previously landed on the retailer dashboard; they now have a dedicated 4-module workspace.
+
+**Backend** — `routes/wholesaler.py` (~970 lines, registered in `server.py`)
+- `GET /api/wholesaler/{id}` — entity hydration
+- `GET /api/wholesaler/{id}/overview` — 8 KPIs · Inventory Health · 4 AI insights · Stockout Risk Watchlist (rule-based)
+- `GET/POST /api/wholesaler/{id}/inventory[/{pid}/adjust|/receive|/{pid}/cycle-count]` + `/inventory/movements`
+- `GET/POST /api/wholesaler/{id}/procurement/orders` + `/transition` (Draft → Submitted → Approved → Allocated → Shipped → Delivered; delivered transition `$inc`'s inventory + logs a movement)
+- `GET /api/wholesaler/{id}/procurement/suppliers|catalog` — parent manufacturer + tenant warehouse(s), tenant-scoped products
+- `GET /api/wholesaler/{id}/distributors` — soft-link: distributors in same region + tenant, bulk-aggregated for inventory health / orders / revenue (90d)
+- Auth guard `_require_wholesaler_access`: 401 unauth · 403 retailer · 200 self · 403 cross-tenant · 200 super_admin · same-tenant manufacturer/warehouse read.
+- Tenant validation on PO creation — line-item products must belong to the wholesaler's parent manufacturer's catalog.
+
+**Seed** — `services/seed_wholesaler.py` (idempotent, tagged `wholesaler_seed_v1`)
+- 6 wholesalers seeded across Unilever + Flour Mills tenants (66 inventory rows, 18 POs, 24 movements).
+
+**Frontend**
+- `views/WholesalerDashboard.jsx` — KPI strip · Inventory Health · AI Insights · Stockout Watchlist.
+- `views/WholesalerInventory.jsx` — Catalogue table (Available / Reserved / Damaged / In-Transit / Reorder / Value / Health), Movements tab, Receive / Adjust / Cycle-count modals.
+- `views/WholesalerProcurement.jsx` — PO cards with progress strip, Detail modal with state-action buttons, Create-PO wizard (supplier + line items, auto-submits).
+- `views/WholesalerDistributors.jsx` — Distributor directory with health bars, KPIs, network insights.
+- Shared primitives in `views/wholesaler/ui.jsx`.
+- `Layout.jsx`, `App.js`, `InventoryView.jsx`, `NetworkView.jsx`, `lib/api.js` updated to route the wholesaler role.
+
+**Testing**
+- `/app/backend/tests/test_wholesaler.py` — 17/17 PASS (auth, overview, inventory CRUD, full PO state machine + inventory credit, distributor directory, multi-tenant isolation).
+- Frontend e2e (testing agent iteration_14) — all flows green.
