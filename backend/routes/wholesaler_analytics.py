@@ -44,6 +44,298 @@ def _days_ago_iso(days: int) -> str:
     return (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
 
 
+# ---------------------------------------------------------------------------
+# Distributor Analytics Center helpers (Phase 3A) — pure math, no AI.
+# ---------------------------------------------------------------------------
+def _status_bucket(growth_pct: float, revenue: float, recent_orders: int) -> str:
+    """Categorical growth status. Tuned for B2B distributor traffic."""
+    if recent_orders == 0 and revenue > 0:
+        return "at_risk"
+    if growth_pct >= 20:
+        return "high_growth"
+    if growth_pct <= -10:
+        return "at_risk"
+    return "stable"
+
+
+def _bcg_quadrant(rev_share_pct: float, growth_pct: float,
+                   rev_threshold: float, growth_threshold: float) -> str:
+    """Plot a distributor in the classic BCG matrix.
+
+    Stars         = high revenue + high growth
+    Cash Cows     = high revenue + low growth
+    Question Marks= low revenue  + high growth
+    At Risk (Dogs)= low revenue  + low growth
+    """
+    high_rev = rev_share_pct >= rev_threshold
+    high_growth = growth_pct >= growth_threshold
+    if high_rev and high_growth:
+        return "star"
+    if high_rev and not high_growth:
+        return "cash_cow"
+    if not high_rev and high_growth:
+        return "question_mark"
+    return "at_risk"
+
+
+def _churn_score(growth_pct: float, freq_change_pct: float, days_since_last: int,
+                 has_history: bool) -> Dict[str, object]:
+    """Compute a 0-100 churn-risk score with reason strings. Pure rules."""
+    score = 0
+    reasons: List[str] = []
+
+    # Revenue drop contributes up to 40 points (penalty for >0% drop).
+    if growth_pct < 0:
+        rev_pts = min(40, int(round(abs(growth_pct) * 0.8)))
+        score += rev_pts
+        reasons.append(
+            f"Revenue down {abs(round(growth_pct, 1))}% vs prior 30 days"
+        )
+
+    # Order-frequency drop contributes up to 30 points.
+    if freq_change_pct < 0:
+        freq_pts = min(30, int(round(abs(freq_change_pct) * 0.6)))
+        score += freq_pts
+        reasons.append(
+            f"Order frequency down {abs(round(freq_change_pct, 0))}% over last 60 days"
+        )
+
+    # Recency staleness contributes up to 30 points.
+    if has_history:
+        if days_since_last >= 60:
+            score += 30
+            reasons.append(f"No order in {days_since_last} days")
+        elif days_since_last >= 30:
+            score += 18
+            reasons.append(f"No order in {days_since_last} days")
+        elif days_since_last >= 14:
+            score += 8
+
+    score = max(0, min(100, score))
+    if score >= 60:
+        level = "high"
+    elif score >= 30:
+        level = "medium"
+    else:
+        level = "low"
+    if not reasons:
+        reasons.append("Healthy purchase pattern across the last 60 days")
+    return {"score": score, "level": level, "reasons": reasons}
+
+
+def _compute_distributor_intelligence(distributor_perf: List[dict],
+                                       all_orders: List[dict],
+                                       ninety_ago_iso: str) -> Dict[str, object]:
+    """Builds KPI strip, ranking, BCG matrix and churn signals for the
+    Distributor Analytics Center. Strictly programmatic — no AI."""
+    if not distributor_perf:
+        return {
+            "kpis": {
+                "active_distributors": 0, "total_revenue": 0.0,
+                "average_order_value": 0.0, "average_order_frequency": 0.0,
+                "fill_rate_pct": 0.0, "service_level_pct": 0.0,
+                "high_growth": 0, "stable": 0, "at_risk": 0,
+            },
+            "ranking": [], "bcg": {"items": [], "rev_threshold": 0.0,
+                                    "growth_threshold": 0.0},
+            "churn": [], "trend_months": [], "monthly_purchases": {},
+        }
+
+    total_rev = sum(d["revenue"] for d in distributor_perf) or 1.0
+
+    # Group orders per distributor for AOV, frequency, recency.
+    by_dist: Dict[str, List[dict]] = defaultdict(list)
+    for o in all_orders:
+        did = o.get("distributor_id")
+        if did:
+            by_dist[did].append(o)
+
+    # Date windows for frequency change calc.
+    now = datetime.now(timezone.utc)
+    last30_start = now - timedelta(days=30)
+    prev30_start = now - timedelta(days=60)
+
+    ranking: List[dict] = []
+    bcg_items: List[dict] = []
+    churn_rows: List[dict] = []
+    fill_num, fill_den = 0, 0
+    service_num, service_den = 0, 0
+
+    # Median revenue share & median growth as quadrant thresholds — adapts
+    # to data scale automatically. Fallback to mean/2 when the median is 0
+    # (happens when most distributors are inactive in the window).
+    shares = sorted((d["revenue"] / total_rev * 100) for d in distributor_perf)
+    growths = sorted((d.get("growth_pct") or 0.0) for d in distributor_perf)
+    rev_threshold = shares[len(shares) // 2] if shares else 0.0
+    if rev_threshold == 0 and shares:
+        rev_threshold = (sum(shares) / len(shares)) / 2 or 1.0
+    growth_threshold = growths[len(growths) // 2] if growths else 0.0
+    if growth_threshold == 0 and growths:
+        growth_threshold = (sum(growths) / len(growths)) / 2
+
+    aov_values: List[float] = []
+    freq_values: List[float] = []
+
+    for d in distributor_perf:
+        did = d["id"]
+        d_orders = by_dist.get(did, [])
+        delivered = [o for o in d_orders if o.get("status") == "delivered"]
+        delivered_count = len(delivered)
+        # Average order value over delivered orders.
+        aov = (sum(float(o.get("total_amount") or 0) for o in delivered)
+               / delivered_count) if delivered_count else 0.0
+        aov_values.append(aov)
+
+        # Frequency (orders/week) over last 30d and prev 30d.
+        last30_count = sum(
+            1 for o in d_orders
+            if (_to_dt(o.get("created_at")) or now) >= last30_start
+        )
+        prev30_count = sum(
+            1 for o in d_orders
+            if prev30_start <= (_to_dt(o.get("created_at")) or now) < last30_start
+        )
+        freq_last = last30_count * 7 / 30
+        freq_prev = prev30_count * 7 / 30
+        freq_change_pct = ((freq_last - freq_prev) / freq_prev * 100) \
+            if freq_prev else (100.0 if freq_last else 0.0)
+        freq_values.append(freq_last)
+
+        # Days since last order.
+        last_ts = max(
+            (_to_dt(o.get("created_at")) for o in d_orders
+             if _to_dt(o.get("created_at"))),
+            default=None,
+        )
+        days_since_last = (
+            (now - last_ts).days if last_ts else 999
+        )
+
+        # Fill rate / service level numerators (also computed per-distributor).
+        d_fill_num, d_fill_den = 0, 0
+        for o in d_orders:
+            for it in (o.get("items") or []):
+                req = int(it.get("quantity") or 0)
+                appr = int(it.get("approved_quantity") or 0)
+                if req > 0:
+                    fill_den += req
+                    fill_num += min(appr, req)
+                    d_fill_den += req
+                    d_fill_num += min(appr, req)
+        for o in delivered:
+            service_den += 1
+            c = _to_dt(o.get("created_at"))
+            dl = _to_dt(o.get("delivered_at"))
+            if c and dl and (dl - c).total_seconds() <= 7 * 86400:
+                service_num += 1
+        dist_fill_pct = (round(d_fill_num / d_fill_den * 100, 1)
+                          if d_fill_den else None)
+
+        growth_pct = float(d.get("growth_pct") or 0.0)
+        rev_share = d["revenue"] / total_rev * 100 if total_rev else 0.0
+        status = _status_bucket(growth_pct, d["revenue"], last30_count)
+
+        ranking.append({
+            "id": did,
+            "name": d["name"],
+            "code": d.get("code", ""),
+            "region": d.get("region", ""),
+            "city": d.get("city", ""),
+            "revenue": d["revenue"],
+            "revenue_share_pct": round(rev_share, 1),
+            "orders": d["orders"],
+            "growth_pct": growth_pct,
+            "status": status,
+            "last_order_at": d.get("last_order_at") or "",
+            "average_order_value": round(aov, 2),
+            "order_frequency_per_week": round(freq_last, 2),
+            "fill_rate_pct": dist_fill_pct,
+        })
+
+        bcg_items.append({
+            "id": did,
+            "name": d["name"],
+            "region": d.get("region", ""),
+            "revenue": d["revenue"],
+            "revenue_share_pct": round(rev_share, 1),
+            "growth_pct": growth_pct,
+            "quadrant": _bcg_quadrant(rev_share, growth_pct,
+                                       rev_threshold, growth_threshold),
+        })
+
+        churn = _churn_score(
+            growth_pct=growth_pct,
+            freq_change_pct=freq_change_pct,
+            days_since_last=days_since_last,
+            has_history=bool(d_orders),
+        )
+        churn_rows.append({
+            "id": did,
+            "name": d["name"],
+            "region": d.get("region", ""),
+            "revenue": d["revenue"],
+            "days_since_last_order": days_since_last if last_ts else None,
+            "growth_pct": growth_pct,
+            "frequency_change_pct": round(freq_change_pct, 1),
+            "score": churn["score"],
+            "level": churn["level"],
+            "reasons": churn["reasons"],
+        })
+
+    # 6-month purchase trend (across all distributors, for the chart).
+    monthly: Dict[str, float] = defaultdict(float)
+    months_window: List[str] = []
+    for i in range(5, -1, -1):
+        ref = now - timedelta(days=30 * i)
+        months_window.append(ref.strftime("%Y-%m"))
+    months_set = set(months_window)
+    for o in all_orders:
+        if o.get("status") != "delivered":
+            continue
+        ts = _to_dt(o.get("created_at") or o.get("delivered_at"))
+        if not ts:
+            continue
+        m = ts.strftime("%Y-%m")
+        if m in months_set:
+            monthly[m] += float(o.get("total_amount") or 0)
+
+    high_growth = sum(1 for r in ranking if r["status"] == "high_growth")
+    at_risk = sum(1 for r in ranking if r["status"] == "at_risk")
+    stable = len(ranking) - high_growth - at_risk
+
+    aov_overall = (sum(aov_values) / len(aov_values)) if aov_values else 0.0
+    freq_overall = (sum(freq_values) / len(freq_values)) if freq_values else 0.0
+    fill_rate_pct = round(fill_num / fill_den * 100, 1) if fill_den else 0.0
+    service_level_pct = round(service_num / service_den * 100, 1) if service_den else 0.0
+
+    # Sort outputs sensibly.
+    ranking.sort(key=lambda r: r["revenue"], reverse=True)
+    churn_rows.sort(key=lambda r: r["score"], reverse=True)
+
+    return {
+        "kpis": {
+            "active_distributors": len(distributor_perf),
+            "total_revenue": round(total_rev, 2),
+            "average_order_value": round(aov_overall, 2),
+            "average_order_frequency": round(freq_overall, 2),
+            "fill_rate_pct": fill_rate_pct,
+            "service_level_pct": service_level_pct,
+            "high_growth": high_growth,
+            "stable": stable,
+            "at_risk": at_risk,
+        },
+        "ranking": ranking,
+        "bcg": {
+            "items": bcg_items,
+            "rev_threshold": round(rev_threshold, 2),
+            "growth_threshold": round(growth_threshold, 2),
+        },
+        "churn": churn_rows,
+        "trend_months": months_window,
+        "monthly_purchases": {m: round(monthly.get(m, 0.0), 2) for m in months_window},
+    }
+
+
 async def _enrich_products(product_ids: List[str]) -> Dict[str, dict]:
     if not product_ids:
         return {}
@@ -392,6 +684,13 @@ async def wholesaler_analytics(wholesaler_id: str,
     declining = sorted([r for r in distributor_perf if r["growth_pct"] < 0],
                        key=lambda r: r["growth_pct"])[:5]
 
+    # ---- Distributor Analytics Center (Phase 3A) --------------------------
+    # KPI strip, BCG matrix, ranking with growth status, churn risk scoring,
+    # and 6-month monthly purchase trend per top distributor. Pure math.
+    distributors_deep = _compute_distributor_intelligence(
+        distributor_perf, orders, ninety_ago,
+    )
+
     # ---- Procurement ------------------------------------------------------
     pos = await db.wholesaler_purchase_orders.find(
         {"wholesaler_id": wholesaler_id}, {"_id": 0},
@@ -512,6 +811,7 @@ async def wholesaler_analytics(wholesaler_id: str,
             "top": top_distributors,
             "fastest_growing": fastest_growing,
             "declining": declining,
+            "deep": distributors_deep,
         },
         "procurement": {
             "pos_open": po_open,

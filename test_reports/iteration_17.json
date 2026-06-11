@@ -1,0 +1,65 @@
+{
+  "summary": "Phase 3A (Wholesaler — Distributor Analytics Center) verified end-to-end. Backend: 8/8 new pytest cases on /api/wholesaler/{wid}/analytics distributors.deep block pass + 6/6 prior place-order/allocation-KPI regression cases pass (the iter16 tenant-scope CRITICAL is now fixed — distributor & wholesaler both correctly receive 403 on /api/allocation/kpis). Frontend: sidebar shows EXACTLY 8 items in the spec order, all 4 new wholesaler routes resolve with the correct testids, Distributor Analytics tab renders the full DAC (6 KPI cards, 3 status tiles, 6-row ranking sorted by revenue desc with per-distributor fill % column, 6 churn rows, 6-bubble BCG matrix + legend that sums to # of distributors, 6-month trend chart). No console errors. No regressions.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Analytics → Distributors tab → Distributor Ranking",
+        "issues": [
+          "5 of 6 distributors show Revenue ₦0 but Orders=1 and Fill %=100% — this is a seed-data artifact (orders exist but never delivered, so revenue=0 yet line items were 100% approved). Not a Phase 3A bug, but worth noting for executive-eye review."
+        ]
+      },
+      {
+        "screen": "Analytics → Distributors tab → BCG matrix",
+        "issues": [
+          "Threshold collapses to a single Star (MUTKEEM) and 5 At Risk because every other distributor has 0% growth + 0% share. Matrix renders correctly; consider explaining the median-based thresholds in a tooltip so users don't read 5 At Risk as a regression."
+        ]
+      }
+    ]
+  },
+  "test_scenarios_executed": [
+    {"name": "pytest TestDistributorsDeep.test_kpi_keys — all 9 kpi keys present, status mix sums to active_distributors", "result": "PASS"},
+    {"name": "pytest TestDistributorsDeep.test_ranking_shape_and_sort — sorted desc by revenue, all fields incl. fill_rate_pct, status ∈ {high_growth|stable|at_risk}", "result": "PASS"},
+    {"name": "pytest TestDistributorsDeep.test_bcg_block — items length matches ranking, quadrant ∈ {star|cash_cow|question_mark|at_risk}, thresholds present", "result": "PASS"},
+    {"name": "pytest TestDistributorsDeep.test_churn_block — score 0-100, level ∈ {low|medium|high}, ≥1 reason per row", "result": "PASS"},
+    {"name": "pytest TestDistributorsDeep.test_trend_block — 6 trend_months, monthly_purchases keyed by all 6", "result": "PASS"},
+    {"name": "pytest TestAllocationKpisRegression.test_manufacturer_ok — Unilever caller 200", "result": "PASS"},
+    {"name": "pytest TestAllocationKpisRegression.test_distributor_forbidden — Lagos distributor 403 (iter16 bug confirmed FIXED)", "result": "PASS"},
+    {"name": "pytest TestAllocationKpisRegression.test_wholesaler_forbidden — Wholesaler 403 (iter16 bug confirmed FIXED)", "result": "PASS"},
+    {"name": "pytest test_place_order_and_alloc_kpis.py — full 6/6 prior regression suite", "result": "PASS"},
+    {"name": "Frontend sidebar: exactly 8 items in spec order, no Reports / no Organizations", "result": "PASS"},
+    {"name": "Frontend routes: /procurement→wholesaler-procurement, /wholesaler/orders→wholesaler-orders, /wholesaler/shipments→wholesaler-shipments, /wholesaler/intelligence→wholesaler-intel-center", "result": "PASS"},
+    {"name": "Frontend DAC: testid distributor-analytics-center + 6 KpiCards (dac-active=6, dac-revenue=₦1,351,800, dac-aov=₦225,300, dac-freq=0.39/wk, dac-fill=87.5%, dac-service=100%)", "result": "PASS"},
+    {"name": "Frontend status mix: dac-status-high=1, dac-status-stable=5, dac-status-risk=0 (matches deep.kpis)", "result": "PASS"},
+    {"name": "Frontend ranking table: 6 rows sorted by revenue desc, MUTKEEM 43% fill (NOT global 100%), High Growth badge emerald, Stable badges amber", "result": "PASS"},
+    {"name": "Frontend churn: 6 dac-churn-{id} rows, level badge + numeric score + reason string", "result": "PASS"},
+    {"name": "Frontend BCG: 6 dac-bcg-bubble-{id}, legend {star:1, cash_cow:0, question_mark:0, at_risk:5} sums to 6 = len(deep.ranking)", "result": "PASS"},
+    {"name": "Frontend monthly trend: 6 bars labeled with month suffixes 01-06", "result": "PASS"}
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_phase3a_distributor_intel.py",
+    "/app/backend/tests/test_place_order_and_alloc_kpis.py",
+    "/app/test_reports/pytest/iter17.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "/app/backend/routes/wholesaler_analytics.py is 959 lines — exceeds the 700-line guideline. The new Phase 3A distributor-intelligence math (~50-336) is a natural extraction candidate into a `wholesaler_distributor_intel.py` module before Phase 3B adds more.",
+    "_compute_distributor_intelligence iterates orders Python-side per distributor — fine for ≤30 distributors, but consider Mongo $group aggregation once a tenant exceeds ~200 distributors / 10k orders.",
+    "rev_threshold falls back to mean/2 only when median is 0; if growths are all 0 (current seed) growth_threshold becomes 0 too and every distributor with growth>=0 lands in Stars/Cash Cows. With current seed only MUTKEEM has growth>0 so the matrix is sane, but flag for QA on flat-data tenants.",
+    "Frontend WholesalerAnalytics.jsx is 741 lines — DAC sub-components (StatusTile/DistributorRankingTable/ChurnRow/BcgMatrix/MonthlyTrendChart) should move to /views/wholesaler/dac/*.jsx before Phase 3B's Inventory deep dive piles into the same file.",
+    "BcgMatrix uses raw px sizing on bubbles; consider a min-size of 8px and a tooltip on hover so users see distributor name + revenue + growth without leaving the matrix.",
+    "Status badge color mapping (emerald/amber/rose) is duplicated in two places (StatusTile + DistributorRankingTable). Extract into a shared statusTone() helper to avoid drift."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_phase3a_distributor_intel.py (new — 8 pytest cases for Phase 3A + Phase 2 regression)"
+  ],
+  "success_rate": { "backend": "100% (14/14 — 8 new Phase 3A + 6 prior regression)", "frontend": "100% (8 items sidebar, 4 routes, full DAC render, no console errors)" },
+  "test_credentials": "unilever.wholesaler@tradekonekt.io (wholesaler WID d81efddf-e1af-4bb4-bcd7-619f74153300), unilever@tradekonekt.io (mfr), lagos.distributor@tradekonekt.io (dist) — all share TradeKonekt2026!.",
+  "seed_data_creation": "Pytest place-order regression created 1 new wholesaler_order (WO-2026-022x) under SUARA & CO. for Lagos Wholesale Hub A. No DAC-specific seed data was created — analytics ran on the existing seed.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Phase 3A passed cleanly. Carry forward for 3B onward: (1) Two pytest files now share a Path-based .env loader pattern — reuse /app/backend/tests/test_phase3a_distributor_intel.py::_load_env in new test files since REACT_APP_BACKEND_URL is NOT exported in the shell. (2) Wholesaler workspace sidebar must stay at 8 items / no Reports / no Organizations across future phases — guard against regressions in Layout.jsx getNavForRole. (3) The iter16 CRITICAL on /api/allocation/kpis tenant-scope is FIXED — both distributor and wholesaler now correctly return 403, suggest also covering /allocation/pool, /allocation/summary, /allocation/recommendation in a future regression. (4) Phase 3A introduces NO new write endpoints — read-only analytics. (5) WholesalerAnalytics.jsx hit 741 lines and wholesaler_analytics.py hit 959 lines; both should be split before 3B/3C piles in more math.",
+  "rca of the issue": "n/a — no defects found in Phase 3A. The previous iteration's CRITICAL (distributor & wholesaler reading /api/allocation/kpis) is now resolved and re-asserted as passing in this run."
+}

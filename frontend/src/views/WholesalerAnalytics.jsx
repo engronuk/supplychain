@@ -11,7 +11,8 @@ import {
 } from "./wholesaler/ui";
 import {
   Boxes, Activity, TrendingUp, TrendingDown, AlertTriangle, Users,
-  Truck, Package, Sparkles, Wallet, ShoppingCart,
+  Truck, Package, Sparkles, Wallet, ShoppingCart, Target, Gauge,
+  ShieldCheck, Repeat, AlertCircle,
 } from "lucide-react";
 
 export default function WholesalerAnalytics() {
@@ -140,37 +141,7 @@ export default function WholesalerAnalytics() {
 
         {/* Distributors */}
         <TabsContent value="distributors" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-sm">Top Distributors (90d revenue)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <DistTable rows={data.distributors.top} emptyLabel="No active distributors" testid="top-dist" />
-            </CardContent>
-          </Card>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-emerald-600" /> Fastest Growing
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <DistTable rows={data.distributors.fastest_growing} emptyLabel="No growth data" testid="fast-growing" showGrowth />
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <TrendingDown className="h-4 w-4 text-rose-600" /> Declining
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <DistTable rows={data.distributors.declining} emptyLabel="No declining distributors" testid="declining" showGrowth />
-              </CardContent>
-            </Card>
-          </div>
+          <DistributorAnalyticsCenter deep={data.distributors.deep || {}} />
         </TabsContent>
 
         {/* Orders */}
@@ -440,6 +411,329 @@ function TrendChart({ rows }) {
         <span>{rows[0]?.date}</span>
         <span>{rows[Math.floor(rows.length / 2)]?.date}</span>
         <span>{rows[rows.length - 1]?.date}</span>
+      </div>
+    </div>
+  );
+}
+
+
+/* =========================================================================
+ * Distributor Analytics Center (Phase 3A) — KPI strip + Ranking + BCG
+ * matrix + Churn risk + 6-month trend. Pure operational math (no AI).
+ * ======================================================================= */
+
+const STATUS_META = {
+  high_growth: { label: "High Growth", dot: "bg-emerald-500", text: "text-emerald-700",
+                  pill: "bg-emerald-50 ring-emerald-200" },
+  stable:      { label: "Stable",      dot: "bg-amber-500",   text: "text-amber-700",
+                  pill: "bg-amber-50 ring-amber-200" },
+  at_risk:     { label: "At Risk",     dot: "bg-rose-500",    text: "text-rose-700",
+                  pill: "bg-rose-50 ring-rose-200" },
+};
+
+const CHURN_META = {
+  low:    { label: "Low",    pill: "bg-emerald-50 text-emerald-700 ring-emerald-200" },
+  medium: { label: "Medium", pill: "bg-amber-50 text-amber-700 ring-amber-200" },
+  high:   { label: "High",   pill: "bg-rose-50 text-rose-700 ring-rose-200" },
+};
+
+function DistributorAnalyticsCenter({ deep }) {
+  const k = deep.kpis || {};
+  const ranking = deep.ranking || [];
+  const churn = deep.churn || [];
+  const bcg = deep.bcg || { items: [] };
+  const trendMonths = deep.trend_months || [];
+  const monthly = deep.monthly_purchases || {};
+
+  if ((ranking || []).length === 0) {
+    return <EmptyState title="No distributor activity yet" />;
+  }
+
+  return (
+    <div className="space-y-4" data-testid="distributor-analytics-center">
+      {/* KPI strip */}
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+        <KpiCard testid="dac-active" icon={Users}      label="Active Distributors"
+                 value={fmtNumber(k.active_distributors)} />
+        <KpiCard testid="dac-revenue" icon={Wallet}    label="Revenue (90d)"
+                 value={fmtCurrency(k.total_revenue)} tone="positive" />
+        <KpiCard testid="dac-aov"     icon={ShoppingCart} label="Avg Order Value"
+                 value={fmtCurrency(k.average_order_value)} />
+        <KpiCard testid="dac-freq"    icon={Repeat}    label="Avg Order Frequency"
+                 value={`${k.average_order_frequency || 0}/wk`} />
+        <KpiCard testid="dac-fill"    icon={Activity}  label="Fill Rate"
+                 value={`${k.fill_rate_pct || 0}%`}
+                 tone={(k.fill_rate_pct || 0) >= 80 ? "positive"
+                        : (k.fill_rate_pct || 0) >= 50 ? "warning" : "alert"} />
+        <KpiCard testid="dac-service" icon={ShieldCheck} label="Service Level"
+                 value={`${k.service_level_pct || 0}%`}
+                 tone={(k.service_level_pct || 0) >= 80 ? "positive"
+                        : (k.service_level_pct || 0) >= 50 ? "warning" : "alert"} />
+      </div>
+
+      {/* Status mix */}
+      <div className="grid grid-cols-3 gap-3">
+        <StatusTile testid="dac-status-high" tint="emerald" Icon={TrendingUp}
+                    label="High Growth" count={k.high_growth} />
+        <StatusTile testid="dac-status-stable" tint="amber" Icon={Gauge}
+                    label="Stable" count={k.stable} />
+        <StatusTile testid="dac-status-risk" tint="rose" Icon={AlertTriangle}
+                    label="At Risk" count={k.at_risk} />
+      </div>
+
+      {/* Ranking + Churn side by side */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Target className="h-4 w-4 text-indigo-600" /> Distributor Ranking
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <DistributorRankingTable rows={ranking} />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-rose-600" /> Churn Risk
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3" data-testid="dac-churn-list">
+            {churn.slice(0, 8).map((c) => (
+              <ChurnRow key={c.id} c={c} />
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* BCG matrix */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-violet-600" /> Distributor BCG Matrix
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <BcgMatrix items={bcg.items}
+                     revThreshold={bcg.rev_threshold}
+                     growthThreshold={bcg.growth_threshold} />
+        </CardContent>
+      </Card>
+
+      {/* 6-month trend */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-indigo-600" /> 6-Month Distributor Purchases
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <MonthlyTrendChart months={trendMonths} values={monthly} />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function StatusTile({ testid, tint, Icon, label, count }) {
+  const cls = {
+    emerald: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+    amber: "bg-amber-50 text-amber-700 ring-amber-200",
+    rose: "bg-rose-50 text-rose-700 ring-rose-200",
+  }[tint];
+  return (
+    <div className={`rounded-lg border ring-1 ${cls} p-3 flex items-center gap-3`}
+         data-testid={testid}>
+      <Icon className="h-5 w-5" />
+      <div className="flex-1">
+        <div className="text-[11px] uppercase tracking-wider font-medium opacity-80">{label}</div>
+        <div className="text-2xl font-bold leading-none mt-1">{count ?? 0}</div>
+      </div>
+    </div>
+  );
+}
+
+function DistributorRankingTable({ rows }) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm" data-testid="dac-ranking-table">
+        <thead className="text-xs uppercase tracking-wider text-slate-500">
+          <tr>
+            <th className="text-left font-medium py-2">Distributor</th>
+            <th className="text-left font-medium py-2">Region</th>
+            <th className="text-right font-medium py-2">Revenue</th>
+            <th className="text-right font-medium py-2">Orders</th>
+            <th className="text-right font-medium py-2">Fill %</th>
+            <th className="text-right font-medium py-2">Growth %</th>
+            <th className="text-left font-medium py-2 pl-3">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.slice(0, 12).map((r) => {
+            const s = STATUS_META[r.status] || STATUS_META.stable;
+            return (
+              <tr key={r.id} className="border-t border-slate-100 hover:bg-slate-50"
+                  data-testid={`dac-rank-${r.id}`}>
+                <td className="py-2 pr-2 text-slate-800 font-medium">{r.name}</td>
+                <td className="py-2 text-slate-600">{r.region || "—"}</td>
+                <td className="py-2 text-right text-slate-800">{fmtCurrency(r.revenue)}</td>
+                <td className="py-2 text-right text-slate-700">{fmtNumber(r.orders)}</td>
+                <td className="py-2 text-right text-slate-700">
+                  {r.fill_rate_pct != null ? `${r.fill_rate_pct}%` : "—"}
+                </td>
+                <td className={`py-2 text-right font-medium ${
+                  r.growth_pct > 0 ? "text-emerald-700" :
+                  r.growth_pct < 0 ? "text-rose-700" : "text-slate-600"}`}>
+                  {r.growth_pct > 0 ? "▲" : r.growth_pct < 0 ? "▼" : ""}{" "}
+                  {Math.abs(r.growth_pct).toFixed(1)}%
+                </td>
+                <td className="py-2 pl-3">
+                  <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full ring-1 text-xs ${s.pill} ${s.text}`}>
+                    <span className={`h-1.5 w-1.5 rounded-full ${s.dot}`} />
+                    {s.label}
+                  </span>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function ChurnRow({ c }) {
+  const m = CHURN_META[c.level] || CHURN_META.low;
+  return (
+    <div className="border-l-2 pl-3 py-1.5"
+         style={{ borderColor: c.level === "high" ? "#f43f5e"
+                  : c.level === "medium" ? "#f59e0b" : "#10b981" }}
+         data-testid={`dac-churn-${c.id}`}>
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-sm font-medium text-slate-800 truncate">{c.name}</div>
+        <span className={`shrink-0 text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded ring-1 ${m.pill}`}>
+          {m.label} · {c.score}
+        </span>
+      </div>
+      <ul className="text-xs text-slate-600 mt-1 space-y-0.5">
+        {(c.reasons || []).slice(0, 2).map((r, i) => (
+          <li key={i}>• {r}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+const QUAD_META = {
+  star:           { label: "Stars",         color: "bg-emerald-500",
+                     pill: "bg-emerald-50 text-emerald-700" },
+  cash_cow:       { label: "Cash Cows",     color: "bg-indigo-500",
+                     pill: "bg-indigo-50 text-indigo-700" },
+  question_mark:  { label: "Question Marks", color: "bg-amber-500",
+                     pill: "bg-amber-50 text-amber-700" },
+  at_risk:        { label: "At Risk",       color: "bg-rose-500",
+                     pill: "bg-rose-50 text-rose-700" },
+};
+
+function BcgMatrix({ items, revThreshold, growthThreshold }) {
+  if (!items || items.length === 0) {
+    return <EmptyState title="No distributor data for matrix" />;
+  }
+
+  // Normalise to plot range.
+  const maxShare = Math.max(...items.map((i) => i.revenue_share_pct), revThreshold * 2, 5);
+  const minGrowth = Math.min(...items.map((i) => i.growth_pct), growthThreshold - 25, -25);
+  const maxGrowth = Math.max(...items.map((i) => i.growth_pct), growthThreshold + 25, 25);
+  const growthRange = (maxGrowth - minGrowth) || 1;
+
+  const xFor = (share) => Math.min(98, Math.max(2, (share / maxShare) * 96 + 2));
+  const yFor = (g) => Math.min(98, Math.max(2, 98 - ((g - minGrowth) / growthRange) * 96));
+
+  const xLine = xFor(revThreshold);
+  const yLine = yFor(growthThreshold);
+
+  const counts = items.reduce((acc, i) => {
+    acc[i.quadrant] = (acc[i.quadrant] || 0) + 1;
+    return acc;
+  }, {});
+
+  return (
+    <div className="space-y-3" data-testid="dac-bcg-matrix">
+      <div className="relative w-full h-72 md:h-80 bg-slate-50 rounded-lg border border-slate-200 overflow-hidden">
+        {/* Axes */}
+        <div className="absolute bg-slate-300" style={{ left: `${xLine}%`, top: 0, bottom: 0, width: 1 }} />
+        <div className="absolute bg-slate-300" style={{ top: `${yLine}%`, left: 0, right: 0, height: 1 }} />
+        {/* Quadrant labels */}
+        <div className="absolute top-2 right-3 text-[11px] font-medium text-emerald-600">★ Stars</div>
+        <div className="absolute bottom-2 right-3 text-[11px] font-medium text-indigo-600">Cash Cows</div>
+        <div className="absolute top-2 left-3 text-[11px] font-medium text-amber-600">? Question Marks</div>
+        <div className="absolute bottom-2 left-3 text-[11px] font-medium text-rose-600">At Risk</div>
+        {/* Bubbles */}
+        {items.map((it) => {
+          const m = QUAD_META[it.quadrant] || QUAD_META.at_risk;
+          const size = Math.max(8, Math.min(28, Math.sqrt(Math.max(it.revenue, 1)) / 80));
+          return (
+            <div key={it.id}
+                 className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-white ${m.color} shadow-sm hover:scale-125 transition cursor-help`}
+                 style={{
+                   left: `${xFor(it.revenue_share_pct)}%`,
+                   top: `${yFor(it.growth_pct)}%`,
+                   width: `${size}px`, height: `${size}px`,
+                 }}
+                 title={`${it.name} · ${it.region}\nRevenue share: ${it.revenue_share_pct}%\nGrowth: ${it.growth_pct.toFixed(1)}%`}
+                 data-testid={`dac-bcg-bubble-${it.id}`}
+            />
+          );
+        })}
+        {/* Axis labels */}
+        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[10px] text-slate-500 bg-white px-1">
+          Revenue Share % →
+        </div>
+        <div className="absolute top-1/2 -left-1 -translate-y-1/2 text-[10px] text-slate-500 bg-white px-1 -rotate-90 origin-top-left">
+          Growth % ↑
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
+        {Object.entries(QUAD_META).map(([k, m]) => (
+          <div key={k} className={`px-2 py-1.5 rounded ${m.pill} flex items-center justify-between`}>
+            <span className="flex items-center gap-1.5">
+              <span className={`h-2.5 w-2.5 rounded-full ${m.color}`} />
+              {m.label}
+            </span>
+            <span className="font-semibold" data-testid={`dac-bcg-count-${k}`}>{counts[k] || 0}</span>
+          </div>
+        ))}
+      </div>
+      <div className="text-[11px] text-slate-500">
+        Thresholds — Revenue share: {(revThreshold || 0).toFixed(1)}%  ·  Growth: {(growthThreshold || 0).toFixed(1)}%
+      </div>
+    </div>
+  );
+}
+
+function MonthlyTrendChart({ months, values }) {
+  if (!months || months.length === 0) {
+    return <EmptyState title="No monthly trend data" />;
+  }
+  const vals = months.map((m) => values[m] || 0);
+  const max = Math.max(...vals, 1);
+  return (
+    <div data-testid="dac-monthly-trend">
+      <div className="flex items-end gap-3 h-32 px-2">
+        {months.map((m, idx) => {
+          const h = (vals[idx] / max) * 100;
+          return (
+            <div key={m} className="flex-1 flex flex-col items-center justify-end gap-1"
+                 title={`${m}: ${fmtCurrency(vals[idx])}`}>
+              <div className="w-full bg-indigo-500 hover:bg-indigo-600 rounded-t transition-colors"
+                   style={{ height: `${h}%` }} />
+              <div className="text-[10px] text-slate-500">{m.slice(5)}</div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

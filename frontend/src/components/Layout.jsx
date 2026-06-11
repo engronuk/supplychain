@@ -65,10 +65,15 @@ function navForRole(role) {
     base.push({ to: "/network", label: "Retailers", icon: Network });
     base.push({ to: "/procurement", label: "Procurement", icon: ShoppingCart });
   } else if (role === "wholesaler") {
-    // Wholesaler workspace — single Procurement Hub tab houses purchase
-    // orders, distributor orders, fulfillment, and outbound shipments.
+    // Phase 3 nav — Procurement (upstream POs) + dedicated Distributor
+    // Orders + Shipments, plus Analytics and the new Intelligence Center.
     base.push({ to: "/procurement", label: "Procurement", icon: ShoppingCart });
-    base.push({ to: "/network", label: "Distributors", icon: Network });
+    base.push({ to: "/network", label: "Distributor Network", icon: Network });
+    base.push({ to: "/wholesaler/orders", label: "Distributor Orders", icon: ClipboardList });
+    base.push({ to: "/wholesaler/shipments", label: "Shipments", icon: Truck });
+    base.push({ to: "/analytics", label: "Analytics", icon: BarChart3 });
+    base.push({ to: "/wholesaler/intelligence", label: "Intelligence Center", icon: BrainCircuit });
+    return base;
   } else if (role === "retailer") {
     base.push({ to: "/intel", label: "Intelligence", icon: BrainCircuit });
     base.push({ to: "/sales", label: "Sales Book", icon: Receipt });

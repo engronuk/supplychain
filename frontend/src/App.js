@@ -39,6 +39,7 @@ import WholesalerShipments from "@/views/WholesalerShipments";
 import WholesalerProcurementHub from "@/views/WholesalerProcurementHub";
 import WholesalerDistributorDetail from "@/views/WholesalerDistributorDetail";
 import WholesalerAnalytics from "@/views/WholesalerAnalytics";
+import WholesalerIntelligenceCenter from "@/views/WholesalerIntelligenceCenter";
 import WMSLayout from "@/views/wms/WMSLayout";
 import WMSDashboardPage from "@/views/wms/DashboardPage";
 import { InventoryListPage, InventoryDetailPage } from "@/views/wms/InventoryPages";
@@ -67,7 +68,9 @@ function ProcurementGate() {
   if (!session) return null;
   if (session.role === "distributor") return <DistributorProcurementInbox />;
   if (session.role === "retailer") return <RetailerProcurement />;
-  if (session.role === "wholesaler") return <WholesalerProcurementHub />;
+  // Phase 3 — wholesaler /procurement = upstream POs only. Distributor
+  // Orders, Fulfillment and Shipments are dedicated sidebar routes.
+  if (session.role === "wholesaler") return <WholesalerProcurement />;
   // Manufacturers don't procure — for them, the merged "Procurement" workspace
   // is the Shipment Command Center (outbound shipments to distributors).
   if (session.role === "manufacturer") return <ShipmentCommandCenter />;
@@ -162,12 +165,14 @@ function App() {
               <Route path="/sales" element={<SalesBookView />} />
               <Route path="/intel" element={<IntelligenceCenter />} />
               <Route path="/reports" element={<ReportsView />} />
-              {/* Wholesaler Phase 2 — direct deep-links into the merged
-                  Procurement Hub tabs. Sidebar only shows /procurement now. */}
-              <Route path="/wholesaler/orders" element={<Navigate to="/procurement?tab=orders" replace />} />
-              <Route path="/wholesaler/fulfillment" element={<Navigate to="/procurement?tab=fulfillment" replace />} />
-              <Route path="/wholesaler/shipments" element={<Navigate to="/procurement?tab=shipments" replace />} />
+              {/* Wholesaler Phase 3 — standalone Distributor Orders,
+                  Fulfillment and Shipments routes (sidebar surfaces them
+                  individually). Procurement is upstream POs only. */}
+              <Route path="/wholesaler/orders" element={<WholesalerOrders />} />
+              <Route path="/wholesaler/fulfillment" element={<WholesalerFulfillment />} />
+              <Route path="/wholesaler/shipments" element={<WholesalerShipments />} />
               <Route path="/wholesaler/distributors/:distributorId" element={<WholesalerDistributorDetail />} />
+              <Route path="/wholesaler/intelligence" element={<WholesalerIntelligenceCenter />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
