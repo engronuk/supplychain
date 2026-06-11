@@ -73,6 +73,17 @@ async def job_forecasts():
             logger.exception("forecast job failed for %s", tid)
 
 
+async def job_vehicle_motion():
+    """Every 2 minutes — nudge in-transit trucks along their routes so the
+    Logistics Command Center map shows live fleet movement (time-lapsed).
+    """
+    from services.vehicle_motion import advance_vehicles
+    try:
+        await advance_vehicles(tick_minutes=2.0)
+    except Exception:
+        logger.exception("vehicle motion job failed")
+
+
 async def job_pulse_intelligence():
     """Hourly job — recompute the Manufacturer Command Center intelligence
     snapshot grounded in real platform data for every tenant.
@@ -206,6 +217,12 @@ def start_scheduler():
         job_pulse_intelligence, IntervalTrigger(minutes=60), id="pulse_intelligence",
         max_instances=1, coalesce=True,
         next_run_time=now + timedelta(minutes=7),
+    )
+    # Fleet motion — every 2 min, trucks crawl along their routes (time-lapse).
+    scheduler.add_job(
+        job_vehicle_motion, IntervalTrigger(minutes=2), id="vehicle_motion",
+        max_instances=1, coalesce=True,
+        next_run_time=now + timedelta(minutes=1),
     )
 
     scheduler.start()

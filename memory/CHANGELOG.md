@@ -1006,3 +1006,12 @@ Standalone mission-control page at **`/manufacturer/logistics-center`** ("Logist
 ### Tested
 - Testing agent iteration_13: backend 15/15 pytest (`/app/backend/tests/test_logistics.py` — kept for regression), frontend 100% (all 8 sections, AI flow, tabs, dialogs, drill-downs, tenant isolation Unilever vs Flour Mills).
 - Post-test fixes applied: Execute button hidden when clamped quantity = 0 (amber helper instead); Vertex picks that are no longer executable fall back to the rule engine.
+
+## 2026-06-11 (b) — Live fleet motion (trucks auto-advance)
+
+- **`services/vehicle_motion.py`** — `advance_vehicles(tick_minutes)`: moves every in-transit truck along its origin→dest lane on a 10× time-lapse (`DEMO_SPEEDUP`); an 8h trip completes in ~48 wall-clock minutes. State per vehicle: `progress` (0..1) + `total_minutes`; legacy rows get progress derived from coordinates. `eta_minutes` now counts down in wall-clock terms so the map ETA matches what you watch.
+- **Arrival semantics**: transfer-linked trucks hold at the destination gate (`in_transit`, ETA 0 → map shows "Arrived") until the transfer is marked delivered (which credits stock + parks the truck). Unlinked trucks go `idle` at the destination. `stopped` trucks never move.
+- **Scheduler**: `job_vehicle_motion` in `services/intel/scheduler.py` — every 2 min, first run T+1 min. NOTE: in dev the intel scheduler starts only after the seed/refresh bootstrap completes (~5 min after boot).
+- **`GET /api/logistics/trucks`** — lightweight tenant-scoped fleet positions; frontend polls it every 30 s (`LogisticsCommandCenter.jsx`) and merges into the map without a full overview reload.
+- Verified live: scheduler tick advanced TK-019 0.66→0.718 with ETA countdown; arrival branches tested for both linked and unlinked trucks; 30 s browser poll observed on the preview.
+- Known demo quirk: the boot-time demo **date refresh** rebases `shipments` timestamps, so freshly mirrored transfer shipments can appear "4+ days in transit" and trip the delayed-shipment alert. Cosmetic in demo data.

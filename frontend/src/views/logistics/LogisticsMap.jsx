@@ -49,6 +49,7 @@ const num = (n) => (Number(n) || 0).toLocaleString();
 
 function etaLabel(mins) {
   if (mins == null) return "—";
+  if (mins <= 0) return "Arrived";
   const h = Math.floor(mins / 60);
   const m = Math.round(mins % 60);
   return h ? `${h}h ${m}m` : `${m}m`;

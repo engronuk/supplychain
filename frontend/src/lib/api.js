@@ -158,6 +158,7 @@ export const Api = {
   // ---- Logistics Command Center ----
   logisticsOverview: () => api.get("/logistics/overview").then((r) => r.data),
   logisticsTransfers: () => api.get("/logistics/transfers").then((r) => r.data),
+  logisticsTrucks: () => api.get("/logistics/trucks").then((r) => r.data),
   logisticsCreateTransfer: (payload) =>
     api.post("/logistics/transfers", payload).then((r) => r.data),
   logisticsAdvanceTransfer: (id, action) =>

@@ -518,6 +518,8 @@ async def _assign_vehicle(mfr: str, transfer: Dict[str, Any],
         "status": "in_transit",
         "lat": o_lat + (d_lat - o_lat) * 0.08,
         "lng": o_lng + (d_lng - o_lng) * 0.08,
+        "progress": 0.08,
+        "total_minutes": 8 * 60,
         "origin_name": from_wh["organization_name"], "origin_lat": o_lat, "origin_lng": o_lng,
         "dest_name": to_wh["organization_name"], "dest_lat": d_lat, "dest_lng": d_lng,
         "eta_minutes": 8 * 60, "speed_kmh": 62,
@@ -598,6 +600,16 @@ async def _create_transfer(mfr: str, payload: TransferPayload, user: Dict[str, A
     transfer["vehicle_id"] = vehicle["id"]
     transfer["vehicle_code"] = vehicle["code"]
     return transfer
+
+
+@router.get("/logistics/trucks")
+async def list_trucks(
+    manufacturer_id: Optional[str] = None,
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    """Lightweight fleet positions for live map polling."""
+    mfr = await _scope_manufacturer(user, manufacturer_id)
+    return await db.vehicles.find({"manufacturer_id": mfr}, {"_id": 0}).to_list(100)
 
 
 @router.get("/logistics/transfers")

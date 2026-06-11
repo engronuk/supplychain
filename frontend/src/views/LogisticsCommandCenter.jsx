@@ -54,6 +54,18 @@ export default function LogisticsCommandCenter() {
   }, []);
   useEffect(() => { setTimeout(() => reload(true), 0); }, [reload]);
 
+  // Live fleet polling — trucks crawl along their routes server-side every
+  // 2 min (time-lapsed); refresh marker positions every 30s.
+  useEffect(() => {
+    const t = setInterval(() => {
+      Api.logisticsTrucks()
+        .then((trucks) =>
+          setData((prev) => (prev ? { ...prev, map: { ...prev.map, trucks } } : prev)))
+        .catch(() => {});
+    }, 30000);
+    return () => clearInterval(t);
+  }, []);
+
   const scrollTo = (ref) => ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 
   if (loading) {
