@@ -481,4 +481,29 @@ export const CrossPersonaApi = {
     api.get(`/distributor/${did}/wholesaler-orders`).then((r) => r.data),
 };
 
+// Super-admin Activity Simulator
+export const SimApi = {
+  status: () => api.get("/admin/simulator").then((r) => r.data),
+  toggle: (enabled) =>
+    api.post("/admin/simulator/toggle", { enabled }).then((r) => r.data),
+  level: (level) =>
+    api.post("/admin/simulator/level", { level }).then((r) => r.data),
+  tick: () => api.post("/admin/simulator/tick").then((r) => r.data),
+  events: (limit = 50) =>
+    api.get("/admin/simulator/events", { params: { limit } }).then((r) => r.data),
+  purge: () => api.delete("/admin/simulator/purge").then((r) => r.data),
+  seedDemo: () =>
+    api.post("/admin/simulator/participants/seed-demo").then((r) => r.data),
+  clearParticipants: () =>
+    api.post("/admin/simulator/participants/clear").then((r) => r.data),
+  tag: ({ organization_ids = [], organization_names = [], enable = true }) =>
+    api
+      .post("/admin/simulator/participants/tag", {
+        organization_ids,
+        organization_names,
+        enable,
+      })
+      .then((r) => r.data),
+};
+
 export default api;

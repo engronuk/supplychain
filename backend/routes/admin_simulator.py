@@ -173,3 +173,78 @@ async def simulator_tag(body: TagBody, _admin=Depends(_admin_only)):
         "modified": result.modified_count,
         "enabled": bool(body.enable),
     }
+
+
+# ---------------------------------------------------------------------------
+# POST /api/admin/simulator/participants/seed-demo
+# Idempotently tag a curated set of participants across BOTH demo tenants so
+# the simulator has live entities to write against on a fresh boot.
+# Picks: 2 distributors + 2 wholesalers per tenant + every retailer that sits
+# under any tagged wholesaler/distributor (so retail-sale workflow has stock
+# to deplete). Re-running is safe — the tag is just (re-)set to True.
+# ---------------------------------------------------------------------------
+DEMO_SEED_NAME_PATTERNS: List[str] = [
+    # ---- Unilever tenant -------------------------------------------------
+    r"^SUARA & CO",
+    r"^RENUZI VENTURES$",
+    r"^LOBIC GLOBAL MERCHANTILE",
+    r"^Lagos Wholesale Hub A$",
+    r"^South East Wholesale Hub A$",
+    # ---- Flour Mills tenant ---------------------------------------------
+    r"^Prime Distribution Services",
+    r"^Lagos Wholesale Hub$",  # WHO-0030, Flour Mills tenant
+    r"^Flour Mills Lagos Warehouse$",
+    r"^Flour Mills Retailer",
+]
+
+
+@router.post("/admin/simulator/participants/seed-demo")
+async def simulator_seed_demo(_admin=Depends(_admin_only)):
+    or_clauses = [
+        {"organization_name": {"$regex": p, "$options": "i"}}
+        for p in DEMO_SEED_NAME_PATTERNS
+    ]
+    primary = await db.organizations.update_many(
+        {"$or": or_clauses},
+        {"$set": {"simulation_participant": True}},
+    )
+    # Expand: tag every retailer that hangs off any already-tagged
+    # distributor / wholesaler so the retail-sale generator has inventory.
+    tagged_parents = await db.organizations.find(
+        {"simulation_participant": True,
+         "organization_type": {"$in": ["distributor", "wholesaler"]}},
+        {"_id": 0, "id": 1},
+    ).to_list(500)
+    parent_ids = [p["id"] for p in tagged_parents]
+    cascade = 0
+    if parent_ids:
+        c_res = await db.organizations.update_many(
+            {"organization_type": "retailer",
+             "parent_organization_id": {"$in": parent_ids},
+             "simulation_participant": {"$ne": True}},
+            {"$set": {"simulation_participant": True}},
+        )
+        cascade = c_res.modified_count
+    # Final tally for the panel.
+    total = await db.organizations.count_documents(
+        {"simulation_participant": True},
+    )
+    return {
+        "primary_matched": primary.matched_count,
+        "primary_modified": primary.modified_count,
+        "retailers_cascaded": cascade,
+        "total_participants": total,
+        "patterns": DEMO_SEED_NAME_PATTERNS,
+    }
+
+
+# ---------------------------------------------------------------------------
+# POST /api/admin/simulator/participants/clear -- untag every participant.
+# ---------------------------------------------------------------------------
+@router.post("/admin/simulator/participants/clear")
+async def simulator_clear_participants(_admin=Depends(_admin_only)):
+    res = await db.organizations.update_many(
+        {"simulation_participant": True},
+        {"$set": {"simulation_participant": False}},
+    )
+    return {"untagged": res.modified_count}
