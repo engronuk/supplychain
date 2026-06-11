@@ -18,6 +18,7 @@ from core import db, now_iso
 from routes._wholesaler_shared import (
     get_wholesaler_org,
     require_wholesaler_access,
+    require_wholesaler_owner,
     tenant_id_for,
     walk_to_manufacturer,
 )
@@ -1297,7 +1298,7 @@ async def _enrich_products(product_ids: List[str]) -> Dict[str, dict]:
 
 @router.get("/wholesaler/{wholesaler_id}/distributors/{distributor_id}/detail")
 async def distributor_detail(wholesaler_id: str, distributor_id: str,
-                             _user: dict = Depends(require_wholesaler_access)):
+                             _user: dict = Depends(require_wholesaler_owner)):
     """360º view of a single distributor served by this wholesaler."""
     wh = await get_wholesaler_org(wholesaler_id)
     tenant_id = await tenant_id_for(wh)
@@ -1458,7 +1459,7 @@ async def distributor_detail(wholesaler_id: str, distributor_id: str,
 
 @router.get("/wholesaler/{wholesaler_id}/analytics")
 async def wholesaler_analytics(wholesaler_id: str,
-                               _user: dict = Depends(require_wholesaler_access)):
+                               _user: dict = Depends(require_wholesaler_owner)):
     """Comprehensive analytics: inventory, distributor performance, orders,
     procurement, and rule-based demand forecast. No AI."""
     wh = await get_wholesaler_org(wholesaler_id)

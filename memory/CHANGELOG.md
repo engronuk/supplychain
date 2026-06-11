@@ -1142,7 +1142,53 @@ User feedback round:
 - Manufacturer login → dashboard scrolls to "Wholesaler Replenishment Requests" with 5 POs (₦18.5M open value).
 - Distributor login → procurement inbox "Wholesalers" tab shows their outbound orders + inbound shipments.
 
-## 2026-06-11 — Wholesaler · Place Order on Behalf + Manufacturer Allocation KPIs + Tenant-Scope Hardening
+## 2026-06-11 — Place Order on Behalf · Manufacturer Allocation KPIs · `/allocation/*` Role-Lock
+
+- Wholesalers can now place orders on behalf of distributors via a modal on `/wholesaler/distributors/:id` (POST `/api/wholesaler/{wid}/orders`). Submit creates a real `wholesaler_orders` doc with `WO-YYYY-####` number and surfaces it in distributor history.
+- Manufacturer Allocation Center got a Performance KPI strip on `/manufacturer/allocation`: Fill Rate, Avg Allocation Time, Back-Order Rate, Service Level (7-day SLA), Warehouse Performance leaderboard with on-time % (48h SLA). All math via new `GET /api/allocation/kpis?days=30`.
+- SECURITY: `_scope_manufacturer` rewritten to allowlist (manufacturer / warehouse / super_admin). Downstream roles (distributor / wholesaler / retailer) blocked from every `/allocation/*` endpoint.
+
+## 2026-06-11 — Phase 3 Wholesaler Intelligence Layer (3A → 3E shipped)
+
+**3A — Nav restructure + Distributor Analytics Center**
+- Wholesaler sidebar restructured to spec: Dashboard · Inventory · Procurement · Distributor Network · Distributor Orders · Shipments · Analytics · Intelligence Center.
+- Standalone routes restored for `/wholesaler/orders` and `/wholesaler/shipments` (previously redirected into the merged Procurement Hub). `/procurement` now routes wholesalers to upstream POs only.
+- Distributor Analytics Center on the Analytics → Distributors tab: 6-KPI strip, status mix (high_growth / stable / at_risk), Ranking table with per-distributor fill rate, **BCG matrix** (Stars / Cash Cows / Question Marks / At Risk with median-based thresholds), Churn Risk panel with rule-based score 0–100 + reason strings, 6-month monthly purchase trend chart.
+
+**3B — Inventory Analytics Center** (Analytics → Inventory tab)
+- 6-KPI strip (Inventory Value, Turnover/yr, Avg Days of Supply, Stock Coverage %, Stockout Risk, Expiring Value 60d).
+- Days of Supply red/yellow/green band (Critical <7d, Watch 7–21d, Healthy ≥21d) + Critical SKU table.
+- Turnover by Category + by Warehouse rollups with bar visualisations.
+- **Dead Stock Analysis** (Stale 30 / Stale 60 / Dead 90 buckets with value impact).
+- **Inventory Aging** (0–30 / 31–60 / 61–90 / 90+ days, value per bucket).
+- **Expiry Risk Dashboard** (Expired / ≤30d / ≤60d / ≤90d with value at risk).
+
+**3C — Demand Forecast + Replenishment Intelligence** (Analytics → Demand Forecast tab)
+- 6-KPI strip (7d / 30d / 90d projected demand, 30d projected revenue, urgent replenishments, safety-stock breaches).
+- Per-product 7/30/90 day forecast table with growth % and days-of-cover badge.
+- Regional Forecast table with growth % and risk level (low / medium / high).
+- Distributor Demand Forecast table (expected orders, expected revenue, next replenishment date).
+- Replenishment Recommendation Engine — urgent / soon / plan priority, supplier hint, suggested quantity, "order by" date.
+- Safety Stock Monitoring — on-hand vs target (lead_time × velocity × 1.5 safety factor), status pills (OK / Watch / Breach).
+
+**3D — Wholesaler Intelligence Center** (`/wholesaler/intelligence`)
+- New dedicated page rendering rule-based briefing synthesised from the three deep blocks. NO AI / Gemini.
+- Sections: snapshot KPIs, Executive Briefing (up to 5 narrative headlines), Opportunities, Risks (severity-tagged high / medium / low), Recommended Actions (priority-tagged).
+- Reuses `/api/wholesaler/{wid}/analytics` — no extra DB roundtrip.
+
+**3E — Control Tower View** (Analytics → Control Tower tab, new 7th tab)
+- **Network Health Score** 0–100 composite (Inventory Health 25% + Distributor Health 25% + Fulfillment Performance 25% + Shipment Reliability 25%) with band classification (excellent / good / watch / critical) + per-component progress bars.
+- 3 Heat Maps: Revenue Concentration by region, Inventory Allocation by category, Distributor Activity (top 12) — intensity-scaled bars.
+- Network nodes summary with warehouse + distributor cards colour-coded by status (high_growth / at_risk / stable).
+
+**SECURITY — Wholesaler privacy hardening** (`routes/_wholesaler_shared.py`)
+- New `require_wholesaler_owner` dependency for private analytics surfaces. Applied to `/wholesaler/{wid}/analytics` and `/wholesaler/{wid}/distributors/{did}/detail`. Same-tenant distributors / manufacturers / warehouses now get 403; only wholesaler-self and super_admin get 200. Other wholesaler endpoints (e.g., order placement) keep the previous `require_wholesaler_access` so distributors can still place orders against a wholesaler.
+
+**Verified live (Lagos Wholesale Hub A)**
+- Network Health Score 81.2/100 EXCELLENT (Inventory 100, Distributor 75, Fulfillment 100, Shipment 50).
+- 5 urgent replenishments flagged · 5 safety-stock breaches · ₦5.94M expiring inventory in 60d.
+- Distributor analytics: 1 Star (MUTKEEM CONCEPT +100%), 5 At Risk (zero-activity SKUs in seed).
+- Testing agent (iter18): 32/32 backend tests, 100% frontend, 0 console errors.
 
 **Frontend — Place Order on Their Behalf** (`WholesalerDistributorDetail.jsx`)
 - Header now exposes a "Place Order on Their Behalf" button (testid `dd-place-order-btn`) that opens a shadcn Dialog (`dd-place-order-dialog`).

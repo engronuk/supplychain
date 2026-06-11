@@ -1,33 +1,36 @@
 # TradeKonekt — Roadmap & Backlog
 
-_Last updated: 2026-06-11 — Place Order on Behalf + Allocation KPIs strip shipped. Security: `/allocation/*` endpoints now role-locked to manufacturer/warehouse/super_admin._
+_Last updated: 2026-06-11 — Phase 3 Wholesaler Intelligence Layer (3A → 3E) shipped. Network Health Score: 81.2/100 EXCELLENT on Lagos Wholesale Hub A._
 
 ## ✅ Done
 - **Wholesaler · Phase 1** — Dashboard, Inventory, Procurement, Distributor Network.
-- **Wholesaler · Phase 2** — Distributor Orders + Fulfillment workflow + Shipment Management.
-- **Wholesaler · Phase 3 (Analytics + Detail)** — 6-tab Analytics page (rule-based, no AI), 360° Distributor Detail page, cross-persona widgets on Manufacturer dashboard + Distributor inbox.
-- **Wholesaler · Place Order on Behalf** — "Place Order on Their Behalf" modal on Distributor Detail page; captures sales-call orders directly into `wholesaler_orders` via `POST /api/wholesaler/{wid}/orders`.
-- **Manufacturer · Allocation KPIs** — Fill Rate, Allocation Time, Back-Order Rate, Service Level, Warehouse Performance leaderboard. `GET /api/allocation/kpis?days=30`. Pure programmatic logic.
-- **Tenant scope hardening** — `_scope_manufacturer` now enforces a role allowlist (manufacturer / warehouse / super_admin). Downstream roles (distributor / wholesaler / retailer) blocked from every `/allocation/*` endpoint.
+- **Wholesaler · Phase 2** — Distributor Orders + Fulfillment workflow + Shipment Management + Place Order on Behalf modal.
+- **Wholesaler · Phase 3A** — 8-item sidebar restructure + Distributor Analytics Center (KPIs · Status mix · Ranking · BCG matrix · Churn risk · 6-month trend).
+- **Wholesaler · Phase 3B** — Inventory Analytics Center (Days of Supply red/yellow/green · Dead Stock 30/60/90 · Aging 0-30/31-60/61-90/90+ · Expiry Risk · Turnover by category & warehouse).
+- **Wholesaler · Phase 3C** — Demand Forecast (7/30/90d product · regional · distributor) + Replenishment Recommendation Engine + Safety Stock Monitoring.
+- **Wholesaler · Phase 3D** — Intelligence Center page (`/wholesaler/intelligence`) — rule-based Executive Briefing, Opportunities, Risks (severity-tagged), Recommended Actions (priority-tagged). NO AI.
+- **Wholesaler · Phase 3E** — Control Tower View — Network Health Score 0-100 + 3 heat maps + network nodes.
+- **Manufacturer · Allocation KPIs** — Fill Rate, Allocation Time, Back-Order Rate, Service Level, Warehouse Performance leaderboard at `/manufacturer/allocation`.
+- **Security: `/allocation/*` + `/wholesaler/{wid}/analytics` + `/wholesaler/{wid}/distributors/{did}/detail`** role-locked to owner/super_admin.
 
 ## 🟡 P1
 - In-app notifications feed (distributor / manufacturer / warehouse / wholesaler) for allocation, transfer, replenishment, order events.
-- Refactor `routes/wholesaler_orders.py` (1264 lines) and `routes/allocation.py` (812 lines) into split modules per guideline.
-- Replace the shipments catch-all route with explicit `/load`, `/start-transit`, `/deliver` endpoints for safety.
-- Wrap `dispatch` (N+1 inventory writes + shipment insert + order/fulfillment updates) in a Mongo transaction.
-- Replace `_next_seq` count-based numbering with an atomic counters collection (race-safe).
-- Distributor reorder shortcut — "Reorder this PO" prefill on My POs cards.
+- **Refactor `wholesaler_analytics.py` (1938 lines)** into per-concern modules: `wholesaler_distributor_analytics.py`, `wholesaler_inventory_analytics.py`, `wholesaler_forecast.py`, `wholesaler_intelligence.py`, `wholesaler_control_tower.py`.
+- Refactor `WholesalerAnalytics.jsx` (~1480 lines) — extract each tab into its own file.
+- Refactor `routes/wholesaler_orders.py` (1264 lines) and `routes/allocation.py` (812 lines) per the 700-line guideline.
+- Distributor reorder shortcut ("Reorder this PO" button) on `/procurement` cards.
+- Push allocation_kpis + forecast math into Mongo aggregation pipelines (currently O(n) in Python on up to 5k orders).
 
 ## 🟢 P2
-- Promotions Workspace (drafts exist via Product Command Center, no management UI).
-- Forecast Data Sparsity Fix — broaden `daily_sales` seed so regional forecast trends are less volatile and allocation on-time % differentiates across warehouses (currently all 100% due to clean seed timestamps).
+- Promotions Workspace (drafts exist; needs a management UI).
+- Forecast / seed-data sparsity fix — broaden `daily_sales` seed so warehouse on-time % differentiates, and so the BCG matrix has more spread.
+- Interactive Google Map on Control Tower (currently uses card-based network graph for simplicity).
 - Standalone WMS `/wms/fulfillment` page mirroring the warehouse tab.
 - Coalesce `_decrement_stock_on_dispatch` / `_settle_in_transit_on_delivery` / `_adjust_reservation` into single `$inc` updates per product for atomicity.
-- Swap the native HTML date input in the Place-Order modal for the shadcn Calendar/Popover.
-- Push allocation_kpis math into a Mongo aggregation pipeline (currently O(n) in Python on up to 5k orders).
+- Swap native HTML date input in Place-Order modal for shadcn Calendar/Popover.
 
-## 🔵 P3 — Future
-- Super-Admin Dashboard — tenant management, onboarding wizards.
-- Ownership Model Enforcement (Phases 3 & 4).
+## 🔵 P3
+- Tenant Onboarding Wizard for new manufacturers (self-serve super-admin UI).
 - Logistics integrations — driver mobile flows, proof of delivery, live GPS feeds.
 - Payments & Credit — invoices, credit limits, settlements, aging reports.
+- CSV export on each new Phase 3 tab (Distributor Analytics, Inventory Analytics, Forecast).

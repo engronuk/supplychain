@@ -67,6 +67,25 @@ async def require_wholesaler_access(wholesaler_id: str, request: Request) -> dic
     raise HTTPException(403, "Role not permitted")
 
 
+async def require_wholesaler_owner(wholesaler_id: str, request: Request) -> dict:
+    """Stricter guard for private analytics / intelligence surfaces.
+
+    Only the wholesaler itself (or super_admin) may read these endpoints.
+    Same-tenant distributors / manufacturers / warehouses are explicitly
+    blocked because the data exposes commercial KPIs, churn risk, and
+    purchase-order intelligence that belong to the wholesaler alone.
+    """
+    user = await get_current_user(request)
+    role = user.get("role")
+    if role == "super_admin":
+        return user
+    if role == "wholesaler":
+        if user.get("entity_id") != wholesaler_id:
+            raise HTTPException(403, "Not authorised for this wholesaler")
+        return user
+    raise HTTPException(403, "Wholesaler scope required")
+
+
 async def tenant_id_for(wholesaler: dict) -> str:
     """Walk to manufacturer + fall back to legacy mirror."""
     mfr = await walk_to_manufacturer(wholesaler)
