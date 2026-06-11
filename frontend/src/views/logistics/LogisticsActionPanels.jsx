@@ -198,10 +198,14 @@ export const AllocationPanel = ({ queue, aiRec, onChanged }) => {
                   <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700">
                     <PackageCheck className="h-3.5 w-3.5" /> Executed · {aiRec.transfer_number}
                   </span>
+                ) : !aiRec.quantity ? (
+                  <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-2 py-1" data-testid="ai-no-stock-note">
+                    Source stock exhausted — recompute for a fresh recommendation
+                  </span>
                 ) : (
                   <Button
                     size="sm" className="h-7 text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white"
-                    onClick={execute} disabled={aiBusy || !aiRec.quantity}
+                    onClick={execute} disabled={aiBusy}
                     data-testid="ai-execute-btn"
                   >
                     <Truck className="h-3 w-3 mr-1" /> Execute Transfer

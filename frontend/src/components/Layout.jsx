@@ -199,7 +199,7 @@ export default function Layout() {
               key={to}
               to={to}
               title={collapsed ? label : undefined}
-              data-testid={`nav-${label.toLowerCase()}`}
+              data-testid={`nav-${label.toLowerCase().replace(/\s+/g, "-")}`}
               className={({ isActive }) =>
                 `group relative flex items-center gap-3 rounded-lg text-sm transition-colors
                 ${collapsed ? "md:justify-center md:px-2 md:py-2.5 px-3 py-2" : "px-3 py-2"}

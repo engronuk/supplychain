@@ -906,12 +906,22 @@ async def _compute_ai_recommendation(mfr: str) -> Dict[str, Any]:
     if rec is None:
         raise HTTPException(409, "Not enough warehouse stock data to compute a recommendation")
 
-    # Clamp quantity to actual availability at the source.
-    inv = await db.inventory.find_one(
-        {"owner_type": "warehouse", "owner_id": rec["from_warehouse_id"],
-         "product_id": rec["product_id"]}, {"_id": 0})
-    available = max(0, int((inv or {}).get("quantity") or 0) - int((inv or {}).get("reserved") or 0))
-    rec["quantity"] = max(1, min(int(rec.get("quantity") or 1), available)) if available else 0
+    # Clamp quantity to actual availability at the source. If a Vertex pick is
+    # no longer executable (source drained), fall back to the rule engine.
+    async def _clamped(r: Dict[str, Any]) -> int:
+        inv = await db.inventory.find_one(
+            {"owner_type": "warehouse", "owner_id": r["from_warehouse_id"],
+             "product_id": r["product_id"]}, {"_id": 0})
+        available = max(0, int((inv or {}).get("quantity") or 0) - int((inv or {}).get("reserved") or 0))
+        return max(1, min(int(r.get("quantity") or 1), available)) if available else 0
+
+    rec["quantity"] = await _clamped(rec)
+    if not rec["quantity"] and ai_status == "vertex_ai":
+        fallback = _rule_based_recommendation(ctx)
+        if fallback:
+            fallback["quantity"] = await _clamped(fallback)
+            if fallback["quantity"]:
+                rec, ai_status = fallback, "fallback_rules"
 
     doc = {
         "manufacturer_id": mfr,
