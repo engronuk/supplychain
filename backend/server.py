@@ -46,8 +46,10 @@ from routes import (
     wholesaler_analytics,
     wholesaler_orders,
     wms,
+    admin_simulator,
 )
 from services.intel.scheduler import start_scheduler, stop_scheduler
+from services.simulator import get_runtime as get_simulator_runtime
 from services.migrations import ensure_indexes
 from services.seed import seed_from_csv
 from services.seed_batches import seed_batches
@@ -98,6 +100,7 @@ for r in (
     wholesaler_analytics.router,
     wholesaler_orders.router,
     wms.router,
+    admin_simulator.router,
 ):
     api_router.include_router(r)
 
@@ -174,6 +177,11 @@ async def _background_bootstrap():
             start_scheduler()
         except Exception:
             logger.exception("Failed to start intel scheduler")
+        try:
+            get_simulator_runtime().start()
+            logger.info("Activity simulator started (production).")
+        except Exception:
+            logger.exception("Failed to start activity simulator")
         # Pre-warm dashboard snapshots so the very first request is instant.
         try:
             await _prewarm_dashboard_snapshots()
@@ -318,6 +326,13 @@ async def _background_bootstrap():
     except Exception:
         logger.exception("Failed to start intel scheduler")
 
+    # TradeKonekt Activity Simulator — auto-start so dashboards stay alive.
+    try:
+        get_simulator_runtime().start()
+        logger.info("Activity simulator started.")
+    except Exception:
+        logger.exception("Failed to start activity simulator")
+
 
 async def _prewarm_dashboard_snapshots():
     """Compute & store snapshots for every manufacturer so the first user
@@ -358,6 +373,10 @@ async def _prewarm_dashboard_snapshots():
 async def shutdown_db_client():
     try:
         stop_scheduler()
+    except Exception:
+        pass
+    try:
+        get_simulator_runtime().stop()
     except Exception:
         pass
     client.close()
