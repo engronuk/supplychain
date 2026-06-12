@@ -30,11 +30,62 @@ from google.genai import types
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_MODEL = os.environ.get("GENAI_MODEL_ID", "gemini-2.5-flash")
+DEFAULT_MODEL_FALLBACK = "gemini-2.5-flash"
+
+# Map of deprecated / decommissioned model IDs → their current replacement.
+# We rewrite at runtime so an operator who still has `GENAI_MODEL_ID=
+# gemini-2.0-flash` set in their deployment env vars doesn't 404 on every
+# AI call. The mapping should be conservative — only models that Vertex AI
+# has actually removed or that 404 in our regions belong here.
+_DEPRECATED_MODELS = {
+    "gemini-2.0-flash":          "gemini-2.5-flash",
+    "gemini-2.0-flash-001":      "gemini-2.5-flash",
+    "gemini-2.0-flash-lite":     "gemini-2.5-flash",
+    "gemini-2.0-flash-lite-001": "gemini-2.5-flash",
+    "gemini-2.0-pro":            "gemini-2.5-flash",  # 2.0 pro never went GA
+    "gemini-1.5-flash":          "gemini-2.5-flash",
+    "gemini-1.5-flash-001":      "gemini-2.5-flash",
+    "gemini-1.5-flash-002":      "gemini-2.5-flash",
+    "gemini-1.5-pro":            "gemini-2.5-flash",
+    "gemini-1.5-pro-001":        "gemini-2.5-flash",
+    "gemini-1.5-pro-002":        "gemini-2.5-flash",
+    "gemini-1.0-pro":            "gemini-2.5-flash",
+    "gemini-pro":                "gemini-2.5-flash",
+}
+
+
+def _resolve_model(requested: Optional[str]) -> str:
+    """Resolve the requested model ID, rewriting any decommissioned alias.
+
+    Logs at WARNING level the first time a deprecated alias is rewritten so
+    operators are nudged to update their env var.
+    """
+    name = (requested or "").strip()
+    if not name:
+        return DEFAULT_MODEL_FALLBACK
+    if name in _DEPRECATED_MODELS:
+        target = _DEPRECATED_MODELS[name]
+        # Cache the warning per (alias → target) so we don't spam logs.
+        if (name, target) not in _RESOLVE_WARNED:
+            logger.warning(
+                "[vertex_llm] model '%s' is deprecated/decommissioned in Vertex AI — "
+                "auto-rewriting to '%s'. Update GENAI_MODEL_ID to silence this warning.",
+                name, target,
+            )
+            _RESOLVE_WARNED.add((name, target))
+        return target
+    return name
+
+
+_RESOLVE_WARNED: set = set()
+
+# Default model — read at import time, rewritten if the operator picked a
+# decommissioned alias.
+DEFAULT_MODEL = _resolve_model(os.environ.get("GENAI_MODEL_ID"))
 # Note: gemini-2.5-pro is not GA in every region (e.g. unavailable in
 # europe-west2 as of this writing). Fall back to flash unless the operator
 # explicitly opts in via GENAI_PRO_MODEL_ID.
-PRO_MODEL     = os.environ.get("GENAI_PRO_MODEL_ID", DEFAULT_MODEL)
+PRO_MODEL     = _resolve_model(os.environ.get("GENAI_PRO_MODEL_ID") or DEFAULT_MODEL)
 
 
 # ---------------------------------------------------------------------------
@@ -138,7 +189,7 @@ async def complete(
     try:
         resp = await asyncio.to_thread(
             client.models.generate_content,
-            model=(model or DEFAULT_MODEL),
+            model=_resolve_model(model or DEFAULT_MODEL),
             contents=contents,
             config=cfg,
         )
@@ -175,7 +226,7 @@ async def transcribe_audio(audio_bytes: bytes, mime_type: str = "audio/webm") ->
     import asyncio
     resp = await asyncio.to_thread(
         client.models.generate_content,
-        model=DEFAULT_MODEL,
+        model=_resolve_model(DEFAULT_MODEL),
         contents=[types.Content(role="user", parts=[audio_part, types.Part(text=instr)])],
         config=cfg,
     )
@@ -224,7 +275,7 @@ async def complete_json(
         try:
             resp = await asyncio.to_thread(
                 client.models.generate_content,
-                model=(model or DEFAULT_MODEL),
+                model=_resolve_model(model or DEFAULT_MODEL),
                 contents=contents,
                 config=cfg,
             )

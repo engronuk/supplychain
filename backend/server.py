@@ -265,6 +265,27 @@ async def _background_bootstrap():
     except Exception:
         logger.exception("Wholesaler orders seed failed (continuing)")
 
+    # Flour Mills Nigeria — second manufacturer tenant. Idempotent; matches
+    # by (organization_type, organization_name) so a re-run is a no-op once
+    # the topology exists. Without this the demo portal only shows Unilever.
+    try:
+        from services.seed_flour_mills_tenant import run as seed_fmn_tenant
+        result = await seed_fmn_tenant()
+        if result and result.get("created"):
+            logger.info("Flour Mills tenant seeded: %s", result)
+    except Exception:
+        logger.exception("Flour Mills tenant seed failed (continuing)")
+
+    # Flour Mills · Oil & Fat product catalogue + inventory positions.
+    # Requires the Flour Mills tenant above to exist; idempotent.
+    try:
+        from services.seed_flour_mills_products import run as seed_fmn_products
+        result = await seed_fmn_products()
+        if result and (result.get("products") or result.get("inventory_rows")):
+            logger.info("Flour Mills products seeded: %s", result)
+    except Exception:
+        logger.exception("Flour Mills products seed failed (continuing)")
+
     # Universal organizations backfill (foundation refactor — additive).
     try:
         result = await migrate_organizations()
