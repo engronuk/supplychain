@@ -61,6 +61,13 @@ visibility (Manufacturer → Warehouse → Distributor → Wholesaler → Retail
   stop, live audit trail). Sim executes routes stop-by-stop via thresholds.
   Tested: iteration_22 — 25/25 backend pytest + 100% frontend.
   Regression: `/app/backend/tests/test_route_planning.py`.
-- **Phase 3 (NEXT)** — Delay prediction (Vertex AI), AI Logistics Copilot, Demand-to-Delivery correlation.
+- **Phase 3 (✅ SHIPPED 2026-06-12)** — AI Intelligence tab: Delay Prediction Engine
+  (Gemini reasons over live truck telemetry → probability / predicted delay / recommendation,
+  10-min cache, heuristic fallback, high-risk → `delay_predicted` events), Konekt Copilot
+  (multi-turn, server-side sessions, grounded in live control-tower context, cites TK-/RT-
+  codes), Demand↔Delivery Correlation (region-level retail sell-through WoW vs delivery
+  performance + stock cover, Gemini insights, 15-min cache).
+  Tested: iteration_23 — 14/14 backend + 38/38 regression + 100% frontend.
+  Regression: `/app/backend/tests/test_logistics_ai.py`.
 
 See `CHANGELOG.md` for dated implementation history and `ROADMAP.md` for the prioritized backlog.

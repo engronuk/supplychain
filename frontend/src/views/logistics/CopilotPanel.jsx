@@ -12,10 +12,36 @@ const SUGGESTIONS = [
   "Which regions need attention this week?",
 ];
 
-// Minimal markdown: **bold** only — replies are otherwise plain text.
+// Minimal markdown for Gemini replies: **bold**, `code`, and bullet lists.
+const renderInline = (text, keyBase) =>
+  String(text).split(/(\*\*.+?\*\*|`[^`]+`)/g).map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return <strong key={`${keyBase}-${i}`} className="font-semibold">{part.slice(2, -2)}</strong>;
+    }
+    if (part.startsWith("`") && part.endsWith("`")) {
+      return (
+        <code key={`${keyBase}-${i}`} className="font-mono text-[11px] bg-slate-900/80 px-1 py-0.5 rounded text-emerald-300">
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+    return part;
+  });
+
 const renderContent = (text) =>
-  String(text).split(/\*\*(.+?)\*\*/g).map((part, i) =>
-    i % 2 === 1 ? <strong key={i} className="font-semibold">{part}</strong> : part);
+  String(text).split("\n").map((line, i) => {
+    const bullet = line.match(/^\s*(?:[*\-•]|\d+\.)\s+(.*)/);
+    if (bullet) {
+      return (
+        <div key={i} className="flex gap-1.5 pl-1">
+          <span className="text-violet-400 shrink-0">•</span>
+          <span className="min-w-0">{renderInline(bullet[1], i)}</span>
+        </div>
+      );
+    }
+    if (line.trim() === "") return <div key={i} className="h-1.5" />;
+    return <div key={i}>{renderInline(line, i)}</div>;
+  });
 
 export const CopilotPanel = () => {
   const [messages, setMessages] = useState(null);
@@ -96,7 +122,7 @@ export const CopilotPanel = () => {
                   <Bot className="h-3 w-3 text-violet-300" />
                 </span>
               )}
-              <div className={`max-w-[85%] rounded-xl px-3 py-2 text-[12px] leading-relaxed whitespace-pre-wrap break-words ${
+              <div className={`max-w-[85%] rounded-xl px-3 py-2 text-[12px] leading-relaxed break-words ${
                 m.role === "user"
                   ? "bg-emerald-600/20 border border-emerald-500/30 text-emerald-100"
                   : "bg-slate-800/70 border border-slate-700/60 text-slate-200"

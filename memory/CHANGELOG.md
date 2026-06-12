@@ -1321,3 +1321,20 @@ User feedback round:
 - `RouteExecutionSheet.jsx` — Delivery Execution Timeline: planned-vs-actual per stop (origin departed → delivered/en-route/pending), summary stats, progress, full event audit trail, 15s refresh while open.
 
 **Tested** (iteration_22): backend 25/25 pytest (`tests/test_route_planning.py` — board shape, preview+validation 400/404s, dispatch incl. idle-vehicle reuse + ad-hoc materialization, detail+404, sim execution end-to-end, no duplicate trucks, tenant 403s) · frontend 100% (full select→adhoc→preview→dispatch→timeline flow) · fixed Radix a11y warning (sr-only SheetTitle in loading state). Combined regression: 38 tests green.
+
+## Updates (2026-06-12, night) — Logistics Control Tower · Phase 3: AI Intelligence
+
+**Backend**
+- `services/delay_predictor.py` (new) — Delay Prediction Engine: live telemetry features per active truck (status, progress, speed, fuel, deviation, exceptions 24h, remaining km) → deterministic risk score → Gemini (Vertex AI, strict JSON schema) reasons per-vehicle delay probability / predicted delay minutes / risk level / reason / recommendation. Cached per manufacturer (10-min TTL, `delay_predictions`), heuristic fallback when Vertex unavailable, new high-risk calls emit `delay_predicted` events (60-min dedupe per vehicle).
+- `routes/logistics_ai.py` (new) — `GET /api/logistics/predictions` (cache + ?refresh), `POST /api/logistics/copilot/chat` (multi-turn: server-side sessions in `copilot_messages`, grounded system prompt with live fleet/routes/events/predictions/at-risk-distributor context, Gemini complete with history), `GET /api/logistics/copilot/history`, `GET /api/logistics/demand-delivery` (region-level: retail sell-through 7d WoW from daily_sales×retailers, deliveries/lead-time/delays from shipments, stock-cover from distributor inventory ÷ retail daily demand, pressure classification + Gemini insights, 15-min cache in `dd_insights`).
+- `services/logistics_events.py` — new `delay_predicted` event type (route/warning).
+
+**Frontend** — 4th tab "AI Intelligence" (`tab-ai-insights`):
+- `LogisticsAIView.jsx` — dark canvas, Gemini·Vertex AI badge, grid: predictions + demand↔delivery left, copilot right.
+- `DelayPredictionsPanel.jsx` — per-truck risk rows (probability bar, predicted minutes late, Gemini reason + recommendation), high/med/low counts, Re-score button, "Gemini reasoning" source badge.
+- `DemandDeliveryPanel.jsx` — AI insight bullets + region table (demand 7d, WoW arrows, deliveries 30d, avg lead, in-transit/delayed, stock cover, pressure badge).
+- `CopilotPanel.jsx` — Konekt Copilot chat: server-persisted session, suggestion chips, thinking indicator, minimal markdown renderer (bold / `code` chips / bullet lists).
+
+**Env fix**: preview dev server hit inotify ENOSPC crash-loop → added `CHOKIDAR_USEPOLLING=true` + `WATCHPACK_POLLING=true` to frontend/.env.
+
+**Tested** (iteration_23): backend 14/14 (`tests/test_logistics_ai.py` — payload shapes, vertex-ai source, cache/refresh semantics, multi-turn copilot grounding, history ordering, demand-delivery realism, tenant 403s) + 38/38 Phase 1+2 regression · frontend 100% (predictions panel, dd insights/table, copilot send→grounded reply→multi-turn→persistence after reload, tab regressions) · 0 console errors. Markdown bullet/inline-code rendering polished post-test.
