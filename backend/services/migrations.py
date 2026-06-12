@@ -78,6 +78,18 @@ INDEX_SPECS: List[Tuple[str, list, dict]] = [
     ("users", [("id", ASCENDING)], {"unique": True, "name": "uniq_id"}),
     ("users", [("email", ASCENDING)], {"unique": True, "name": "uniq_email"}),
     ("users", [("role", ASCENDING), ("status", ASCENDING)], {"name": "by_role_status"}),
+
+    # Logistics Control Tower (event-driven)
+    ("logistics_events", [("manufacturer_id", ASCENDING), ("created_at", DESCENDING)],
+     {"name": "by_tenant_recent"}),
+    ("logistics_events", [("manufacturer_id", ASCENDING), ("category", ASCENDING), ("created_at", DESCENDING)],
+     {"name": "by_tenant_category"}),
+    ("logistics_events", [("shipment_id", ASCENDING)], {"name": "by_shipment"}),
+    ("logistics_events", [("manufacturer_id", ASCENDING), ("acknowledged", ASCENDING), ("severity", ASCENDING)],
+     {"name": "by_tenant_ack"}),
+    ("geofences", [("facility_id", ASCENDING)], {"unique": True, "name": "uniq_facility"}),
+    ("vehicles", [("manufacturer_id", ASCENDING), ("status", ASCENDING)], {"name": "by_tenant_status"}),
+    ("vehicles", [("ref_type", ASCENDING), ("ref_id", ASCENDING)], {"name": "by_ref"}),
     ("users", [("manufacturer_id", ASCENDING)], {"name": "by_manufacturer"}),
     ("users", [("invitation_token", ASCENDING)],
      {"name": "by_invitation_token", "sparse": True}),

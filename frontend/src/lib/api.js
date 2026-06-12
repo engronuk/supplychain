@@ -175,6 +175,16 @@ export const Api = {
   logisticsAiExecute: () =>
     api.post("/logistics/ai-recommendation/execute").then((r) => r.data),
 
+  // ---- Logistics Control Tower (Phase 1 — event-driven) ----
+  controlTower: () => api.get("/logistics/control-tower").then((r) => r.data),
+  logisticsEvents: (params = {}) =>
+    api.get("/logistics/events", { params }).then((r) => r.data),
+  logisticsAckEvent: (id) =>
+    api.post(`/logistics/events/${id}/ack`).then((r) => r.data),
+  shipmentTimeline: (id) =>
+    api.get(`/logistics/shipment-timeline/${id}`).then((r) => r.data),
+  logisticsGeofences: () => api.get("/logistics/geofences").then((r) => r.data),
+
   // ---- Real-Time Pulse (GCP) ----
   pulseHealth: () => api.get("/pulse/health").then((r) => r.data),
   pulseByRegion: (hours = 24) =>

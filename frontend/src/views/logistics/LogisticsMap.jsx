@@ -5,7 +5,7 @@ import { Layers } from "lucide-react";
 
 // Shared idempotent Maps JS loader (same script id as CommandCenter so the
 // API is only injected once per session).
-function useGoogleMaps(apiKey) {
+export function useGoogleMaps(apiKey) {
   const [ready, setReady] = useState(!!window.google?.maps);
   useEffect(() => {
     if (window.google?.maps) { setTimeout(() => setReady(true), 0); return; }

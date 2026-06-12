@@ -1,0 +1,32 @@
+{
+  "summary": "Phase 1 Logistics Control Tower verified end-to-end on flour.admin@tradekonekt.io (Flour Mills tenant). Backend: 13/13 pytest cases PASSED against the public preview URL covering /api/logistics/control-tower payload shape (KPIs, fleet, shipments, tier_inventory, digital_twin warehouses/distributors/wholesalers with lat/lng/utilization/risk, retailer_clusters, events), /api/logistics/events with severity+category filters, ack happy-path + 404, /api/logistics/shipment-timeline/{id} (merged shipment_created/dispatched milestones + live events, 404 for unknown id), /api/logistics/geofences (lat/lng/radius_m present), tenant security (distributor & wholesaler both → 403), and the Google Routes API v2 upgrade (≥1 vehicle with route_source='google' and a multi-point [lat,lng] route_polyline). Frontend: cockpit renders dark Control Tower by default; all 12 KPI-strip + status-bar testids present; Google map with truck markers visible; all 4 layer-toggle chips found & state class toggles on click; Tier Flow strip with all 5 tier nodes (warehouse/in_transit/distributor/wholesaler/retailer) present; Digital twin panel with warehouses/distributors/wholesalers present; Event Stream shows 49 event rows and critical-filter narrows to 2; Ack button click triggers success toast; Vehicle chip opens VehicleTwinSheet with twin-telemetry, twin-route, twin-route-source badge, twin-timeline and Esc-closes cleanly; Shipments table renders 71 rows; bucket filters (moving 12 / delayed 11 / delivered 46) work; Track button opens the same VehicleTwinSheet with timeline; Tab switch to Planning & Ops swaps in logistics-operations + logistics-kpi-bar (loads in ~5s) and switching back restores tower-kpi-strip; 0 console errors throughout. Note: switching back to the Control Tower briefly shows an 'Initializing control tower…' loader for ~3s while it re-polls — UX nit only, not a bug.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "LogisticsCommandCenter", "issues": ["Switching tab-operations → tab-control-tower triggers a full re-mount of ControlTowerView so the user sees an 'Initializing control tower…' spinner for ~3s instead of an instant return to cached state. Consider lifting tower state up or keeping the component mounted with CSS visibility toggle so re-entry is instant."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_control_tower.py",
+    "/app/test_reports/pytest/control_tower_iter21.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "routes/control_tower.py:108 — `(v.get('deviation') or {}).get('active') if v else False` is a ternary inside a boolean expression; works but consider extracting `_is_delayed(s, v)` helper for readability and to centralise the 4-day SLA logic.",
+    "routes/control_tower.py:332 — ack_event() calls `_scope_manufacturer(user, None)` for non-super_admins which may raise/403 for warehouse-role users that legitimately need to ack their own events; current allowlist is manufacturer-only, fine for Phase 1 but document this in the API.",
+    "routes/control_tower.py — every control_tower() call refetches all 5 tier id-lists, all org names, all dist/prod names, and aggregates per tier. With a 25s frontend poll that's ~20 Mongo round-trips every poll per logged-in manufacturer; consider caching org/dist/product name maps with a 60s TTL.",
+    "Frontend ControlTowerView re-mount on tab switch loses local state; suggest using `display:none` instead of conditional render, or hoisting fetched data to a parent so it survives tab toggles."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_control_tower.py"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "flour.admin@tradekonekt.io / TradeKonekt2026! (primary manufacturer persona); lagos.distributor@tradekonekt.io & unilever.wholesaler@tradekonekt.io used for 403 isolation checks.",
+  "seed_data_creation": "None. Backend simulation (control_tower_sim.tick every ~2 min) emits live events organically; no additional seeding needed.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Canonical regression file: /app/backend/tests/test_control_tower.py — 13 tests, ~27s run, covers all 5 control-tower endpoints + tenant 403s + routing.py google polyline assertion. KPI counts fluctuate due to the 2-min sim tick (vehicles deliver/respawn) — never assert exact values, assert shape/presence. Frontend critical testids verified: control-tower-view, tower-kpi-strip, tower-kpi-{active,units,ontime,delayed,exceptions,breakdowns,geofence,critical}, tower-last-sync, tower-fleet-chip, tower-refresh-btn, control-tower-map, map-toggle-{routes,fences,distributors,retailers}, events-feed, event-row, events-filter-{critical,warning,route}, event-ack-btn, event-vehicle-chip, tier-flow, tier-node-{warehouse,in_transit,distributor,wholesaler,retailer}, digital-twin-panel, twin-{warehouses,distributors,wholesalers}, shipments-live-table, shipment-row, shipments-filter-{moving,delayed,delivered}, shipment-track-btn, vehicle-twin-sheet, twin-telemetry, twin-route, twin-route-source, twin-timeline, tab-control-tower, tab-operations, logistics-operations, logistics-kpi-bar. After clicking tab-operations wait ≥5s for the Planning&Ops data fetch before asserting logistics-operations is present (it loads via Api.logistics()).",
+  "rca of the issue": "N/A — no defects. The only nit is a cosmetic 3s 'Initializing control tower…' loader when returning to the tower tab; ControlTowerView is conditionally rendered so state is lost on tab toggle."
+}

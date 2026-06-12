@@ -74,14 +74,15 @@ async def job_forecasts():
 
 
 async def job_vehicle_motion():
-    """Every 2 minutes — nudge in-transit trucks along their routes so the
-    Logistics Command Center map shows live fleet movement (time-lapsed).
+    """Every 2 minutes — control tower heartbeat: trucks follow road routes,
+    geofences fire, and exception scenarios (deviations, stops, breakdowns,
+    delays) keep the Logistics Command Center realistically busy.
     """
-    from services.vehicle_motion import advance_vehicles
+    from services.control_tower_sim import tick
     try:
-        await advance_vehicles(tick_minutes=2.0)
+        await tick()
     except Exception:
-        logger.exception("vehicle motion job failed")
+        logger.exception("control tower tick failed")
 
 
 async def job_pulse_intelligence():

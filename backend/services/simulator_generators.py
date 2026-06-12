@@ -307,6 +307,14 @@ async def generate_shipment(parts: List[dict], rng) -> Optional[str]:
         "eta_minutes": eta_minutes,
     })
     await db.shipments.insert_one(shipment)
+    try:
+        from services.logistics_events import emit
+        await emit(tenant, "shipment_created",
+                   f"Shipment {shipment['shipment_number']} created",
+                   f"{total_units:,} units → {dist.get('organization_name')}",
+                   shipment_id=shipment["id"], ref_code=shipment["shipment_number"])
+    except Exception:
+        pass
     return shipment["id"]
 
 
