@@ -96,6 +96,14 @@ async def _product(product_id: str) -> Optional[dict]:
 
 # ---------------------------------------------------------------------------
 # 1) RETAIL SALE — retailer sells units to a consumer.
+#
+# Mirrors the REAL POS checkout side-effects (routes/sales.py) so every
+# retailer-facing surface lights up:
+#   • `retail_sales`  — simulator ledger (admin panel counts)
+#   • `sales`         — POS sales book (transactions list, revenue_today)
+#   • `daily_sales`   — analytics rollup (dashboard "Today's Sales",
+#                       top-selling, forecasts, exec summaries)
+#   • `inventory`     — quantity decrement + 7-day velocity recompute
 # ---------------------------------------------------------------------------
 async def generate_retail_sale(retailer: dict, rng) -> Optional[str]:
     tenant = await _resolve_tenant(retailer)
@@ -106,7 +114,12 @@ async def generate_retail_sale(retailer: dict, rng) -> Optional[str]:
         return None
     qty = rng.randint(1, min(8, int(row.get("quantity") or 1)))
     product = await _product(row["product_id"])
-    unit_price = float((product or {}).get("unit_price") or 0)
+    unit_price = float(
+        row.get("retail_price") or (product or {}).get("unit_price") or 0
+    )
+    line_total = round(qty * unit_price, 2)
+    now = _now_iso()
+    today = now[:10]
     sale_id = str(uuid.uuid4())
     sale = _stamp({
         "id": sale_id,
@@ -116,16 +129,57 @@ async def generate_retail_sale(retailer: dict, rng) -> Optional[str]:
         "product_name": (product or {}).get("name") or row["product_id"],
         "quantity": qty,
         "unit_price": unit_price,
-        "total_amount": round(qty * unit_price, 2),
+        "total_amount": line_total,
         "manufacturer_id": tenant,
         "city": retailer.get("city") or "",
         "region": retailer.get("region") or "",
     })
     await db.retail_sales.insert_one(sale)
+
+    # POS sales book entry — identical shape to routes/sales.py checkout.
+    await db.sales.insert_one(_stamp({
+        "id": str(uuid.uuid4()),
+        "transaction_code": f"SIM-{datetime.now(timezone.utc):%y%m%d}-{rng.randint(1000, 9999)}",
+        "retailer_id": retailer["id"],
+        "items": [{
+            "product_id": row["product_id"],
+            "product_name": (product or {}).get("name") or row["product_id"],
+            "category": (product or {}).get("category", ""),
+            "sku": (product or {}).get("sku", ""),
+            "quantity": qty,
+            "unit_price": unit_price,
+            "line_total": line_total,
+        }],
+        "grand_total": line_total,
+        "units_total": qty,
+        "payment_method": rng.choice(["cash", "cash", "transfer", "card"]),
+        "payment_status": "paid",
+        "customer_name": "",
+        "attendant": "",
+        "notes": "Walk-in sale",
+        "paid_at": now,
+        "organization_id": retailer["id"],
+    }))
+
+    # Analytics rollup — what the retailer dashboard "Today's Sales",
+    # top-selling, the forecast engine and exec summaries aggregate.
+    await db.daily_sales.insert_one(_stamp({
+        "id": str(uuid.uuid4()),
+        "retailer_id": retailer["id"],
+        "product_id": row["product_id"],
+        "date": today,
+        "units": qty,
+        "quantity_sold": qty,
+        "revenue": line_total,
+        "source": "simulator",
+        "organization_id": retailer["id"],
+        "manufacturer_id": tenant,
+    }))
+
     # Decrement inventory + audit trail.
     await db.inventory.update_one(
         {"id": row["id"]},
-        {"$inc": {"quantity": -qty}, "$set": {"updated_at": _now_iso()}},
+        {"$inc": {"quantity": -qty}, "$set": {"updated_at": now}},
     )
     await db.inventory_movements.insert_one(_stamp({
         "id": str(uuid.uuid4()),
@@ -134,6 +188,20 @@ async def generate_retail_sale(retailer: dict, rng) -> Optional[str]:
         "delta": -qty, "kind": "retail_sale",
         "ref_id": sale_id, "manufacturer_id": tenant,
     }))
+
+    # Recompute the 7-day sales velocity for this SKU so "Fast moving" /
+    # urgency / days-of-cover figures reflect simulated demand.
+    week_ago = (datetime.now(timezone.utc) - timedelta(days=7)).date().isoformat()
+    agg = await db.daily_sales.aggregate([
+        {"$match": {"retailer_id": retailer["id"], "product_id": row["product_id"],
+                    "date": {"$gte": week_ago}}},
+        {"$group": {"_id": None, "units": {"$sum": "$units"}}},
+    ]).to_list(1)
+    units_7d = int((agg[0]["units"] if agg else 0) or 0)
+    await db.inventory.update_one(
+        {"id": row["id"]},
+        {"$set": {"velocity": round(units_7d / 7.0, 2)}},
+    )
     return sale_id
 
 
@@ -408,6 +476,20 @@ async def run_cycle(participants: List[dict], counts: Dict[str, int],
     retailers = _retailers(participants)
     distributors = _distributors(participants)
 
+    # Spotlight retailers — the demo login accounts. Bias retail sales toward
+    # them so "Today's Sales" on the demo dashboards is always alive instead
+    # of activity being spread invisibly thin across hundreds of shops.
+    spotlight: List[dict] = []
+    try:
+        demo_users = await db.users.find(
+            {"role": "retailer", "is_demo": True},
+            {"_id": 0, "entity_id": 1},
+        ).to_list(50)
+        demo_ids = {u.get("entity_id") for u in demo_users}
+        spotlight = [r for r in retailers if r.get("id") in demo_ids]
+    except Exception:
+        logger.exception("[simulator] spotlight lookup failed")
+
     async def _safe(awaitable, key: str) -> None:
         try:
             res = await awaitable
@@ -420,7 +502,8 @@ async def run_cycle(participants: List[dict], counts: Dict[str, int],
     for _ in range(counts.get("retail_sales", 0)):
         if not retailers:
             break
-        await _safe(generate_retail_sale(rng.choice(retailers), rng),
+        pool = spotlight if (spotlight and rng.random() < 0.5) else retailers
+        await _safe(generate_retail_sale(rng.choice(pool), rng),
                      "retail_sales")
 
     for _ in range(counts.get("distributor_orders", 0)):

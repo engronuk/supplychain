@@ -42,9 +42,10 @@ async def simulator_status(_admin=Depends(_admin_only)) -> Dict[str, Any]:
     # Live count of generated docs across the purgeable collections.
     counts: Dict[str, int] = {}
     for col in (
-        "retail_sales", "distributor_orders", "wholesaler_orders",
-        "shipments", "wholesaler_shipments", "order_allocations",
-        "inventory_transfers", "replenishment_requests", "notifications",
+        "retail_sales", "sales", "daily_sales", "distributor_orders",
+        "wholesaler_orders", "shipments", "wholesaler_shipments",
+        "order_allocations", "inventory_transfers",
+        "replenishment_requests", "notifications",
     ):
         try:
             counts[col] = await db[col].count_documents(

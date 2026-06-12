@@ -17,6 +17,8 @@ import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
+from pymongo.errors import DuplicateKeyError
+
 from core import db, logger, new_id, now_iso
 from services.ai_insights import generate_ai_insights
 from services.intel.scoping import role_entity_context
@@ -341,9 +343,18 @@ async def generate_exec_summary(tenant_id: str, role: str = "manufacturer",
         "model": "vertex-ai/gemini-2.5-flash",
     }
 
-    await db.intel_executive_summaries.update_one(
-        {"tenant_id": tenant_id, "scope_role": role, "scope_id": entity_id},
-        {"$set": summary}, upsert=True,
-    )
+    try:
+        await db.intel_executive_summaries.update_one(
+            {"tenant_id": tenant_id, "scope_role": role, "scope_id": entity_id},
+            {"$set": summary}, upsert=True,
+        )
+    except DuplicateKeyError:
+        # A concurrent upsert (or a stale legacy unique index) raced us.
+        # Retry as a plain update — never let cache persistence 500 the
+        # endpoint; the summary is still returned to the caller.
+        await db.intel_executive_summaries.update_one(
+            {"tenant_id": tenant_id, "scope_role": role, "scope_id": entity_id},
+            {"$set": summary},
+        )
     _EXEC_CACHE[key] = (time.time() + ttl_seconds, summary)
     return summary

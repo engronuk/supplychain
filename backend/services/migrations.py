@@ -116,11 +116,36 @@ INDEX_SPECS: List[Tuple[str, list, dict]] = [
 ]
 
 
+# Indexes that older deploys created but the current schema has replaced.
+# They MUST be dropped before the new ones take effect — e.g. the legacy
+# `uniq_tenant` unique index on intel_executive_summaries.tenant_id rejects
+# the second (tenant, role, entity) summary with a DuplicateKeyError and
+# 500s the exec-summary endpoint in production.
+STALE_INDEXES: List[Tuple[str, str]] = [
+    ("intel_executive_summaries", "uniq_tenant"),
+]
+
+
+async def _drop_stale_indexes() -> int:
+    dropped = 0
+    for coll, idx_name in STALE_INDEXES:
+        try:
+            info = await db[coll].index_information()
+            if idx_name in info:
+                await db[coll].drop_index(idx_name)
+                dropped += 1
+                logger.info("Dropped stale index %s.%s", coll, idx_name)
+        except Exception as e:
+            logger.warning("Stale index drop failed on %s.%s: %s", coll, idx_name, e)
+    return dropped
+
+
 async def ensure_indexes() -> dict:
     """Create all required indexes idempotently. Safe to run on every boot.
 
     Returns a summary with the count created vs already present.
     """
+    stale_dropped = await _drop_stale_indexes()
     ensured, failed = 0, 0
     for coll, keys, opts in INDEX_SPECS:
         try:
@@ -132,5 +157,6 @@ async def ensure_indexes() -> dict:
     return {
         "indexes_ensured": ensured,
         "indexes_failed": failed,
+        "stale_dropped": stale_dropped,
         "total_specs": len(INDEX_SPECS),
     }

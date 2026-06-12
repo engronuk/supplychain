@@ -286,6 +286,18 @@ async def _background_bootstrap():
     except Exception:
         logger.exception("Flour Mills products seed failed (continuing)")
 
+    # Flour Mills national network — scales the FMN demo tenant to ~500
+    # entities (8 warehouses / 120 distributors / 40 wholesalers / 332
+    # retailers) across all Nigerian regions. One-shot: gated by a
+    # `seed_meta` marker so subsequent boots cost a single find_one.
+    try:
+        from services.seed_flour_mills_network import run as seed_fmn_network
+        result = await seed_fmn_network()
+        if result and result.get("created_total"):
+            logger.info("Flour Mills network seeded: %s", result)
+    except Exception:
+        logger.exception("Flour Mills network seed failed (continuing)")
+
     # Universal organizations backfill (foundation refactor — additive).
     try:
         result = await migrate_organizations()

@@ -96,7 +96,7 @@ async def list_participants() -> List[Dict[str, Any]]:
          "parent_organization_id": 1, "city": 1, "state": 1, "region": 1,
          "metadata": 1},
     )
-    return await cursor.to_list(500)
+    return await cursor.to_list(5000)
 
 
 # ---------------------------------------------------------------------------
@@ -228,6 +228,8 @@ PURGEABLE_COLLECTIONS = [
     "order_allocations",
     "shipments",
     "retail_sales",
+    "sales",
+    "daily_sales",
     "inventory_transfers",
     "replenishment_requests",
     "notifications",
