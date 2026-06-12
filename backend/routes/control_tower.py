@@ -102,6 +102,25 @@ async def control_tower(manufacturer_id: Optional[str] = None,
         {"manufacturer_id": mfr}, {"_id": 0, "id": 1, "name": 1, "city": 1, "region": 1})}
     prod_names = {p["id"]: p["name"] async for p in db.products.find(
         {"manufacturer_id": mfr}, {"_id": 0, "id": 1, "name": 1})}
+    # Non-distributor destinations (warehouses, wholesalers, retailers) so
+    # every movement leg — factory→WH, WH→wholesaler, wholesaler→distributor,
+    # WH→retailer — resolves a real name on the board.
+    other_ids = list({s.get("to_id") for s in raw_shipments
+                      if s.get("to_id") and s.get("to_id") not in dist_names})
+    org_dests: Dict[str, Dict[str, Any]] = {}
+    if other_ids:
+        async for o in db.organizations.find(
+                {"id": {"$in": other_ids}},
+                {"_id": 0, "id": 1, "organization_name": 1, "city": 1, "region": 1}):
+            org_dests[o["id"]] = {"name": o.get("organization_name"),
+                                  "city": o.get("city"), "region": o.get("region")}
+        missing = [i for i in other_ids if i not in org_dests]
+        if missing:
+            async for r in db.retailers.find(
+                    {"id": {"$in": missing}},
+                    {"_id": 0, "id": 1, "name": 1, "city": 1, "region": 1}):
+                org_dests[r["id"]] = {"name": r.get("name"),
+                                      "city": r.get("city"), "region": r.get("region")}
 
     shipments_live = []
     delayed = 0
@@ -109,7 +128,8 @@ async def control_tower(manufacturer_id: Optional[str] = None,
     for s in raw_shipments:
         v = vehicle_by_ref.get(s["id"])
         units = sum(int(i.get("quantity") or 0) for i in (s.get("items") or []))
-        to = dist_names.get(s.get("to_id")) or {}
+        to = (dist_names.get(s.get("to_id"))
+              or org_dests.get(s.get("to_id")) or {})
         status = s.get("status") or "pending"
         is_delayed = status == "delayed" or (
             (v.get("deviation") or {}).get("active") if v else False)
@@ -136,6 +156,7 @@ async def control_tower(manufacturer_id: Optional[str] = None,
                      else ("Distributor" if status in ("received", "delivered", "completed")
                            else "Warehouse"),
             "from_role": s.get("from_role") or "warehouse",
+            "to_role": s.get("to_role"),
             "to_name": to.get("name") or "—",
             "to_city": to.get("city") or "",
             "to_region": to.get("region") or "",

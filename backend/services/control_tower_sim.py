@@ -23,7 +23,7 @@ from __future__ import annotations
 import math
 import random
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
 from core import db, logger, now_iso
@@ -32,8 +32,16 @@ from services.routing import get_route, haversine_km, point_along
 
 TICK_MINUTES = 2.0
 DEMO_SPEEDUP = 10            # 1 wall-clock minute == 10 trip minutes
-MAX_ACTIVE_VEHICLES = 24     # across all tenants
+MAX_ACTIVE_VEHICLES = 32     # across all tenants
 GEOFENCE_RADIUS_M = 500
+
+# Network-leg generators: keep every tier of the chain moving.
+FACTORY_MAX_ACTIVE = 2       # factory→warehouse legs in transit per tenant
+P_FACTORY_DISPATCH = 0.35    # per-tick chance when below the cap
+WS_MAX_ACTIVE = 3            # wholesaler→distributor legs in transit (global)
+P_WS_DISPATCH = 0.30
+WS_STALE_HOURS = 36          # seeded in-transit wholesaler shipments older
+                             # than this are closed quietly (no truck)
 
 # Per-tick exception probabilities for a moving vehicle.
 P_DEVIATION = 0.030
@@ -202,8 +210,13 @@ async def ensure_fleet(rng: random.Random) -> int:
     candidates = await db.shipments.find(
         {"status": "in_transit", "id": {"$nin": assigned_ids}},
         {"_id": 0, "id": 1, "manufacturer_id": 1, "from_id": 1, "to_id": 1,
-         "items": 1, "tracking_code": 1},
-    ).sort("created_at", -1).to_list(MAX_ACTIVE_VEHICLES)
+         "from_role": 1, "items": 1, "tracking_code": 1},
+    ).sort("created_at", -1).to_list(MAX_ACTIVE_VEHICLES * 2)
+    # Keep every tier visible: first-mile (factory) and wholesaler legs are
+    # rarer, so they take spawn slots before the bulk warehouse→distributor
+    # backlog. Stable sort preserves newest-first within each group.
+    candidates.sort(key=lambda s: 0 if s.get("from_role")
+                    in ("manufacturer", "wholesaler") else 1)
     spawned = 0
     for s in candidates:
         if active + spawned >= MAX_ACTIVE_VEHICLES:
@@ -223,16 +236,247 @@ def _offset_position(lat: float, lng: float, rng: random.Random,
     return (lat + deg * math.cos(bearing), lng + deg * math.sin(bearing))
 
 
+# ===========================================================================
+# Network-leg generators — first mile + wholesaler tier
+# ===========================================================================
+async def ensure_factory_replenishment(rng: random.Random) -> int:
+    """First-mile leg: manufacturer plant → its warehouses.
+
+    Creates real `shipments` docs (from_role=manufacturer, to_role=warehouse)
+    which `ensure_fleet` then assigns a truck — full GPS / geofence /
+    exception treatment like any other movement. On arrival the goods are
+    received into the warehouse's inventory (`_receive_at_warehouse`)."""
+    created = 0
+    async for m in db.organizations.find(
+            {"organization_type": "manufacturer"},
+            {"_id": 0, "id": 1, "organization_name": 1}):
+        mfr = m["id"]
+        active = await db.shipments.count_documents(
+            {"manufacturer_id": mfr, "from_role": "manufacturer",
+             "to_role": "warehouse", "status": "in_transit"})
+        if active >= FACTORY_MAX_ACTIVE or rng.random() > P_FACTORY_DISPATCH:
+            continue
+        whs = await db.organizations.find(
+            {"organization_type": "warehouse", "parent_organization_id": mfr},
+            {"_id": 0, "id": 1, "organization_name": 1}).to_list(20)
+        prods = await db.products.find(
+            {"manufacturer_id": mfr},
+            {"_id": 0, "id": 1, "name": 1, "sku": 1}).to_list(40)
+        if not whs or not prods:
+            continue
+        wh = rng.choice(whs)
+        items = [{"product_id": p["id"], "product_name": p.get("name"),
+                  "sku": p.get("sku"), "quantity": rng.randint(200, 800)}
+                 for p in rng.sample(prods, k=min(len(prods), rng.randint(2, 4)))]
+        units = sum(i["quantity"] for i in items)
+        sid = str(uuid.uuid4())
+        tracking = f"FAC-{uuid.uuid4().hex[:6].upper()}"
+        now = now_iso()
+        await db.shipments.insert_one({
+            "id": sid, "manufacturer_id": mfr,
+            "from_role": "manufacturer", "from_id": mfr,
+            "to_role": "warehouse", "to_id": wh["id"],
+            "items": items, "tracking_code": tracking,
+            "status": "in_transit", "source": "factory_replenishment",
+            "created_at": now, "dispatched_at": now,
+        })
+        await emit(mfr, "shipment_created",
+                   f"Factory dispatch {tracking} → {wh['organization_name']}",
+                   f"{units:,} units · {len(items)} SKUs · first-mile replenishment",
+                   shipment_id=sid, ref_code=tracking)
+        created += 1
+    return created
+
+
+async def ensure_wholesaler_dispatch(rng: random.Random) -> int:
+    """Keep the wholesaler → distributor leg alive: periodically create a
+    wholesaler shipment on a known lane (mirrors what the wholesaler
+    fulfillment workflow produces). The bridge below then gives it a truck."""
+    active = await db.wholesaler_shipments.count_documents(
+        {"status": {"$in": ["loaded", "in_transit"]},
+         "mirror_shipment_id": {"$exists": True}})
+    if active >= WS_MAX_ACTIVE or rng.random() > P_WS_DISPATCH:
+        return 0
+    lanes = await db.wholesaler_shipments.aggregate([
+        {"$group": {"_id": {"w": "$wholesaler_id", "d": "$distributor_id"}}},
+        {"$sample": {"size": 1}},
+    ]).to_list(1)
+    if not lanes:
+        return 0
+    w_id, d_id = lanes[0]["_id"].get("w"), lanes[0]["_id"].get("d")
+    dist = await db.distributors.find_one(
+        {"id": d_id}, {"_id": 0, "id": 1, "manufacturer_id": 1, "name": 1,
+                       "code": 1, "city": 1, "region": 1})
+    worg = await db.organizations.find_one(
+        {"id": w_id}, {"_id": 0, "organization_name": 1, "city": 1, "region": 1})
+    if not dist or not worg or not dist.get("manufacturer_id"):
+        return 0
+    prods = await db.products.find(
+        {"manufacturer_id": dist["manufacturer_id"]},
+        {"_id": 0, "id": 1, "name": 1, "sku": 1}).to_list(60)
+    if not prods:
+        return 0
+    items = [{"product_id": p["id"], "product_name": p.get("name"),
+              "sku": p.get("sku"), "batch_number": "",
+              "quantity": rng.randint(50, 200)}
+             for p in rng.sample(prods, k=min(len(prods), rng.randint(1, 3)))]
+    now = now_iso()
+    year = datetime.now(timezone.utc).year
+    num = f"WSHIP-{year}-{await db.wholesaler_shipments.count_documents({}) + 1:04d}"
+    await db.wholesaler_shipments.insert_one({
+        "id": str(uuid.uuid4()), "shipment_number": num,
+        "wholesaler_id": w_id, "fulfillment_id": None,
+        "order_id": None, "order_number": None,
+        "distributor_id": d_id,
+        "distributor": {"id": dist["id"], "name": dist.get("name"),
+                        "code": dist.get("code"), "region": dist.get("region"),
+                        "city": dist.get("city"), "address": None},
+        "items": items, "total_units": sum(i["quantity"] for i in items),
+        "status": "in_transit",
+        "origin_lat": None, "origin_lng": None,
+        "destination_lat": None, "destination_lng": None,
+        "eta_minutes": 90, "shipment_date": now,
+        "expected_delivery_date": (datetime.now(timezone.utc)
+                                   + timedelta(days=1)).isoformat(),
+        "status_history": [
+            {"status": "created", "at": now, "by": "simulator",
+             "note": "Shipment created by network simulator"},
+            {"status": "in_transit", "at": now, "by": "simulator",
+             "note": "Departed wholesaler dock"}],
+        "source": "sim",
+        "created_at": now, "loaded_at": now, "in_transit_at": now,
+        "updated_at": now,
+    })
+    return 1
+
+
+async def bridge_wholesaler_shipments() -> Dict[str, int]:
+    """Mirror dispatched wholesaler→distributor shipments into the main
+    `shipments` ledger so the control tower tracks them — truck, GPS,
+    geofences, deviation detection, events, notifications. Delivery flows
+    back to the wholesaler ledger in `_complete_delivery`."""
+    out = {"bridged": 0, "expired": 0}
+    rows = await db.wholesaler_shipments.find(
+        {"status": {"$in": ["loaded", "in_transit"]},
+         "mirror_shipment_id": {"$exists": False}},
+        {"_id": 0}).sort("created_at", -1).to_list(500)
+    cutoff = (datetime.now(timezone.utc)
+              - timedelta(hours=WS_STALE_HOURS)).isoformat()
+    now = now_iso()
+    for i, ws in enumerate(rows):
+        started = (ws.get("in_transit_at") or ws.get("loaded_at")
+                   or ws.get("created_at") or "")
+        # Old seeded backlog: close quietly, but keep the newest few as live
+        # trucks so the leg is visible immediately.
+        if started < cutoff and i >= 4:
+            await db.wholesaler_shipments.update_one({"id": ws["id"]}, {
+                "$set": {"status": "delivered", "delivered_at": now,
+                         "updated_at": now, "mirror_shipment_id": "expired"},
+                "$push": {"status_history": {
+                    "status": "delivered", "at": now, "by": "system",
+                    "note": "Auto-closed by control tower (stale backlog)"}}})
+            out["expired"] += 1
+            continue
+        dist = await db.distributors.find_one(
+            {"id": ws.get("distributor_id")},
+            {"_id": 0, "manufacturer_id": 1, "name": 1})
+        if not dist or not dist.get("manufacturer_id"):
+            await db.wholesaler_shipments.update_one(
+                {"id": ws["id"]},
+                {"$set": {"mirror_shipment_id": "unresolved"}})
+            continue
+        mfr = dist["manufacturer_id"]
+        sid = str(uuid.uuid4())
+        tracking = ws.get("shipment_number") or sid[:8].upper()
+        await db.shipments.insert_one({
+            "id": sid, "manufacturer_id": mfr,
+            "from_role": "wholesaler", "from_id": ws.get("wholesaler_id"),
+            "to_role": "distributor", "to_id": ws.get("distributor_id"),
+            "items": [{k: it.get(k) for k in
+                       ("product_id", "product_name", "sku", "quantity")}
+                      for it in (ws.get("items") or [])],
+            "tracking_code": tracking,
+            "status": "in_transit", "source": "wholesaler",
+            "wholesaler_shipment_id": ws["id"],
+            "created_at": now,
+            "dispatched_at": ws.get("in_transit_at") or now,
+        })
+        ws_update: Dict[str, Any] = {"mirror_shipment_id": sid,
+                                     "updated_at": now}
+        if ws.get("status") == "loaded":
+            ws_update["status"] = "in_transit"
+            ws_update["in_transit_at"] = now
+        await db.wholesaler_shipments.update_one(
+            {"id": ws["id"]}, {"$set": ws_update})
+        await emit(mfr, "shipment_created",
+                   f"Wholesaler dispatch {tracking} → {dist.get('name')}",
+                   f"{int(ws.get('total_units') or 0):,} units · "
+                   "wholesaler → distributor leg",
+                   shipment_id=sid, ref_code=tracking)
+        out["bridged"] += 1
+    return out
+
+
+async def _receive_at_warehouse(mfr: str, wh_id: str,
+                                items: List[Dict[str, Any]],
+                                ref_id: str) -> None:
+    """Book a first-mile arrival into the warehouse's on-hand inventory."""
+    for it in items:
+        qty = int(it.get("quantity") or 0)
+        pid = it.get("product_id")
+        if qty <= 0 or not pid:
+            continue
+        row = await db.inventory.find_one(
+            {"owner_type": "warehouse", "owner_id": wh_id, "product_id": pid},
+            {"_id": 0, "id": 1, "quantity": 1})
+        if row:
+            await db.inventory.update_one({"id": row["id"]}, {"$set": {
+                "quantity": int(row.get("quantity") or 0) + qty,
+                "updated_at": now_iso(), "last_movement_at": now_iso()}})
+        else:
+            await db.inventory.insert_one({
+                "id": str(uuid.uuid4()), "owner_type": "warehouse",
+                "owner_id": wh_id, "product_id": pid,
+                "quantity": qty, "in_transit": 0, "reorder_level": 100,
+                "created_at": now_iso(), "updated_at": now_iso()})
+        await db.inventory_movements.insert_one({
+            "id": str(uuid.uuid4()), "owner_type": "warehouse",
+            "owner_id": wh_id, "product_id": pid, "delta": qty,
+            "kind": "factory_receipt", "ref_id": ref_id,
+            "manufacturer_id": mfr, "created_at": now_iso()})
+
+
 async def _complete_delivery(v: Dict[str, Any]) -> None:
     mfr = v.get("manufacturer_id")
     now = now_iso()
     if v.get("ref_type") == "shipment" and v.get("ref_id"):
+        sh = await db.shipments.find_one(
+            {"id": v["ref_id"]},
+            {"_id": 0, "to_role": 1, "to_id": 1, "items": 1,
+             "wholesaler_shipment_id": 1})
         await db.shipments.update_one(
             {"id": v["ref_id"], "status": "in_transit"},
             {"$set": {"status": "received", "received_at": now}})
         await db.distributor_orders.update_one(
             {"shipment_id": v["ref_id"], "status": "dispatched"},
             {"$set": {"status": "delivered", "delivered_at": now}})
+        if sh:
+            if sh.get("to_role") == "warehouse" and sh.get("to_id"):
+                # First-mile arrival: goods land in warehouse inventory.
+                try:
+                    await _receive_at_warehouse(
+                        mfr, sh["to_id"], sh.get("items") or [], v["ref_id"])
+                except Exception:
+                    logger.exception("[tower] warehouse receipt failed")
+            if sh.get("wholesaler_shipment_id"):
+                # Wholesaler→distributor leg: close out the wholesaler ledger.
+                await db.wholesaler_shipments.update_one(
+                    {"id": sh["wholesaler_shipment_id"]},
+                    {"$set": {"status": "delivered", "delivered_at": now,
+                              "updated_at": now},
+                     "$push": {"status_history": {
+                         "status": "delivered", "at": now, "by": "control-tower",
+                         "note": f"Delivery confirmed by truck {v.get('code')}"}}})
     await emit(mfr, "delivery_completed",
                f"Truck {v['code']} delivered at {v.get('dest_name')}",
                f"{(v.get('units') or 0):,} units · shipment {v.get('shipment_code') or ''}".strip(),
@@ -348,6 +592,15 @@ async def tick() -> Dict[str, int]:
     stats = {"moved": 0, "spawned": 0, "exceptions": 0, "delivered": 0}
 
     await ensure_geofences()
+    # Keep every network leg flowing: factory → warehouse (first mile) and
+    # wholesaler → distributor, then assign trucks to whatever is in transit.
+    try:
+        stats["factory_legs"] = await ensure_factory_replenishment(rng)
+        stats["wholesaler_legs"] = await ensure_wholesaler_dispatch(rng)
+        bridged = await bridge_wholesaler_shipments()
+        stats["ws_bridged"] = bridged["bridged"]
+    except Exception:
+        logger.exception("[tower] network leg generators failed")
     stats["spawned"] = await ensure_fleet(rng)
 
     fences = await db.geofences.find({}, {"_id": 0}).to_list(200)

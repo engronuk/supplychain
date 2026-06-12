@@ -1,0 +1,37 @@
+{
+  "iteration": 25,
+  "date": "2026-06-12",
+  "scope": "Frontend-only E2E validation (dead-end crawl + Logistics Command Center deep dive + new FAC-/WSHIP- legs + multi-tenant smoke). Backend NOT retested per request.",
+  "summary": "Comprehensive frontend validation against the live preview URL using Playwright. Logged in as Unilever (manufacturer), Lagos Wholesaler (Flour Mills tenant), Lagos Distributor and Flour Mills admin. Crawled every sidebar nav item for each role, opened all 4 Logistics Center tabs, exercised the vehicle twin sheet, Ack buttons, and notifications popover. All flows render real content with NO dead ends and 0 console errors.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "verified_flows": [
+    "Login (manufacturer/wholesaler/distributor/2nd-tenant manufacturer) — all 4 credentials work, no lockout",
+    "Manufacturer sidebar crawl (Unilever): Dashboard, Logistics Center, Procurement, Product Intelligence, Intelligence, Network Map, Distributors, Order Allocation, Warehouses, Analytics, Reports, Organizations — all 12 render real content, no 404s, no stuck spinners after 8s wait",
+    "Logistics Center Control Tower: KPI strip renders (Active 35, Units 41.3K, On-time 92.9%, Delayed 8, Route Exceptions 3, Geofence 15, Critical Unacked 3). Live Network Map shows truck markers + route polylines with layer toggles (Routes/Geofences/Distributors/Retailers). Event Stream renders 6+ live events with severity chips and Ack button (click verified). Live Shipments table renders 90 rows with full destination resolution",
+    "NEW LEGS VERIFIED: FAC-508F58 (Blue Band Margarine → Unilever South East Warehouse) and FAC-BB1114 (OMO Multi-Active Detergent → Unilever South East Warehouse) factory→warehouse shipments visible; WSHIP-2026-0149/0153/0155 (Lipton Yellow Label Tea → IBRAHIM ISAH DANBABA GEN. ENT.) wholesaler→distributor shipments visible. All have real to_name resolved (no '—' destinations)",
+    "Vehicle Twin Sheet (Track →): Opens for TK-065 with speed/fuel/ETA, route progress, driver+phone, origin→destination breadcrumb, full event audit trail INCLUDING new 'Factory dispatch FAC-508F58 → Unilever South East Warehouse' milestone. Google road route button present",
+    "Route Planning tab: Route Planning Center renders with Awaiting Dispatch list (24 pending), Ad-hoc delivery toggle, Route Canvas Google map, Planned Routes table (4 routes), Compute route + Dispatch route action buttons present",
+    "AI Intelligence tab: Delay Prediction Engine + Demand↔Delivery Correlation table (with regions/lead times/pressure) + Konekt Copilot panel with prior conversation history showing successful action cards (re-route, acknowledge events) marked 'executed'. Per instructions, did NOT trigger new copilot call",
+    "Notifications popover (header bell): opens, shows 24 unread items with type icons + severity dots, All/Unread tab switch works, Mark all read present",
+    "Wholesaler crawl (Lagos Wholesale Hub, Flour Mills tenant): Dashboard, Inventory, Procurement, Distributor Network, Distributor Orders, Shipments (12 rows), Analytics, Intelligence Center — all 8 nav items render real content",
+    "Distributor crawl (SUARA & CO.): Dashboard shows AI Operations Summary, network health 71, retailer order panel; 8 nav items all reachable",
+    "Multi-tenant isolation: Flour Mills logistics center shows its OWN fleet (4/44 active, 20 shipments, Prime Distribution Services destinations, WSHIP-2026-0062). Map + KPIs distinct from Unilever",
+    "0 console JS errors across all crawled pages, 0 page errors, 0 stuck spinners"
+  ],
+  "notes_on_em_dash": "Initial scan flagged 76 rows with '—' character but inspection confirmed these are in ETA/PROGRESS columns for RECEIVED/QUEUED shipments (legitimate — no ETA/progress yet). DESTINATION column is 100% resolved across factory, wholesaler, distributor and transfer legs.",
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (skipped per request)", "frontend": "100%"},
+  "test_credentials": "All accounts use password TradeKonekt2026! — see /app/memory/test_credentials.md",
+  "seed_data_creation": "None — used existing live simulator data (factory replenishment + wholesaler dispatch sim ticks visible)",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All frontend dead-end crawls passing for manufacturer / wholesaler / distributor / 2nd-tenant manufacturer. New factory→warehouse (FAC-) and wholesaler→distributor (WSHIP-) legs render correctly in Control Tower Live Shipments with resolved to_name. Vehicle twin sheet displays full event audit trail including new factory-dispatch milestones. No fixes were applied. Backend was not retested per main-agent instruction (already self-verified via DB + curl in iteration 24 wrap-up)."
+}

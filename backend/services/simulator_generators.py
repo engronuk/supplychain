@@ -292,13 +292,20 @@ async def generate_shipment(parts: List[dict], rng) -> Optional[str]:
         items.append({"product_id": p["id"], "product_name": p.get("name") or p["id"],
                       "quantity": qty})
         total_units += qty
+    wh = await db.organizations.find_one(
+        {"organization_type": "warehouse", "parent_organization_id": tenant},
+        {"_id": 0, "id": 1})
     eta_minutes = rng.choice([60, 90, 180, 360])
+    number = f"SHP-SIM-{datetime.now(timezone.utc):%Y%m%d%H%M%S}-{rng.randint(100,999)}"
     shipment = _stamp({
         "id": str(uuid.uuid4()),
         "manufacturer_id": tenant,
+        "from_role": "warehouse", "from_id": (wh or {}).get("id"),
+        "to_role": "distributor", "to_id": dist["id"],
         "distributor_id": dist["id"],
         "distributor_name": dist.get("organization_name"),
-        "shipment_number": f"SHP-SIM-{datetime.now(timezone.utc):%Y%m%d%H%M%S}-{rng.randint(100,999)}",
+        "shipment_number": number,
+        "tracking_code": number,
         "status": "in_transit",
         "items": items,
         "total_units": total_units,
