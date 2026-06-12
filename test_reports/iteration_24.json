@@ -1,0 +1,47 @@
+{
+  "iteration": 24,
+  "date": "2026-06-12",
+  "scope": "Phase 3.5 — In-app notifications feed (event-bus fan-out) + AI Copilot action-taking (confirm-before-execute)",
+  "tested_by": "testing_agent (backend pytest, timed out before frontend) + main agent (fix verification via curl + playwright UI flows)",
+  "backend": {
+    "pytest_file": "/app/backend/tests/test_copilot_actions_notifications.py",
+    "initial_run": "8 passed / 3 failed / 1 skipped (junit: /app/test_reports/pytest/copilot_actions_iter24.xml)",
+    "failures_and_fixes": [
+      {
+        "test": "test_reroute_proposal",
+        "cause": "Vertex AI per-minute quota saturation (429 -> 503) from rapid sequential test calls. Transient, not a code bug.",
+        "fix": "None needed; verified passing with single call after quota window."
+      },
+      {
+        "test": "test_dispatch_adhoc_execute",
+        "cause": "Action context listed only 25 of 91 distributors, so the copilot (correctly) refused unknown destination 'A-D-BASHARU JIMETA'.",
+        "fix": "copilot_actions.build_action_context limits raised: distributors 25->150, wholesalers 10->30, products 30->60. Verified: same distributor now resolves to exact id and proposes dispatch_adhoc."
+      },
+      {
+        "test": "test_reroute_emits_new_manufacturer_notification",
+        "cause": "45-min notification dedupe wrongly applied to user-triggered milestone events (route_replanned), suppressing the second reroute notification.",
+        "fix": "logistics_events._fanout_notifications now dedupes ONLY warning/critical alert types; info milestones (route_planned/replanned/completed, delivery_completed) always notify. Verified: notification count 30->31 with 'Truck TK-021 re-routed by Copilot' on top."
+      }
+    ],
+    "verified_flows": [
+      "copilot chat returns {reply, action:{proposed}} for action intents; action:null for pure questions",
+      "execute endpoint: reroute_vehicle (deviation cleared, google route, route_progress 0, fresh ETA), resolve_exception (stopped->in_transit), dispatch_adhoc (RT-008 created, truck dispatched), acknowledge_events (68 events acked)",
+      "execute is idempotent; dismissed actions return 400 on execute; failed actions retryable",
+      "history endpoint joins action objects with live status",
+      "notification fan-out: manufacturer feed (warning/critical + milestones), warehouse feed ('Route RT-xxx dispatched from your warehouse'), destination distributor feed ('Inbound shipment ... on the way')",
+      "PATCH read / read-all still work"
+    ]
+  },
+  "frontend": {
+    "method": "playwright via screenshot_tool (testing agent timed out before frontend phase)",
+    "verified_flows": [
+      "NotificationsPopover: type icons + severity-colored chips, All/Unread tabs, unread badge, live entries ('Truck TK-040 re-routed by Copilot', 'Route RT-008 planned')",
+      "CopilotPanel: action request -> action card with 'awaiting confirmation' badge + Execute/Dismiss buttons -> Execute -> 'executed' badge + green result message",
+      "Persistence: page reload re-renders action cards from history with final statuses",
+      "Grounded refusal: 'Clear the stop on TK-012' correctly declined (no stop exception) without proposing an action",
+      "Plain questions still answer normally with no action card"
+    ]
+  },
+  "result": "ALL PASS after fixes",
+  "notes": "Vertex AI quota is per-minute; bursts of >6 copilot calls/min may 503 briefly (handled gracefully in UI via toast + retry guidance)."
+}

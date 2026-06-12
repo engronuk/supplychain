@@ -31,6 +31,7 @@ EVENT_TYPES: Dict[str, tuple] = {
     "route_deviation":     ("route",    "critical"),
     "deviation_resolved":  ("route",    "info"),
     "route_planned":       ("route",    "info"),
+    "route_replanned":     ("route",    "info"),
     "route_completed":     ("route",    "info"),
     "delay_predicted":     ("route",    "warning"),
     "unauthorized_stop":   ("route",    "warning"),
@@ -90,7 +91,93 @@ async def emit(
     except Exception:
         logger.exception("[events] failed to emit %s", event_type)
     event.pop("_id", None)
+    try:
+        await _fanout_notifications(event)
+    except Exception:
+        logger.exception("[events] notification fan-out failed for %s", event_type)
     return event
+
+
+# ---------------------------------------------------------------------------
+# In-app notification fan-out — the event bus feeds the bell icon.
+# ---------------------------------------------------------------------------
+# Events that should also notify the *destination* party of the shipment,
+# phrased from their perspective. {ref} is the tracking/route code.
+_DEST_NOTIFY: Dict[str, tuple] = {
+    "shipment_created":   ("Inbound shipment {ref} on the way", "info"),
+    "delay_detected":     ("Inbound shipment {ref} is running late", "warning"),
+    "vehicle_breakdown":  ("Inbound shipment {ref} held up — truck breakdown", "critical"),
+    "route_deviation":    ("Inbound shipment {ref} is off its approved route", "critical"),
+    "delivery_completed": ("Shipment {ref} delivered", "info"),
+    "delivery_failed":    ("Delivery attempt for {ref} failed", "warning"),
+}
+# Info-severity events the manufacturer ops team still wants in their feed.
+_MFR_INFO_NOTIFY = {"delivery_completed", "route_completed",
+                    "route_planned", "route_replanned"}
+_DEDUPE_WINDOW_MIN = 45
+
+
+async def notify(
+    target_type: str,
+    target_id: str,
+    title: str,
+    message: str,
+    *,
+    ntype: str = "system",
+    severity: str = "info",
+    dedupe_key: Optional[str] = None,
+) -> None:
+    """Insert an in-app notification (popover feed). `dedupe_key` suppresses
+    repeats of the same alert for the same target within a 45-min window."""
+    if not target_id:
+        return
+    if dedupe_key:
+        cutoff = (datetime.now(timezone.utc)
+                  - timedelta(minutes=_DEDUPE_WINDOW_MIN)).isoformat()
+        dup = await db.notifications.find_one(
+            {"target_type": target_type, "target_id": target_id,
+             "dedupe_key": dedupe_key, "created_at": {"$gte": cutoff}},
+            {"_id": 1})
+        if dup:
+            return
+    await db.notifications.insert_one({
+        "id": str(uuid.uuid4()),
+        "target_type": target_type, "target_id": target_id,
+        "title": title, "message": message,
+        "type": ntype, "severity": severity,
+        "dedupe_key": dedupe_key,
+        "read": False, "created_at": now_iso(),
+    })
+
+
+async def _fanout_notifications(event: Dict[str, Any]) -> None:
+    etype = event["event_type"]
+    sev = event["severity"]
+    key = f"{etype}:{event.get('vehicle_code') or event.get('ref_code') or ''}"
+
+    # Manufacturer ops feed: every warning/critical + key milestones.
+    # Dedupe only recurring alert types — milestone/info events (route
+    # planned, replanned, delivered) are each distinct occurrences.
+    if sev in ("warning", "critical") or etype in _MFR_INFO_NOTIFY:
+        await notify("manufacturer", event["manufacturer_id"],
+                     event["title"], event.get("detail") or event["title"],
+                     ntype=event["category"], severity=sev,
+                     dedupe_key=key if sev in ("warning", "critical") else None)
+
+    # Destination party feed (distributor / wholesaler / retailer / warehouse).
+    dest = _DEST_NOTIFY.get(etype)
+    if dest and event.get("shipment_id"):
+        sh = await db.shipments.find_one(
+            {"id": event["shipment_id"]}, {"_id": 0, "to_id": 1, "to_role": 1})
+        to_role, to_id = (sh or {}).get("to_role"), (sh or {}).get("to_id")
+        if to_id and to_role in ("distributor", "wholesaler", "retailer", "warehouse"):
+            title_tpl, dsev = dest
+            ref = event.get("ref_code") or "—"
+            await notify(to_role, to_id, title_tpl.format(ref=ref),
+                         event.get("detail") or event["title"],
+                         ntype=event["category"], severity=dsev,
+                         dedupe_key=(f"{key}:{to_id}"
+                                     if dsev in ("warning", "critical") else None))
 
 
 async def purge_old() -> int:

@@ -69,5 +69,25 @@ visibility (Manufacturer → Warehouse → Distributor → Wholesaler → Retail
   performance + stock cover, Gemini insights, 15-min cache).
   Tested: iteration_23 — 14/14 backend + 38/38 regression + 100% frontend.
   Regression: `/app/backend/tests/test_logistics_ai.py`.
+- **Phase 3.5 (✅ SHIPPED 2026-06-12)** — In-app Notifications feed + Actionable Copilot:
+  - **Notifications**: the logistics event bus now fans out to the bell-icon feed
+    (`logistics_events.notify()` + `_fanout_notifications`). Manufacturer gets every
+    warning/critical event + milestones (route planned/replanned/completed, deliveries);
+    destination party (distributor/wholesaler/retailer/warehouse) gets inbound-shipment
+    notifications phrased from their perspective; origin warehouse gets route-dispatch
+    notices. 45-min dedupe window applies ONLY to recurring warning/critical alerts.
+    `NotificationsPopover.jsx` upgraded: type icons, severity-colored chips, All/Unread tabs.
+  - **Copilot actions (confirm-before-execute, user choice A)**: Gemini structured output
+    (`COPILOT_SCHEMA`) lets the copilot attach an action proposal to its reply —
+    `reroute_vehicle` (fresh Google route from current position, clears deviations,
+    recomputes multi-stop thresholds), `resolve_exception` (breakdown/stop/deviation),
+    `dispatch_adhoc` (creates + dispatches a real route via route_planning), and
+    `acknowledge_events`. Proposals persist in `copilot_actions` (proposed → executed |
+    failed | dismissed); `POST /api/logistics/copilot/actions/{id}/execute|dismiss`.
+    Chat UI renders action cards with Execute/Dismiss, result messages, retry on failure,
+    and full persistence across reloads. Executors emit events (new `route_replanned`
+    type) which loop back into the notifications feed.
+  Tested: iteration_24 — backend pytest (`tests/test_copilot_actions_notifications.py`,
+  all pass after fixes) + playwright UI flows.
 
 See `CHANGELOG.md` for dated implementation history and `ROADMAP.md` for the prioritized backlog.

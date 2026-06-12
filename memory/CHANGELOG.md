@@ -1338,3 +1338,18 @@ User feedback round:
 **Env fix**: preview dev server hit inotify ENOSPC crash-loop → added `CHOKIDAR_USEPOLLING=true` + `WATCHPACK_POLLING=true` to frontend/.env.
 
 **Tested** (iteration_23): backend 14/14 (`tests/test_logistics_ai.py` — payload shapes, vertex-ai source, cache/refresh semantics, multi-turn copilot grounding, history ordering, demand-delivery realism, tenant 403s) + 38/38 Phase 1+2 regression · frontend 100% (predictions panel, dd insights/table, copilot send→grounded reply→multi-turn→persistence after reload, tab regressions) · 0 console errors. Markdown bullet/inline-code rendering polished post-test.
+
+## 2026-06-12 — Phase 3.5: In-app Notifications + Actionable Copilot
+
+**Backend**
+- `services/logistics_events.py` — `notify()` helper + `_fanout_notifications()`: every emitted event now feeds the in-app notification feed. Manufacturer: all warning/critical + milestones (route_planned/replanned/completed, delivery_completed). Destination party (distributor/wholesaler/retailer/warehouse): inbound-shipment phrasing per event type. 45-min `dedupe_key` window applies only to recurring warning/critical alerts. New `route_replanned` event type.
+- `services/copilot_actions.py` (new) — action catalog + executors: `reroute_vehicle` (Google route from current position, clears deviation/breakdown/stop, recomputes multi-stop thresholds + planned_routes polyline), `resolve_exception`, `dispatch_adhoc` (delegates to route_planning.dispatch_route), `acknowledge_events`. `build_action_context()` injects exact warehouse/destination/product ids (150 dists / 30 whs / 60 products) into the planner prompt.
+- `routes/logistics_ai.py` — copilot chat now uses Vertex structured output (`COPILOT_SCHEMA`: {reply, action|null}) with history (complete_json gained `history` param); `_validate_action` sanitizes proposals into `copilot_actions` docs (proposed → executed | failed | dismissed). New endpoints: `POST /api/logistics/copilot/actions/{id}/execute` (idempotent; failed actions retryable) and `/dismiss`. History endpoint joins action objects. Plain-completion fallback on structured failure; 429→503 with friendly message.
+- `routes/route_planning.py` — dispatch now notifies the origin warehouse ("Route RT-xxx dispatched from your warehouse").
+
+**Frontend**
+- `CopilotPanel.jsx` — ActionCard inside assistant bubbles: status badge (awaiting confirmation / executed / failed / dismissed), Execute + Dismiss buttons, green result / red error rows, retry on failure, persists via history. New suggestion chip "Re-route any truck that's off its approved route".
+- `NotificationsPopover.jsx` — type icons (shipment/vehicle/route/delivery/geofence/inventory/order/system), severity-colored icon chips (critical rose / warning amber), All/Unread filter tabs, line-clamped messages.
+- `lib/api.js` — `copilotExecuteAction`, `copilotDismissAction`.
+
+**Tested** (iteration_24): testing-agent pytest `tests/test_copilot_actions_notifications.py` — 8/11 first run; 3 failures fixed (action-context coverage 25→150 distributors; milestone notifications exempted from dedupe; 1 transient Vertex 429) and re-verified. Playwright UI: propose→execute→persist, dismiss, grounded refusal, notifications tabs/badge. Confirm-before-execute per user choice (option A).

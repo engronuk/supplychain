@@ -19,6 +19,8 @@ from core import db, logger, now_iso
 from routes.allocation import _scope_manufacturer
 from routes.control_tower import _cover_days, _units_by_owner
 from services import vertex_llm
+from services.copilot_actions import (ACTION_TYPES, build_action_context,
+                                      execute_action)
 from services.auth import get_current_user
 from services.delay_predictor import get_predictions
 
@@ -59,8 +61,89 @@ COPILOT_SYSTEM = (
     "- Be concise: max ~150 words, short bullet points where helpful.\n"
     "- If the answer isn't in the context, say so and name the data you'd need.\n"
     "- Severity matters: lead with breakdowns, deviations and high delay risk.\n\n"
+    "ACTIONS YOU CAN TAKE (executed only after the dispatcher confirms in chat):\n"
+    "1. reroute_vehicle — recompute the road route for a truck from its current "
+    "position (fixes deviations, refreshes the ETA). Needs vehicle_code.\n"
+    "2. resolve_exception — clear a breakdown / unscheduled stop / deviation and "
+    "put the truck back in transit. Needs vehicle_code.\n"
+    "3. dispatch_adhoc — create and dispatch a new delivery route from a "
+    "warehouse to a distributor or wholesaler. Needs warehouse_id, dest_id and "
+    "items [{{product_id, quantity}}] — use the EXACT ids listed under "
+    "ACTIONABLE ENTITIES, never names. If the user gives no quantity, propose "
+    "100 units per product and say so in your reply. If no warehouse is named, "
+    "pick the first listed warehouse and say which one you chose.\n"
+    "4. acknowledge_events — mark every open control-tower event as acknowledged.\n"
+    "When the user asks you to DO one of these things, fill `action` with the "
+    "params plus a one-line `summary`, and use `reply` to explain what you are "
+    "about to do and that it awaits their confirmation. NEVER claim an action "
+    "is already done — the system executes it only after the user confirms. "
+    "For pure questions set `action` to null.\n\n"
     "LIVE CONTEXT:\n{context}"
 )
+
+COPILOT_SCHEMA = {
+    "type": "OBJECT",
+    "properties": {
+        "reply": {"type": "STRING"},
+        "action": {
+            "type": "OBJECT",
+            "nullable": True,
+            "properties": {
+                "type": {"type": "STRING",
+                         "enum": ["reroute_vehicle", "resolve_exception",
+                                  "dispatch_adhoc", "acknowledge_events"]},
+                "summary": {"type": "STRING"},
+                "vehicle_code": {"type": "STRING", "nullable": True},
+                "warehouse_id": {"type": "STRING", "nullable": True},
+                "dest_id": {"type": "STRING", "nullable": True},
+                "items": {
+                    "type": "ARRAY", "nullable": True,
+                    "items": {
+                        "type": "OBJECT",
+                        "properties": {
+                            "product_id": {"type": "STRING"},
+                            "quantity": {"type": "INTEGER"},
+                        },
+                        "required": ["product_id", "quantity"],
+                    },
+                },
+            },
+            "required": ["type", "summary"],
+        },
+    },
+    "required": ["reply"],
+}
+
+
+def _validate_action(raw: Optional[Dict[str, Any]], mfr: str,
+                     session_id: str) -> Optional[Dict[str, Any]]:
+    """Turn the model's action payload into a persistable proposal, or None."""
+    if not isinstance(raw, dict) or raw.get("type") not in ACTION_TYPES:
+        return None
+    atype = raw["type"]
+    params: Dict[str, Any] = {}
+    for k in ("vehicle_code", "warehouse_id", "dest_id"):
+        if raw.get(k):
+            params[k] = str(raw[k]).strip()
+    if isinstance(raw.get("items"), list):
+        items = [{"product_id": str(i.get("product_id")),
+                  "quantity": int(i.get("quantity") or 0)}
+                 for i in raw["items"] if isinstance(i, dict) and i.get("product_id")]
+        items = [i for i in items if i["quantity"] > 0]
+        if items:
+            params["items"] = items
+    ok = (atype == "acknowledge_events"
+          or (atype in ("reroute_vehicle", "resolve_exception")
+              and params.get("vehicle_code"))
+          or (atype == "dispatch_adhoc" and params.get("warehouse_id")
+              and params.get("dest_id") and params.get("items")))
+    if not ok:
+        return None
+    return {"id": str(uuid.uuid4()), "manufacturer_id": mfr,
+            "session_id": session_id, "type": atype, "params": params,
+            "summary": str(raw.get("summary") or atype.replace("_", " ")).strip()[:240],
+            "status": "proposed", "result": None,
+            "created_at": now_iso(), "executed_at": None}
 
 
 async def _copilot_context(mfr: str) -> str:
@@ -153,10 +236,11 @@ async def copilot_chat(payload: CopilotIn,
 
     org = await db.organizations.find_one({"id": mfr}, {"_id": 0, "organization_name": 1})
     context = await _copilot_context(mfr)
+    action_ctx = await build_action_context(mfr)
     system = COPILOT_SYSTEM.format(
         mfr_name=(org or {}).get("organization_name") or "the manufacturer",
         today=datetime.now(timezone.utc).date().isoformat(),
-        context=context)
+        context=context + "\n\n" + action_ctx)
 
     rows = await db.copilot_messages.find(
         {"manufacturer_id": mfr, "session_id": session_id},
@@ -165,25 +249,47 @@ async def copilot_chat(payload: CopilotIn,
     history = [{"role": r["role"] if r["role"] == "user" else "model",
                 "content": r["content"]} for r in reversed(rows)]
 
+    reply = ""
+    raw_action: Optional[Dict[str, Any]] = None
     try:
-        reply = await vertex_llm.complete(
+        data = await vertex_llm.complete_json(
             system=system, user=message, history=history,
-            temperature=0.4, max_output_tokens=900)
+            response_schema=COPILOT_SCHEMA, temperature=0.4,
+            max_output_tokens=1400)
+        if isinstance(data, dict):
+            reply = str(data.get("reply") or "").strip()
+            raw_action = data.get("action") if isinstance(data.get("action"), dict) else None
     except Exception as e:
         msg = str(e)
         if "429" in msg or "RESOURCE_EXHAUSTED" in msg:
             raise HTTPException(503, "Copilot is briefly busy (AI rate limit). Try again in a minute.")
-        logger.exception("[copilot] chat failed")
-        raise HTTPException(502, f"Copilot error: {e}")
+        logger.warning("[copilot] structured chat failed (%s) — plain fallback", e)
+        try:
+            reply = await vertex_llm.complete(
+                system=system, user=message, history=history,
+                temperature=0.4, max_output_tokens=900)
+        except Exception as e2:
+            logger.exception("[copilot] chat failed")
+            raise HTTPException(502, f"Copilot error: {e2}")
+
+    action_doc = _validate_action(raw_action, mfr, session_id)
+    if action_doc:
+        await db.copilot_actions.insert_one(dict(action_doc))
+        action_doc.pop("_id", None)
+    if not reply:
+        reply = (f"I can do that: {action_doc['summary']} — confirm below to execute."
+                 if action_doc else
+                 "I couldn't produce an answer for that — try rephrasing.")
 
     now = now_iso()
     await db.copilot_messages.insert_many([
         {"id": str(uuid.uuid4()), "manufacturer_id": mfr, "session_id": session_id,
          "role": "user", "content": message, "created_at": now},
         {"id": str(uuid.uuid4()), "manufacturer_id": mfr, "session_id": session_id,
-         "role": "assistant", "content": reply, "created_at": now_iso()},
+         "role": "assistant", "content": reply,
+         "action_id": (action_doc or {}).get("id"), "created_at": now_iso()},
     ])
-    return {"reply": reply, "session_id": session_id,
+    return {"reply": reply, "action": action_doc, "session_id": session_id,
             "model": vertex_llm.DEFAULT_MODEL, "provider": "vertex-ai"}
 
 
@@ -195,9 +301,66 @@ async def copilot_history(session_id: Optional[str] = None,
     sid = session_id or f"copilot-{user.get('id')}"
     messages = await db.copilot_messages.find(
         {"manufacturer_id": mfr, "session_id": sid},
-        {"_id": 0, "role": 1, "content": 1, "created_at": 1},
+        {"_id": 0, "role": 1, "content": 1, "created_at": 1, "action_id": 1},
     ).sort("created_at", 1).to_list(60)
+    act_ids = [m["action_id"] for m in messages if m.get("action_id")]
+    actions: Dict[str, Dict[str, Any]] = {}
+    if act_ids:
+        async for a in db.copilot_actions.find(
+                {"id": {"$in": act_ids}}, {"_id": 0}):
+            actions[a["id"]] = a
+    for m in messages:
+        aid = m.pop("action_id", None)
+        if aid and aid in actions:
+            m["action"] = actions[aid]
     return {"session_id": sid, "messages": messages}
+
+
+# ===========================================================================
+# Copilot actions — confirm-before-execute
+# ===========================================================================
+@router.post("/logistics/copilot/actions/{action_id}/execute")
+async def copilot_execute_action(action_id: str,
+                                 user: Dict[str, Any] = Depends(get_current_user)):
+    mfr = await _scope_manufacturer(user, None)
+    a = await db.copilot_actions.find_one(
+        {"id": action_id, "manufacturer_id": mfr}, {"_id": 0})
+    if not a:
+        raise HTTPException(404, "Action not found")
+    if a["status"] == "executed":
+        return {"action": a}  # idempotent
+    if a["status"] == "dismissed":
+        raise HTTPException(400, "This action was dismissed")
+    try:
+        result = await execute_action(mfr, user, a)
+        a.update({"status": "executed", "result": result,
+                  "executed_at": now_iso()})
+    except HTTPException as e:
+        a.update({"status": "failed", "result": {"message": str(e.detail)},
+                  "executed_at": now_iso()})
+    except Exception as e:
+        logger.exception("[copilot] action %s failed", action_id)
+        a.update({"status": "failed", "result": {"message": str(e)},
+                  "executed_at": now_iso()})
+    await db.copilot_actions.update_one(
+        {"id": action_id},
+        {"$set": {k: a[k] for k in ("status", "result", "executed_at")}})
+    return {"action": a}
+
+
+@router.post("/logistics/copilot/actions/{action_id}/dismiss")
+async def copilot_dismiss_action(action_id: str,
+                                 user: Dict[str, Any] = Depends(get_current_user)):
+    mfr = await _scope_manufacturer(user, None)
+    a = await db.copilot_actions.find_one(
+        {"id": action_id, "manufacturer_id": mfr}, {"_id": 0})
+    if not a:
+        raise HTTPException(404, "Action not found")
+    if a["status"] == "proposed":
+        a["status"] = "dismissed"
+        await db.copilot_actions.update_one(
+            {"id": action_id}, {"$set": {"status": "dismissed"}})
+    return {"action": a}
 
 
 # ===========================================================================

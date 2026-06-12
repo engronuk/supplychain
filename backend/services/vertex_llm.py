@@ -331,6 +331,7 @@ async def complete_json(
     *,
     system: str,
     user: str,
+    history: Optional[List[Dict[str, str]]] = None,
     response_schema: Optional[Dict[str, Any]] = None,
     model: Optional[str] = None,
     temperature: float = 0.3,
@@ -359,7 +360,14 @@ async def complete_json(
         response_schema=response_schema,
         thinking_config=types.ThinkingConfig(thinking_budget=0),
     )
-    contents = [types.Content(role="user", parts=[types.Part(text=user)])]
+    contents: List[types.Content] = []
+    for h in history or []:
+        role = "user" if h.get("role") == "user" else "model"
+        text = str(h.get("content", "")).strip()
+        if not text:
+            continue
+        contents.append(types.Content(role=role, parts=[types.Part(text=text)]))
+    contents.append(types.Content(role="user", parts=[types.Part(text=user)]))
     # Retry on 429 (RESOURCE_EXHAUSTED) — Vertex AI quota is per-minute.
     last_err: Optional[Exception] = None
     for attempt in range(3):

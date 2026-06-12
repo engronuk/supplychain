@@ -1,8 +1,9 @@
 # TradeKonekt — Roadmap & Backlog
 
-_Last updated: 2026-06-12 (night) — **Logistics Control Tower Phases 1+2+3 SHIPPED**: event-driven cockpit, Route Planning Center, and AI Intelligence (Gemini delay prediction, Konekt Copilot, demand↔delivery correlation). 52 backend regression tests + 100% frontend across iterations 21-23._
+_Last updated: 2026-06-12 (night) — **Logistics Control Tower Phases 1+2+3+3.5 SHIPPED**: event-driven cockpit, Route Planning Center, AI Intelligence (Gemini delay prediction, Konekt Copilot, demand↔delivery correlation), in-app notifications feed and confirm-before-execute Copilot actions._
 
 ## ✅ Done
+- **Notifications + Actionable Copilot · Phase 3.5 (2026-06-12)** — logistics event bus fans out to the bell-icon feed for manufacturer / warehouse / distributor / wholesaler / retailer (`logistics_events.notify` + fan-out, dedupe on recurring alerts only); NotificationsPopover upgraded (type icons, severity chips, All/Unread tabs); Copilot proposes & executes actions with confirmation (`copilot_actions.py`: reroute_vehicle / resolve_exception / dispatch_adhoc / acknowledge_events; `/api/logistics/copilot/actions/{id}/execute|dismiss`; ActionCard UI). Regression: `backend/tests/test_copilot_actions_notifications.py`.
 - **Logistics Control Tower · Phase 3 (2026-06-12)** — `delay_predictor.py` (Gemini fleet scoring + heuristic fallback + delay_predicted events), `logistics_ai.py` (predictions / copilot chat+history / demand-delivery), AI Intelligence tab (DelayPredictionsPanel, DemandDeliveryPanel, CopilotPanel w/ markdown rendering). Regression: `backend/tests/test_logistics_ai.py` (14 tests). Note: frontend/.env now sets CHOKIDAR_USEPOLLING/WATCHPACK_POLLING (fixes inotify ENOSPC crash-loop in preview).
 - **Logistics Control Tower · Phase 2 (2026-06-12)** — `route_planning.py` API (board/preview/dispatch/detail), `get_multi_stop_route` (Routes API optimizeWaypointOrder), sim stop-by-stop execution (`_deliver_stop`/`_complete_route`, threshold-based), Route Planning tab UI (dispatch board, builder w/ itinerary + canvas map, ad-hoc dialog, active routes table, execution sheet). Regression: `backend/tests/test_route_planning.py` (25 tests).
 - **Logistics Control Tower · Phase 1 (2026-06-12)** — Routes API v2 upgrade in `routing.py`; full dark-cockpit frontend (KPI strip, live map w/ layer toggles, Event Stream w/ ack, Tier Flow, Digital Twin, Live Shipments, VehicleTwinSheet w/ audit trail); Planning & Ops preserved as 2nd tab. Regression: `backend/tests/test_control_tower.py`.
@@ -21,7 +22,6 @@ _Last updated: 2026-06-12 (night) — **Logistics Control Tower Phases 1+2+3 SHI
 - **Production deploy fixes (2026-06-12)** — stale `uniq_tenant` index auto-drop in `ensure_indexes()`; DuplicateKeyError-safe exec-summary upsert; 404 guards on the three manufacturer snapshot routes; deployment_agent scan PASS.
 
 ## 🟡 P1
-- In-app notifications feed (distributor / manufacturer / warehouse / wholesaler) for allocation, transfer, replenishment, order events. (Simulator already emits the source events into `notifications` — the UI feed is what's left.)
 - **Refactor `wholesaler_analytics.py` (1938 lines)** into per-concern modules: `wholesaler_distributor_analytics.py`, `wholesaler_inventory_analytics.py`, `wholesaler_forecast.py`, `wholesaler_intelligence.py`, `wholesaler_control_tower.py`.
 - Refactor `WholesalerAnalytics.jsx` (~1480 lines) — extract each tab into its own file.
 - Refactor `routes/wholesaler_orders.py` (1264 lines) and `routes/allocation.py` (812 lines) per the 700-line guideline.

@@ -24,7 +24,7 @@ from core import db, now_iso
 from routes.allocation import _scope_manufacturer
 from services.auth import get_current_user
 from services.control_tower_sim import DRIVER_POOL, coords_for
-from services.logistics_events import emit
+from services.logistics_events import emit, notify
 from services.routing import get_multi_stop_route
 
 router = APIRouter()
@@ -470,6 +470,11 @@ async def dispatch_route(payload: RoutePlanIn,
                    vehicle_id=vehicle_id, vehicle_code=vcode,
                    shipment_id=s["shipment_id"], ref_code=s["tracking_code"],
                    meta={"route_id": route_id, "seq": s["seq"]})
+    await notify("warehouse", origin["id"],
+                 f"Route {code} dispatched from your warehouse",
+                 f"{vcode} · driver {driver} · {n} stop{'s' if n != 1 else ''} · "
+                 f"{total_units:,} units · {plan['total_km']} km",
+                 ntype="route")
 
     route_doc.pop("polyline", None)
     return {"route": route_doc, "vehicle_code": vcode}

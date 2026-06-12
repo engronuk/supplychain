@@ -206,6 +206,10 @@ export const Api = {
     api.post("/logistics/copilot/chat", payload).then((r) => r.data),
   copilotHistory: () =>
     api.get("/logistics/copilot/history").then((r) => r.data),
+  copilotExecuteAction: (actionId) =>
+    api.post(`/logistics/copilot/actions/${actionId}/execute`).then((r) => r.data),
+  copilotDismissAction: (actionId) =>
+    api.post(`/logistics/copilot/actions/${actionId}/dismiss`).then((r) => r.data),
 
   // ---- Real-Time Pulse (GCP) ----
   pulseHealth: () => api.get("/pulse/health").then((r) => r.data),
