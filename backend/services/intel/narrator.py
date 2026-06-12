@@ -295,8 +295,12 @@ async def generate_exec_summary(tenant_id: str, role: str = "manufacturer",
                         "text": str(b.get("text", "")).strip()[:180],
                     })
                 rec_text = str(parsed.get("recommendation") or "").strip()[:200]
-        except Exception:
-            logger.exception("Exec summary LLM call failed")
+        except Exception as exc:
+            # Vertex AI failure is already logged with a clean warning by
+            # vertex_llm. Don't dump a second stack trace here — it adds
+            # noise without information. The fallback bullets below cover
+            # the user-facing behaviour.
+            logger.warning("Exec summary LLM call failed: %s", exc)
 
     if not bullets:
         bullets = [{

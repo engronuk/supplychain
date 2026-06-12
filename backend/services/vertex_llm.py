@@ -79,6 +79,42 @@ def _resolve_model(requested: Optional[str]) -> str:
 
 _RESOLVE_WARNED: set = set()
 
+# Runtime kill-switch: if Vertex AI returns 404 NOT_FOUND for the model
+# (i.e. the GCP project doesn't have access to any Gemini model in the
+# configured region) we trip this flag after a few attempts. Once tripped,
+# `is_configured()` returns False so every caller silently skips the AI
+# path instead of producing a stack trace for every invocation. This is
+# the right behaviour for a multi-tenant SaaS — degraded AI is far better
+# than a noisy log + 500ms latency per call.
+_VERTEX_DISABLED_REASON: Optional[str] = None
+_VERTEX_404_STREAK: int = 0
+_VERTEX_404_THRESHOLD: int = 3
+
+
+def _disable_vertex(reason: str) -> None:
+    """Permanently mark Vertex AI as unavailable for the rest of this
+    process's lifetime. Callers see `is_configured()` flip to False."""
+    global _VERTEX_DISABLED_REASON
+    if _VERTEX_DISABLED_REASON is None:
+        _VERTEX_DISABLED_REASON = reason
+        logger.warning(
+            "[vertex_llm] disabling Vertex AI for the rest of this process: %s",
+            reason,
+        )
+
+
+def _is_not_found(exc: Exception) -> bool:
+    """Best-effort 404 detection — google-genai exception classes differ
+    between SDK versions, so we sniff the string form too."""
+    try:
+        if getattr(exc, "code", None) == 404:
+            return True
+    except Exception:
+        pass
+    msg = str(exc)
+    return ("404" in msg and "NOT_FOUND" in msg) or "was not found" in msg
+
+
 # Default model — read at import time, rewritten if the operator picked a
 # decommissioned alias.
 DEFAULT_MODEL = _resolve_model(os.environ.get("GENAI_MODEL_ID"))
@@ -140,6 +176,13 @@ def get_client() -> Optional[genai.Client]:
 
 
 def is_configured() -> bool:
+    """Vertex AI is "configured" iff:
+      1. The genai client was created (project id present + creds OK), and
+      2. We haven't tripped the runtime kill-switch (3 consecutive 404s).
+    Every caller short-circuits to a non-AI path when this returns False.
+    """
+    if _VERTEX_DISABLED_REASON is not None:
+        return False
     return get_client() is not None
 
 
@@ -186,17 +229,65 @@ async def complete(
     # google-genai is synchronous-by-default; run in a thread to keep async
     # callers from blocking the event loop.
     import asyncio
+    global _VERTEX_404_STREAK
+    chosen = _resolve_model(model or DEFAULT_MODEL)
     try:
         resp = await asyncio.to_thread(
             client.models.generate_content,
-            model=_resolve_model(model or DEFAULT_MODEL),
+            model=chosen,
             contents=contents,
             config=cfg,
         )
-    except Exception:
+    except Exception as exc:
+        if _is_not_found(exc):
+            # If the resolved model 404s and we haven't already tried the
+            # safe fallback, try it once. This handles operators whose
+            # GCP project doesn't have access to e.g. gemini-2.5-flash in
+            # the configured region but does have it in the default one.
+            if chosen != DEFAULT_MODEL_FALLBACK:
+                logger.warning(
+                    "[vertex_llm] model '%s' returned 404 — retrying with fallback '%s'",
+                    chosen, DEFAULT_MODEL_FALLBACK,
+                )
+                try:
+                    resp = await asyncio.to_thread(
+                        client.models.generate_content,
+                        model=DEFAULT_MODEL_FALLBACK,
+                        contents=contents,
+                        config=cfg,
+                    )
+                    _VERTEX_404_STREAK = 0
+                    return (resp.text or "").strip()
+                except Exception as exc2:
+                    if _is_not_found(exc2):
+                        _VERTEX_404_STREAK += 1
+                        if _VERTEX_404_STREAK >= _VERTEX_404_THRESHOLD:
+                            _disable_vertex(
+                                f"GCP project has no accessible Gemini models "
+                                f"(last error: {exc2})"
+                            )
+                        # Clean warning, no stack trace — this is expected
+                        # when the GCP project lacks Vertex AI permissions.
+                        logger.warning(
+                            "[vertex_llm] Vertex AI unavailable (404 fallback also failed): %s",
+                            exc2,
+                        )
+                        raise
+                    logger.exception("[vertex_llm] fallback generate_content failed")
+                    raise
+            # Already on fallback — count toward kill-switch and warn quietly.
+            _VERTEX_404_STREAK += 1
+            if _VERTEX_404_STREAK >= _VERTEX_404_THRESHOLD:
+                _disable_vertex(
+                    f"GCP project has no accessible Gemini models (model={chosen})"
+                )
+            logger.warning("[vertex_llm] Vertex AI 404: %s", exc)
+            raise
         logger.exception("[vertex_llm] generate_content failed")
         raise
-
+    # Successful call — reset the streak so a flaky region doesn't
+    # permanently disable AI.
+    _VERTEX_404_STREAK = 0
     return (resp.text or "").strip()
 
 
