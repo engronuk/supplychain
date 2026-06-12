@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Crosshair, Maximize2, Minimize2 } from "lucide-react";
 import { useGoogleMaps } from "./LogisticsMap";
+import { MapWatchlist } from "./MapWatchlist";
 
 const NIGHT_STYLE = [
   { elementType: "geometry", stylers: [{ color: "#0b1220" }] },
@@ -311,6 +312,17 @@ export const ControlTowerMap = ({
         <div className={`${full ? "flex-1" : "h-[560px]"} grid place-items-center text-sm text-slate-500`}>Loading map…</div>
       ) : (
         <div ref={mapRef} className={`${full ? "flex-1" : "h-[560px]"} w-full`} data-testid="control-tower-map" />
+      )}
+      {full && mapsReady && (
+        <MapWatchlist
+          fleet={fleet || []}
+          onFocus={(v) => {
+            if (mapObj.current && v?.lat != null) {
+              mapObj.current.panTo({ lat: v.lat, lng: v.lng });
+              if (mapObj.current.getZoom() < 9) mapObj.current.setZoom(9);
+            }
+          }}
+        />
       )}
       <div className="px-4 py-2 border-t border-slate-800 text-[11px] text-slate-500 flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-3 flex-wrap">

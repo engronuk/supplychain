@@ -115,5 +115,8 @@ visibility (Manufacturer → Warehouse → Distributor → Wholesaler → Retail
   itemizes per-truck exceptions (24h log in context), and `maybe_tick()` self-healing
   simulation for production deploys (sim runs on page views if scheduler is absent).
   NOTE: production (app.tradekonekt.com) needs a REDEPLOY to pick all this up.
+- **Fullscreen Watchlist (✅ SHIPPED 2026-06-12 night)** — wall-board mode: pin up to 3
+  trucks in fullscreen map; side rail shows live status badge, ETA/speed, progress;
+  click pans to truck; pins persist in localStorage across reloads.
 
 See `CHANGELOG.md` for dated implementation history and `ROADMAP.md` for the prioritized backlog.

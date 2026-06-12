@@ -1372,3 +1372,8 @@ User feedback round:
 - **Copilot explainability**: `_copilot_context` now includes per-truck EXCEPTION LOG (24h, itemized type/time/detail); system rule forbids citing counts it cannot itemize. Verified: copilot lists exceptions with timestamps.
 - **Production self-healing sim**: `maybe_tick()` — control-tower endpoint kicks a background tick when the heartbeat (sim_meta.tower_tick) is stale, so the simulation runs on deployments without a live scheduler. REQUIRES REDEPLOY to reach app.tradekonekt.com.
 - Fixed during testing: corrupted Dot helper in ControlTowerMap.jsx; missing pendingWho state in ControlTowerView.
+
+## 2026-06-12 (night) — Fullscreen Watchlist (wall-board mode)
+- New `MapWatchlist.jsx`: in fullscreen map mode, pin up to 3 trucks via "Pin truck" picker (exception trucks sorted first). Cards show live status badge (BREAKDOWN / OFF ROUTE / RUNNING SLOW / ON ROUTE), destination, ETA ("Arriving now" at ≥99%), speed, progress bar; click card → map pans/zooms to truck; unpin via X. Pins persist in localStorage (`tower_watchlist_v1`) so a wall screen survives reloads. Idle/completed trucks show a "trip complete" card.
+- Bug fixed during build: header `backdrop-blur` stacking context painted the picker dropdown beneath the cards list (clicks intercepted) — fixed with `relative z-30` on the rail header. Also reverted an accidental `relative` on the fullscreen container that overrode `position:fixed` (Tailwind order).
+- Verified via trusted-input playwright: pin x3 (cap enforces disable), pan-on-click, persistence after reload, unpin.
