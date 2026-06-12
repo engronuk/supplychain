@@ -67,10 +67,11 @@ def seeded():
 class TestSeed:
     def test_seed_counts(self, seeded):
         b = seeded["seed_body"]
-        assert b["manufacturers"] == 1
-        assert b["distributors"] == 91
+        # 2 tenants: Unilever + Flour Mills Nigeria
+        assert b["manufacturers"] == 2
+        assert b["distributors"] >= 91
         assert b["retailers"] >= 91  # expanded retailer dataset (3,080 in current seed)
-        assert b["products"] == 15
+        assert b["products"] >= 15
         assert b["shipments"] >= 12
         assert b.get("primary_distributor_id")
         assert b.get("primary_retailer_id")
@@ -85,20 +86,21 @@ class TestMasterData:
 
     def test_manufacturers(self, seeded):
         ms = seeded["manufacturers"]
-        assert len(ms) == 1
-        assert ms[0]["name"] == "Unilever"
-        assert "id" in ms[0]
-        assert "_id" not in ms[0]
+        assert len(ms) >= 2
+        uni = next((m for m in ms if m["name"] == "Unilever"), None)
+        assert uni is not None
+        assert "id" in uni
+        assert all("_id" not in m for m in ms)
 
     def test_distributors_count_and_link(self, seeded):
-        ds = seeded["distributors"]
-        assert len(ds) == 91
-        mfg_id = seeded["manufacturers"][0]["id"]
-        assert all(d["manufacturer_id"] == mfg_id for d in ds)
-        # Filter by manufacturer
+        uni = next(m for m in seeded["manufacturers"] if m["name"] == "Unilever")
+        mfg_id = uni["id"]
+        # Filter by manufacturer — Unilever's network is unchanged at 91
         r = requests.get(f"{API}/distributors", params={"manufacturer_id": mfg_id})
         assert r.status_code == 200
-        assert len(r.json()) == 91
+        ds = r.json()
+        assert len(ds) == 91
+        assert all(d["manufacturer_id"] == mfg_id for d in ds)
 
     def test_distributors_filter_by_unknown_mfg(self):
         r = requests.get(f"{API}/distributors", params={"manufacturer_id": "nope"})
@@ -118,13 +120,14 @@ class TestMasterData:
 
     def test_products(self, seeded):
         ps = seeded["products"]
-        assert len(ps) == 15
-        for p in ps:
+        uni = next(m for m in seeded["manufacturers"] if m["name"] == "Unilever")
+        uni_products = [p for p in ps if p["manufacturer_id"] == uni["id"]]
+        assert len(uni_products) == 15
+        for p in uni_products:
             assert p.get("sku")
             assert p.get("name")
             # Barcode is optional but should be present
             assert "barcode" in p
-            assert p["manufacturer_id"] == seeded["manufacturers"][0]["id"]
 
 
 # ---- Inventory ----

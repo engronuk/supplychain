@@ -1,6 +1,6 @@
 # TradeKonekt — Roadmap & Backlog
 
-_Last updated: 2026-06-11 — TradeKonekt Activity Simulator shipped. Super Admin can tag participants, set cadence (Low/Med/High), force ticks, inspect run log + per-collection counts, and hard-purge SYSTEM_SIMULATOR-tagged data._
+_Last updated: 2026-06-12 — Production blockers fixed (stale `uniq_tenant` index drop, simulator → daily_sales/sales/velocity wiring) and the Flour Mills demo tenant scaled to a 500-entity national network (8 WH / 120 DST / 40 WHO / 332 RTL across all 7 regions)._
 
 ## ✅ Done
 - **Wholesaler · Phase 1** — Dashboard, Inventory, Procurement, Distributor Network.
@@ -13,6 +13,9 @@ _Last updated: 2026-06-11 — TradeKonekt Activity Simulator shipped. Super Admi
 - **Manufacturer · Allocation KPIs** — Fill Rate, Allocation Time, Back-Order Rate, Service Level, Warehouse Performance leaderboard at `/manufacturer/allocation`.
 - **Security: `/allocation/*` + `/wholesaler/{wid}/analytics` + `/wholesaler/{wid}/distributors/{did}/detail`** role-locked to owner/super_admin.
 - **Activity Simulator (Super Admin)** — background loop generates retail sales, distributor orders + allocations, shipments, transfers, replenishments, intel events on a Low/Med/High cadence. Tagged participants across both Unilever + Flour Mills tenants; tenant isolation enforced via parent-chain walk; one-click purge of every SYSTEM_SIMULATOR doc; idempotent demo-seeder.
+- **Simulator → dashboard wiring (2026-06-12)** — retail sales now also write `sales` (POS book) + `daily_sales` (analytics rollup) and recompute 7-day `inventory.velocity`; 50% spotlight bias toward demo-login retailers so "Today's Sales" is always alive.
+- **FMN 500-entity national network (2026-06-12)** — one-shot bulk seeder (`seed_flour_mills_network.py`, seed_meta-gated) + 14-day sales history; 877 simulation participants total.
+- **Production deploy fixes (2026-06-12)** — stale `uniq_tenant` index auto-drop in `ensure_indexes()`; DuplicateKeyError-safe exec-summary upsert; 404 guards on the three manufacturer snapshot routes; deployment_agent scan PASS.
 
 ## 🟡 P1
 - In-app notifications feed (distributor / manufacturer / warehouse / wholesaler) for allocation, transfer, replenishment, order events. (Simulator already emits the source events into `notifications` — the UI feed is what's left.)

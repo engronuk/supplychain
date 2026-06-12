@@ -158,7 +158,9 @@ def test_external_signals(ids):
 
 
 # ---------- Intel: copilot routing ----------
-def test_copilot_sonnet_routing(ids):
+# All copilot traffic now flows through Vertex AI (Gemini) — the old
+# anthropic/gemini dual-routing was retired with the Vertex migration.
+def test_copilot_complex_query(ids):
     r = requests.post(
         f"{API}/intel/copilot",
         json={
@@ -169,11 +171,11 @@ def test_copilot_sonnet_routing(ids):
     )
     assert r.status_code == 200, r.text
     data = r.json()
-    assert data.get("provider") == "anthropic"
-    assert str(data.get("model", "")).startswith("claude-sonnet")
+    assert data.get("provider") == "vertex-ai"
+    assert "gemini" in str(data.get("model", "")).lower()
 
 
-def test_copilot_gemini_routing(ids):
+def test_copilot_simple_query(ids):
     r = requests.post(
         f"{API}/intel/copilot",
         json={
@@ -184,7 +186,7 @@ def test_copilot_gemini_routing(ids):
     )
     assert r.status_code == 200, r.text
     data = r.json()
-    assert data.get("provider") == "gemini"
+    assert data.get("provider") == "vertex-ai"
     assert "gemini" in str(data.get("model", "")).lower()
 
 

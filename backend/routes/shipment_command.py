@@ -63,6 +63,9 @@ def _days_between(a: str | None, b: str | None) -> float | None:
 @router.get("/manufacturer/{manufacturer_id}/shipment-command-center")
 async def shipment_command_center(manufacturer_id: str):
     from services.snapshots import read_or_compute
+    if not await db.organizations.find_one(
+            {"id": manufacturer_id, "organization_type": "manufacturer"}, {"_id": 1}):
+        raise HTTPException(404, "Manufacturer not found")
     return await read_or_compute(
         "shipment-command", manufacturer_id,
         lambda: _build_shipment_command(manufacturer_id),

@@ -35,12 +35,20 @@ def auth_client(api_client):
 
 @pytest.fixture(scope="module")
 def payload(auth_client):
-    r = auth_client.get(
-        f"{BASE_URL}/api/manufacturer/{MANUFACTURER_ID}/product-intelligence",
-        timeout=30,
-    )
-    assert r.status_code == 200, f"Aggregator endpoint failed: {r.status_code} {r.text[:300]}"
-    return r.json()
+    """Snapshots compute in the background; poll until ready."""
+    import time
+    deadline = time.time() + 180
+    while True:
+        r = auth_client.get(
+            f"{BASE_URL}/api/manufacturer/{MANUFACTURER_ID}/product-intelligence",
+            timeout=30,
+        )
+        assert r.status_code == 200, f"Aggregator endpoint failed: {r.status_code} {r.text[:300]}"
+        body = r.json()
+        if not (body.get("_snapshot") or {}).get("computing"):
+            return body
+        assert time.time() < deadline, "snapshot still computing after 180s"
+        time.sleep(5)
 
 
 # ---------- top-level shape ----------

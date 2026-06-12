@@ -1247,3 +1247,28 @@ User feedback round:
 - Tenant isolation: Unilever retailer's retail_sales carry Unilever id; Flour Mills distributor orders carry Flour Mills id.
 - Purge: 20 docs deleted across 9 collections; total_ticks/total_events reset; participant tags preserved.
 - 403 for non-super-admin roles on every `/api/admin/simulator/*` route.
+
+## Updates (2026-06-12) — Production fixes + FMN 500-entity national network
+
+**P0 — Exec-summary 500 in production (DuplicateKeyError)** (`services/migrations.py`, `services/intel/narrator.py`)
+- Root cause: production Atlas DB still carried a legacy unique index `uniq_tenant` on `intel_executive_summaries.tenant_id`. The current schema stores one summary per (tenant, scope_role, scope_id), so the second role's upsert raised `E11000 DuplicateKeyError` → 500 → frontend stuck on "Generating executive brief...".
+- Fix 1: `STALE_INDEXES` list in `migrations.py`; `ensure_indexes()` now drops them on every boot (verified: recreated the stale index in preview, boot dropped it, regen for two roles of the same tenant returns 200).
+- Fix 2: `narrator.py` upsert wrapped in `try/except DuplicateKeyError` → retries as plain update so cache persistence can never 500 the endpoint.
+
+**P0 — Retailer dashboard ₦0 / velocity 0.0** (`services/simulator_generators.py`, `services/simulator.py`)
+- Root cause: simulator wrote only `retail_sales`, but dashboards aggregate `daily_sales` (Today's Sales), `sales` (POS book) and `inventory.velocity` (Fast moving) — none of which the simulator touched. Simulator was also toggled off (`enabled: false`).
+- `generate_retail_sale` now mirrors the real POS checkout: inserts `sales` (transaction_code SIM-…), `daily_sales` rollup row, decrements inventory, and recomputes the 7-day `inventory.velocity` for the SKU. All rows stamped `generated_by=SYSTEM_SIMULATOR`.
+- `run_cycle` biases 50% of retail sales toward "spotlight" retailers (demo login accounts) so demo dashboards always show today's activity.
+- `sales` + `daily_sales` added to PURGEABLE_COLLECTIONS and the admin status counts. Participant cap raised 500 → 5000.
+- Simulator re-enabled (`simulation_settings.enabled=true`, default for fresh DBs is already true).
+
+**Feature — Flour Mills national network (~500 entities)** (`services/seed_flour_mills_network.py`, wired in `server.py`)
+- One-shot seeder (gated by `seed_meta` id `fmn_network_v1`): +7 warehouses, +119 distributors, +39 wholesalers, +327 retailers across all 7 regions (Lagos, SW, SE, SS, NC, NE, NW) → FMN totals exactly 500 entities (8 WH / 120 DST / 40 WHO / 332 RTL).
+- All bulk writes (insert_many / bulk_write); block-allocated org codes (single counter $inc per type); legacy `distributors`/`retailers` mirrors; ~2,952 inventory rows; ~9,223 daily_sales history rows (14 days) with per-SKU velocity derived from the history; every entity tagged `simulation_participant: true` (877 participants total).
+
+**Hardening** — `distributor-network-intelligence`, `product-intelligence`, `shipment-command-center` GET routes now 404 for unknown manufacturers instead of returning a computing stub.
+
+**Test debt cleanup** — 53 stale failures triaged: snapshot warm-up races (poll-until-ready fixtures), pre-FMN account-count expectations, retired anthropic/gemini dual-routing assertions, allocation-flow lifecycle statuses, owner-only analytics guard, auth-required assistant endpoints. Full suite now passes (last run: 49 passed/5 skipped on changed modules; full sweep green).
+
+**Deployment readiness** — deployment_agent scan: PASS (no blockers).
+- `participants/seed-demo` now also tags every org with `metadata.seeded_by=seed_flour_mills_network`, so a clear→restore cycle (or the panel button) brings back all 877 participants, not just the 385 name-pattern curated set. `tagged_parents` cap raised to 5000.

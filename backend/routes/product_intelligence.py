@@ -103,6 +103,9 @@ def _zone_for(region: str) -> str:
 @router.get("/manufacturer/{manufacturer_id}/product-intelligence")
 async def product_intelligence(manufacturer_id: str):
     from services.snapshots import read_or_compute
+    if not await db.organizations.find_one(
+            {"id": manufacturer_id, "organization_type": "manufacturer"}, {"_id": 1}):
+        raise HTTPException(404, "Manufacturer not found")
     return await read_or_compute(
         "product-intelligence", manufacturer_id,
         lambda: _build_product_intelligence(manufacturer_id),

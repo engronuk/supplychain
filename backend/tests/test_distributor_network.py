@@ -10,6 +10,18 @@ MANUFACTURER_ID = "b21c1dbe-1a6f-4c33-b036-f416579455d0"
 @pytest.fixture(scope="module")
 def client():
     s = requests.Session()
+    # Snapshots compute in the background; warm up before any shape assertions.
+    import time
+    deadline = time.time() + 180
+    while True:
+        body = s.get(
+            f"{BASE_URL}/api/manufacturer/{MANUFACTURER_ID}/distributor-network-intelligence",
+            timeout=30,
+        ).json()
+        if not (body.get("_snapshot") or {}).get("computing"):
+            break
+        assert time.time() < deadline, "snapshot still computing after 180s"
+        time.sleep(5)
     yield s
 
 

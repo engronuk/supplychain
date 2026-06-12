@@ -205,6 +205,9 @@ async def simulator_seed_demo(_admin=Depends(_admin_only)):
         {"organization_name": {"$regex": p, "$options": "i"}}
         for p in DEMO_SEED_NAME_PATTERNS
     ]
+    # The FMN national network (~492 entities) is tagged by its seed marker
+    # rather than name patterns.
+    or_clauses.append({"metadata.seeded_by": "seed_flour_mills_network"})
     primary = await db.organizations.update_many(
         {"$or": or_clauses},
         {"$set": {"simulation_participant": True}},
@@ -215,7 +218,7 @@ async def simulator_seed_demo(_admin=Depends(_admin_only)):
         {"simulation_participant": True,
          "organization_type": {"$in": ["distributor", "wholesaler"]}},
         {"_id": 0, "id": 1},
-    ).to_list(500)
+    ).to_list(5000)
     parent_ids = [p["id"] for p in tagged_parents]
     cascade = 0
     if parent_ids:

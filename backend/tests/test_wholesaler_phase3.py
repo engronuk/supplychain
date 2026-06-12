@@ -52,17 +52,18 @@ class TestTenantScoping:
     def test_same_wholesaler_can_read(self, analytics_payload):
         assert analytics_payload["wholesaler_id"] == WID
 
-    def test_same_tenant_distributor_allowed_read_only(self, distributor_headers):
-        # Per require_wholesaler_access: same-tenant distributor is allowed read.
+    def test_same_tenant_distributor_blocked_from_analytics(self, distributor_headers):
+        # Phase 3 tightened /analytics to require_wholesaler_owner: the data
+        # exposes commercial KPIs that belong to the wholesaler alone.
         r = requests.get(f"{BASE_URL}/api/wholesaler/{WID}/analytics",
                          headers=distributor_headers, timeout=20)
-        assert r.status_code == 200
+        assert r.status_code == 403
 
-    def test_same_tenant_manufacturer_allowed_read(self, manufacturer_headers):
-        # Per require_wholesaler_access: same-tenant manufacturer is allowed read.
+    def test_same_tenant_manufacturer_blocked_from_analytics(self, manufacturer_headers):
+        # Same owner-only guard applies to the manufacturer.
         r = requests.get(f"{BASE_URL}/api/wholesaler/{WID}/analytics",
                          headers=manufacturer_headers, timeout=20)
-        assert r.status_code == 200
+        assert r.status_code == 403
 
     def test_other_tenant_wholesaler_cannot_read(self):
         token = _login(TENANT2_WHOLESALER_EMAIL)
