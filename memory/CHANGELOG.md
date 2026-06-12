@@ -1303,3 +1303,21 @@ User feedback round:
 - API helpers added: `Api.controlTower`, `Api.logisticsEvents`, `Api.logisticsAckEvent`, `Api.shipmentTimeline`, `Api.logisticsGeofences`.
 
 **Tested** (iteration_21): backend 13/13 pytest (`tests/test_control_tower.py`, runs against preview URL — payload shapes, filters, ack + 404, timeline merge, geofences, distributor/wholesaler 403s, google polyline assertion) · frontend 100% (all 40+ testids, toggles, filters, ack toast, twin sheet, tab switching) · 0 console errors.
+
+## Updates (2026-06-12, late) — Logistics Control Tower · Phase 2: Route Planning Center
+
+**Backend**
+- `services/routing.py` — `get_multi_stop_route()` + `_multi_stop_google()`: Routes API computeRoutes with `intermediates` + `optimizeWaypointOrder` (farthest stop anchors the run), per-leg distance/duration/polyline; nearest-neighbour estimate fallback.
+- `routes/route_planning.py` (new) — `GET /api/logistics/route-planning` (board: pending shipments w/ coords, warehouses, idle fleet, destinations, products, routes w/ live progress), `POST .../preview` (validated, ordered itinerary w/ thresholds), `POST .../dispatch` (ad-hoc stops → real shipments + warehouse stock decrement + inventory_movements; existing shipments → in_transit; RT-### planned_routes doc; reuse idle truck or commission new TK-###; emits route_planned/vehicle_dispatched/shipment_loaded with meta.route_id), `GET .../routes/{id}` (route + vehicle + chronological audit trail).
+- `services/control_tower_sim.py` — multi-stop execution: vehicles with `stops[]` deliver each stop as route_progress crosses its distance threshold (`_deliver_stop`: shipment→received, planned_routes stop→delivered, delivery_completed event w/ seq), `_complete_route` closes the route + frees the truck; ensure_fleet excludes route-mounted shipments (no duplicate trucks).
+- `routes/control_tower.py` — live shipments table now maps route-mounted shipments to their truck (vehicle_by_ref includes stops).
+- `services/logistics_events.py` — new event types `route_planned`, `route_completed`.
+
+**Frontend** — new "Route Planning" tab (3-tab Logistics Command Center):
+- `RoutePlanningView.jsx` — dispatch board + builder state machine (origin auto-lock, 8-stop cap, preview invalidation, vehicle select Auto/idle, driver input, dispatch + reset), stat chips, 30s board poll.
+- `RouteBuilderMap.jsx` — night canvas: origin W marker, draft stops, numbered optimized itinerary + emerald road polyline, auto-fit.
+- `RoutePlanningPanels.jsx` — Awaiting Dispatch panel (warehouse-grouped, checkbox rows, origin-locked dimming) + Planned Routes table (progress, status, Timeline).
+- `AdHocStopDialog.jsx` — searchable destination picker (distributors+wholesalers), up to 3 product/qty lines.
+- `RouteExecutionSheet.jsx` — Delivery Execution Timeline: planned-vs-actual per stop (origin departed → delivered/en-route/pending), summary stats, progress, full event audit trail, 15s refresh while open.
+
+**Tested** (iteration_22): backend 25/25 pytest (`tests/test_route_planning.py` — board shape, preview+validation 400/404s, dispatch incl. idle-vehicle reuse + ad-hoc materialization, detail+404, sim execution end-to-end, no duplicate trucks, tenant 403s) · frontend 100% (full select→adhoc→preview→dispatch→timeline flow) · fixed Radix a11y warning (sr-only SheetTitle in loading state). Combined regression: 38 tests green.

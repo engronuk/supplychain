@@ -53,7 +53,14 @@ visibility (Manufacturer → Warehouse → Distributor → Wholesaler → Retail
   (Control Tower tab default; Planning & Ops tab keeps the original workspace).
   Tested: iteration_21 — 13/13 backend pytest + 100% frontend, 0 console errors.
   Regression file: `/app/backend/tests/test_control_tower.py`.
-- **Phase 2 (NEXT)** — Route Planning Center UI, Route Builder, Delivery Execution Timeline.
-- **Phase 3** — Delay prediction (Vertex AI), AI Logistics Copilot, Demand-to-Delivery correlation.
+- **Phase 2 (✅ SHIPPED 2026-06-12)** — Route Planning Center tab: dispatch board (pending
+  shipments grouped by warehouse + idle fleet pool), multi-stop Route Builder with Google
+  Routes API optimized sequencing (`get_multi_stop_route`, optimizeWaypointOrder), ad-hoc
+  delivery creation (real shipments + stock movement), one-click dispatch (planned_routes +
+  route vehicle + event bus), and the Delivery Execution Timeline (planned vs actual per
+  stop, live audit trail). Sim executes routes stop-by-stop via thresholds.
+  Tested: iteration_22 — 25/25 backend pytest + 100% frontend.
+  Regression: `/app/backend/tests/test_route_planning.py`.
+- **Phase 3 (NEXT)** — Delay prediction (Vertex AI), AI Logistics Copilot, Demand-to-Delivery correlation.
 
 See `CHANGELOG.md` for dated implementation history and `ROADMAP.md` for the prioritized backlog.

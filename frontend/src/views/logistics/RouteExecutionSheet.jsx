@@ -47,6 +47,7 @@ export const RouteExecutionSheet = ({ routeId, open, onOpenChange }) => {
       <SheetContent className="w-full sm:max-w-md bg-[#0B1220] border-slate-800 text-slate-200 overflow-y-auto" data-testid="route-execution-sheet">
         {!r ? (
           <div className="h-40 grid place-items-center text-slate-500 text-sm">
+            <SheetTitle className="sr-only">Loading route</SheetTitle>
             <div className="flex items-center gap-2"><RefreshCw className="h-4 w-4 animate-spin" /> Loading route…</div>
           </div>
         ) : (
