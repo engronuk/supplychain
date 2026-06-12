@@ -1,14 +1,14 @@
 // Planning & Operations workspace — inventory KPIs, allocations, transfers,
-// pipeline and demand intelligence (the original logistics overview).
+// pipeline and demand intelligence. Lives as the second tab of the
+// Procurement workspace (live fleet/map visibility is the Control Tower's job).
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Boxes, Warehouse, ClipboardList, Truck, Clock4, Banknote, Gauge, RefreshCw,
+  Boxes, Warehouse, ClipboardList, Banknote, Gauge, RefreshCw,
 } from "lucide-react";
 import { Api } from "../../lib/api";
 import { Button } from "../../components/ui/button";
 import { toast } from "sonner";
-import { LogisticsMap } from "./LogisticsMap";
 import { AlertsPanel, QuickActionsPanel, PipelinePanel, ForecastPanel } from "./LogisticsPanels";
 import {
   AllocationPanel, AuthorizationPanel, TransfersPanel, CreateTransferDialog,
@@ -29,7 +29,7 @@ const unitsCompact = (n) => {
   return num(v);
 };
 
-export const LogisticsOperations = () => {
+export const LogisticsOperations = ({ onGoShipments }) => {
   const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -51,18 +51,6 @@ export const LogisticsOperations = () => {
       .finally(() => { setLoading(false); setRefreshing(false); });
   }, []);
   useEffect(() => { setTimeout(() => reload(true), 0); }, [reload]);
-
-  // Live fleet polling — trucks crawl along their routes server-side every
-  // 2 min (time-lapsed); refresh marker positions every 30s.
-  useEffect(() => {
-    const t = setInterval(() => {
-      Api.logisticsTrucks()
-        .then((trucks) =>
-          setData((prev) => (prev ? { ...prev, map: { ...prev.map, trucks } } : prev)))
-        .catch(() => {});
-    }, 30000);
-    return () => clearInterval(t);
-  }, []);
 
   const scrollTo = (ref) => ref.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 
@@ -90,15 +78,16 @@ export const LogisticsOperations = () => {
     <div className="space-y-5" data-testid="logistics-operations">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <p className="text-sm text-slate-500">
-          Warehouses, fleet, allocations and transfers across your network — one operational picture.
+          Warehouses, allocations, authorizations and transfers across your network — one operational picture.
         </p>
         <Button variant="outline" className="border-slate-200" onClick={() => reload()} disabled={refreshing} data-testid="logistics-refresh">
           <RefreshCw className={`h-4 w-4 mr-1.5 ${refreshing ? "animate-spin" : ""}`} /> Refresh
         </Button>
       </div>
 
-      {/* KPI bar */}
-      <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3" data-testid="logistics-kpi-bar">
+      {/* KPI bar — inventory & network health (shipment KPIs live on the
+          Shipments tab to avoid double-reporting) */}
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3" data-testid="logistics-kpi-bar">
         <Kpi label="Total Inventory" value={unitsCompact(k.total_inventory_units)} suffix="Units" Icon={Boxes} tint="blue"
              sub={`Across ${k.regions || 0} regions`} onClick={() => navigate("/manufacturer/warehouses")} testId="kpi-total-inventory" />
         <Kpi label="Warehouses" value={num(k.warehouses)} Icon={Warehouse} tint="emerald"
@@ -106,35 +95,22 @@ export const LogisticsOperations = () => {
         <Kpi label="Open Orders" value={num(k.open_orders)} Icon={ClipboardList} tint="amber"
              sub={`${k.open_orders_growth_pct >= 0 ? "▲" : "▼"} ${Math.abs(k.open_orders_growth_pct || 0)}% vs last week`}
              onClick={() => scrollTo(allocationRef)} testId="kpi-open-orders" />
-        <Kpi label="Pending Shipments" value={num(k.pending_shipments)} Icon={Truck} tint="indigo"
-             sub="Awaiting delivery" onClick={() => navigate("/procurement")} testId="kpi-pending-shipments" />
-        <Kpi label="Delayed Shipments" value={num(k.delayed_shipments)} Icon={Clock4} tint={k.delayed_shipments ? "rose" : "slate"}
-             sub={k.delayed_shipments ? "Needs attention" : "All on schedule"} onClick={() => navigate("/procurement")} testId="kpi-delayed-shipments" />
         <Kpi label="Inventory Value" value={nairaCompact(k.inventory_value)} Icon={Banknote} tint="violet"
              sub="Warehouse stock" onClick={() => navigate("/manufacturer/warehouses")} testId="kpi-inventory-value" />
         <Kpi label="Forecast Accuracy" value={`${k.forecast_accuracy || 0}%`} Icon={Gauge} tint="emerald"
              sub="Demand engine" onClick={() => scrollTo(forecastRef)} testId="kpi-forecast-accuracy" />
       </div>
 
-      {/* Map + right rail */}
-      <div className="grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-5">
-        <LogisticsMap
-          warehouses={data.map?.warehouses || []}
-          routes={data.map?.routes || []}
-          trucks={data.map?.trucks || []}
-          demandOverlay={data.map?.demand_overlay || []}
-          onViewWarehouse={(id) => navigate(`/manufacturer/warehouses/${id}`)}
+      {/* Alerts + quick actions (live fleet map lives in the Control Tower) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <AlertsPanel alerts={data.alerts || []} />
+        <QuickActionsPanel
+          onCreateTransfer={() => setTransferOpen(true)}
+          onApproveRequests={() => scrollTo(authRef)}
+          onCreateShipment={() => (onGoShipments ? onGoShipments() : navigate("/procurement"))}
+          onViewWarehouse={() => navigate("/manufacturer/warehouses")}
+          onGenerateReport={() => navigate("/reports")}
         />
-        <div className="space-y-5 min-w-0">
-          <AlertsPanel alerts={data.alerts || []} />
-          <QuickActionsPanel
-            onCreateTransfer={() => setTransferOpen(true)}
-            onApproveRequests={() => scrollTo(authRef)}
-            onCreateShipment={() => navigate("/procurement")}
-            onViewWarehouse={() => navigate("/manufacturer/warehouses")}
-            onGenerateReport={() => navigate("/reports")}
-          />
-        </div>
       </div>
 
       {/* Decision panels */}

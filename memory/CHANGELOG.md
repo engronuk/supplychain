@@ -1377,3 +1377,10 @@ User feedback round:
 - New `MapWatchlist.jsx`: in fullscreen map mode, pin up to 3 trucks via "Pin truck" picker (exception trucks sorted first). Cards show live status badge (BREAKDOWN / OFF ROUTE / RUNNING SLOW / ON ROUTE), destination, ETA ("Arriving now" at ≥99%), speed, progress bar; click card → map pans/zooms to truck; unpin via X. Pins persist in localStorage (`tower_watchlist_v1`) so a wall screen survives reloads. Idle/completed trucks show a "trip complete" card.
 - Bug fixed during build: header `backdrop-blur` stacking context painted the picker dropdown beneath the cards list (clicks intercepted) — fixed with `relative z-30` on the rail header. Also reverted an accidental `relative` on the fullscreen container that overrode `position:fixed` (Tailwind order).
 - Verified via trusted-input playwright: pin x3 (cap enforces disable), pan-on-click, persistence after reload, unpin.
+
+## 2026-06-12 (late) — Planning & Ops merged into Procurement
+- New `ProcurementWorkspace.jsx` (manufacturer /procurement): tabs **Shipments** (Shipment Command Center, unchanged) + **Planning & Ops** (`?tab=ops` deep-linkable, keep-mounted switching).
+- `LogisticsOperations.jsx`: removed the legacy LogisticsMap (Control Tower live map supersedes it) + its 30s truck polling; removed duplicated Pending/Delayed Shipments KPIs (KPI bar now 5: inventory, warehouses, open orders, value, forecast accuracy); Alerts + Quick Actions now a 2-col row; "Create Shipment" quick action switches to the Shipments tab in-place.
+- `LogisticsCommandCenter.jsx`: slimmed to 3 tabs — Control Tower · Route Planning · AI Intelligence (tab-operations removed).
+- App.js: manufacturer ProcurementGate → ProcurementWorkspace.
+- Verified via playwright: tab switch, 5 KPIs, no map, allocation/auth/transfer panels intact, quick-action cross-tab jump, Logistics Center 3 tabs.

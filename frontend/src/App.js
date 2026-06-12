@@ -9,7 +9,7 @@ import DistributorDashboard from "@/views/DistributorDashboard";
 import RetailerDashboardV2 from "@/views/RetailerDashboardV2";
 import InventoryView from "@/views/InventoryView";
 import RetailerProcurement from "@/views/RetailerProcurement";
-import ShipmentCommandCenter from "@/views/ShipmentCommandCenter";
+import ProcurementWorkspace from "@/views/ProcurementWorkspace";
 import RetailerProductDetail from "@/views/RetailerProductDetail";
 import OrganizationManagement from "@/views/OrganizationManagement";
 import DistributorProcurementInbox from "@/views/DistributorProcurementInbox";
@@ -71,9 +71,10 @@ function ProcurementGate() {
   // Phase 3 — wholesaler /procurement = upstream POs only. Distributor
   // Orders, Fulfillment and Shipments are dedicated sidebar routes.
   if (session.role === "wholesaler") return <WholesalerProcurement />;
-  // Manufacturers don't procure — for them, the merged "Procurement" workspace
-  // is the Shipment Command Center (outbound shipments to distributors).
-  if (session.role === "manufacturer") return <ShipmentCommandCenter />;
+  // Manufacturers don't procure — for them, "Procurement" is the outbound
+  // workspace: Shipment Command Center + Planning & Ops (allocations,
+  // authorizations, transfers, forecast).
+  if (session.role === "manufacturer") return <ProcurementWorkspace />;
   return <Navigate to="/dashboard" replace />;
 }
 

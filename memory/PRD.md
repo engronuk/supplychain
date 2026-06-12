@@ -118,5 +118,9 @@ visibility (Manufacturer → Warehouse → Distributor → Wholesaler → Retail
 - **Fullscreen Watchlist (✅ SHIPPED 2026-06-12 night)** — wall-board mode: pin up to 3
   trucks in fullscreen map; side rail shows live status badge, ETA/speed, progress;
   click pans to truck; pins persist in localStorage across reloads.
+- **Planning & Ops → Procurement merge (✅ SHIPPED 2026-06-12 late)** — manufacturer
+  /procurement is now a 2-tab workspace (Shipments | Planning & Ops). Legacy map and
+  duplicated shipment KPIs removed from Planning & Ops; Logistics Center slimmed to
+  Control Tower · Route Planning · AI Intelligence.
 
 See `CHANGELOG.md` for dated implementation history and `ROADMAP.md` for the prioritized backlog.
