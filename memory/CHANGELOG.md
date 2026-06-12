@@ -1353,3 +1353,12 @@ User feedback round:
 - `lib/api.js` — `copilotExecuteAction`, `copilotDismissAction`.
 
 **Tested** (iteration_24): testing-agent pytest `tests/test_copilot_actions_notifications.py` — 8/11 first run; 3 failures fixed (action-context coverage 25→150 distributors; milestone notifications exempted from dedupe; 1 transient Vertex 429) and re-verified. Playwright UI: propose→execute→persist, dismiss, grounded refusal, notifications tabs/badge. Confirm-before-execute per user choice (option A).
+
+## 2026-06-12 — End-to-End Logistics Validation + Full-Tier Movement Legs
+
+**Audit findings fixed**
+- `control_tower_sim.py` — `ensure_factory_replenishment` (factory→warehouse FAC-xxx legs, capped 2/tenant, goods received into warehouse inventory on arrival via `_receive_at_warehouse` + `factory_receipt` movements); `ensure_wholesaler_dispatch` (sim keeps wholesaler→distributor lane alive, real wholesaler_shipments docs); `bridge_wholesaler_shipments` (mirrors dispatched wholesaler ledger shipments into main `shipments` → trucks/GPS/geofences/deviations; delivery syncs back with truck-confirmation history; 148 stale seeds auto-closed); `_complete_delivery` extended for warehouse receipts + wholesaler ledger sync; fleet cap 24→32 with spawn priority for rare legs (manufacturer/wholesaler origins first).
+- `simulator_generators.py::generate_shipment` — now emits from_role/from_id/to_role/to_id + tracking_code (was creating role-less shipments, the source of 40 broken docs — all backfilled).
+- `control_tower.py` — destination resolution fallback (organizations + retailers) so every leg shows a real to_name; `to_role` added to board payload.
+
+**Validated** (iteration_25, frontend-only): dead-end crawl across 4 personas (manufacturer 12 nav items, wholesaler 8, distributor 8, 2nd tenant) — 100%, 0 console errors, NO dead ends. FAC-/WSHIP- legs render in Live Shipments with resolved names; vehicle twin sheet shows factory-dispatch milestones; tenant isolation intact. Backend self-verified: warehouse inventory +units exact on factory arrival, wholesaler ledger delivered-sync, distributor/warehouse notifications.

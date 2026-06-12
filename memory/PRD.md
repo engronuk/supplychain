@@ -89,5 +89,24 @@ visibility (Manufacturer → Warehouse → Distributor → Wholesaler → Retail
     type) which loop back into the notifications feed.
   Tested: iteration_24 — backend pytest (`tests/test_copilot_actions_notifications.py`,
   all pass after fixes) + playwright UI flows.
+- **End-to-End Validation + Full-Tier Movement (✅ SHIPPED 2026-06-12)** — user-requested
+  audit of the whole logistics system. Gaps found & fixed:
+  - **Factory → Warehouse (first mile)**: new `ensure_factory_replenishment` sim leg —
+    manufacturer plant dispatches FAC-xxx shipments to its warehouses; on arrival goods
+    are received into warehouse inventory (`_receive_at_warehouse` + factory_receipt
+    movements).
+  - **Wholesaler → Distributor**: `ensure_wholesaler_dispatch` (keeps the lane alive) +
+    `bridge_wholesaler_shipments` mirrors dispatched wholesaler ledger shipments into the
+    main `shipments` collection → real trucks/GPS/geofences/deviation detection; delivery
+    syncs back to `wholesaler_shipments` (status history notes the confirming truck).
+    Stale seeded backlog auto-closed (148 delivered).
+  - Simulator `generate_shipment` fixed to emit proper from/to roles + tracking_code;
+    40 broken-role shipments backfilled.
+  - Control tower board resolves destination names for ALL legs (warehouses, wholesalers,
+    retailers via org_dests fallback); fleet cap 32 with spawn priority for rare legs.
+  Validated: iteration_25 — frontend dead-end crawl across manufacturer (12 nav items),
+  wholesaler, distributor, 2nd tenant: 100%, 0 console errors, NO dead ends. All 6 legs
+  visible: factory→WH, WH→WH, WH→distributor, WH→wholesaler, wholesaler→distributor,
+  distributor→retailer. Driver app deferred per user (simulation stands in).
 
 See `CHANGELOG.md` for dated implementation history and `ROADMAP.md` for the prioritized backlog.
