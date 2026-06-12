@@ -32,6 +32,7 @@ EVENT_TYPES: Dict[str, tuple] = {
     "deviation_resolved":  ("route",    "info"),
     "route_planned":       ("route",    "info"),
     "route_completed":     ("route",    "info"),
+    "delay_predicted":     ("route",    "warning"),
     "unauthorized_stop":   ("route",    "warning"),
     "stop_resolved":       ("route",    "info"),
     "delay_detected":      ("shipment", "warning"),

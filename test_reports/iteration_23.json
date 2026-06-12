@@ -1,0 +1,35 @@
+{
+  "summary": "Phase 3 Logistics AI (Delay Predictions + Konekt Copilot + Demand↔Delivery) fully verified end-to-end on flour.admin@tradekonekt.io. Backend: 14/14 pytest cases PASSED in 31s against the preview URL (file /app/backend/tests/test_logistics_ai.py). Coverage: predictions payload shape (items[] with vehicle_code/risk_level/probability/predicted_delay_min/reason/recommendation/dest_name/status, counts{high,medium,low}, fleet_scored, source='vertex-ai' confirmed on every run, created_at), 10-min cache hit (identical created_at), ?refresh=true forces recompute (new created_at), copilot/chat returns reply+session_id+model+provider='vertex-ai' grounded with TK-/RT- codes, copilot multi-turn (2nd turn referenced 1st within same session — Gemini answered the follow-up with concrete numbers), 400 on empty/whitespace message, copilot/history is chronological with user/assistant alternation, demand-delivery 7 regions with realistic varied trends (NOT all +100%) + 2-4 vertex-ai insights, 15-min cache + refresh recompute, tenant security (distributor → 403 on all three endpoints). Verified delay_predicted emit code path + 60-min dedupe exist in /app/backend/services/delay_predictor.py (no high-risk trucks live — fleet is healthy, which is correct behaviour). Phase-1+2 regression: 38/38 PASSED on test_control_tower.py + test_route_planning.py. Frontend (Playwright on https://supply-chain-hub-189.preview.emergentagent.com): login → /manufacturer/logistics-center → tab-ai-insights → logistics-ai-view renders with ai-provider-badge='Gemini · Vertex AI'; delay-predictions-panel shows predictions-source='GEMINI REASONING' + 4 prediction-row entries each with prediction-risk-badge=LOW (fleet healthy); demand-delivery-panel shows 4 dd-insight bullets + 7 dd-region-row with pressure badges; CopilotPanel — sent 'How many trucks are active right now?' → grounded reply 'There are 5 trucks active right now.' (bold rendered via <strong>, no raw ** asterisks), follow-up 'Are any of those trucks at risk of delay?' → reply cited TK-101 + RT-006 (multi-turn context retained), messages persisted after full page reload (10 messages → 10 messages), predictions-refresh-btn re-scored (still vertex-ai), dd-refresh-btn re-computed. Regression tabs tab-control-tower (control-tower-view) + tab-route-planning (route-planning-view) still render. ZERO console errors throughout entire session.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "CopilotPanel", "issues": ["Markdown unordered-list bullets render as raw '*   ' text in assistant messages (e.g. 'Yes, one truck is at risk of delay:\\n\\n*   TK-101 is currently `in_transit`...'). Bold (**...**) IS rendered correctly via <strong>, but the markdown renderer does not handle '* ' / '- ' bullets. Cosmetic — content is correct and grounded — but degrades readability of lists. Consider switching to react-markdown or extend the existing parser to handle ul/li and inline code (backticks like `in_transit` also show as raw text)."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_logistics_ai.py",
+    "/app/test_reports/pytest/logistics_ai_iter23.xml"
+  ],
+  "action_items": [
+    "(Optional/cosmetic) Upgrade CopilotPanel message renderer to handle markdown bullet lists ('* ', '- ', '1. ') and inline code (`...`) — currently only **bold** is parsed, so Gemini's list responses show raw '*   ' markers."
+  ],
+  "critical_code_review_comments": [
+    "services/delay_predictor.py:230 — 60-min dedupe uses logistics_events.find_one filtered by manufacturer+event_type+vehicle_id+created_at>=cutoff, correctly avoids duplicate delay_predicted events; verified path exists. Good.",
+    "services/delay_predictor.py:144-158 — _vertex_predict sends the full feats list including heuristic_score; if Gemini returns extra/missing vehicle_codes, refresh_predictions filters via by_code map (line 175-180) — safe.",
+    "routes/logistics_ai.py:117 — _copilot_context truncates to 14000 chars; on tenants with very large fleets some events may be cut. Consider trimming oldest events first explicitly rather than slicing at end.",
+    "routes/logistics_ai.py:161-166 — last-12 history is fetched DESC then reversed; correct, but using .sort('created_at', 1) directly would be clearer and identical perf with the index.",
+    "routes/logistics_ai.py:154 — uses (org or {}).get('organization_name') — fine, but field is actually 'organization_name' (verified) — confirmed working in copilot replies."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_logistics_ai.py"
+  ],
+  "success_rate": {"backend": "100% (14/14 new + 38/38 regression)", "frontend": "100%"},
+  "test_credentials": "flour.admin@tradekonekt.io / TradeKonekt2026! (primary); lagos.distributor for 403 isolation.",
+  "seed_data_creation": "Three throwaway copilot sessions inserted under flour.admin's manufacturer_id with TEST_copilot_* session_ids (a handful of user/assistant rows in db.copilot_messages). Safe — they only affect the explicit session_id queries and the regular 'copilot-{user.id}' session is untouched by the new test rows. Also one extra delay-predictions doc + one extra dd_insights doc were written (both collections are wiped on each refresh — no accumulation).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Phase-3 canonical regression: /app/backend/tests/test_logistics_ai.py (14 tests, ~31s). Vertex calls in predictions + dd are slow (5-20s) — keep timeouts at 90s. Fleet currently has 4-5 active trucks all LOW risk (healthy) — that's correct, do not fail on missing high-risk rows. The copilot session 'copilot-{user.id}' for flour.admin has accumulated >6 messages from prior tests, so the empty-state suggestion chips (copilot-suggestion) WILL NOT appear — expected. Multi-turn verified by checking that 2nd reply references real codes from context (TK-101, RT-006). Testids confirmed: logistics-ai-view, ai-provider-badge, delay-predictions-panel, predictions-source, prediction-row, prediction-risk-badge, predictions-refresh-btn, demand-delivery-panel, dd-insight, dd-region-row, dd-pressure-badge, dd-refresh-btn, copilot-panel, copilot-input, copilot-send-btn, copilot-message, copilot-thinking. Tab testids: tab-control-tower, tab-route-planning, tab-ai-insights. Cosmetic markdown bullet rendering gap noted in CopilotPanel — does not affect correctness.",
+  "rca of the issue": "N/A — no defects found. Only cosmetic note: CopilotPanel parses **bold** but not markdown bullet lists or inline `code`, so Gemini's list-formatted answers show raw '*   ' prefixes. Fix path: replace the regex-based renderer in CopilotPanel.jsx with react-markdown (already a peer of the project) or extend the parser. Non-blocking."
+}

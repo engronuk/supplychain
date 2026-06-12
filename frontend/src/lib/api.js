@@ -195,6 +195,18 @@ export const Api = {
   routeDetail: (id) =>
     api.get(`/logistics/route-planning/routes/${id}`).then((r) => r.data),
 
+  // ---- Logistics AI (Phase 3) ----
+  delayPredictions: (refresh = false) =>
+    api.get("/logistics/predictions", { params: refresh ? { refresh: true } : {} })
+      .then((r) => r.data),
+  demandDelivery: (refresh = false) =>
+    api.get("/logistics/demand-delivery", { params: refresh ? { refresh: true } : {} })
+      .then((r) => r.data),
+  copilotChat: (payload) =>
+    api.post("/logistics/copilot/chat", payload).then((r) => r.data),
+  copilotHistory: () =>
+    api.get("/logistics/copilot/history").then((r) => r.data),
+
   // ---- Real-Time Pulse (GCP) ----
   pulseHealth: () => api.get("/pulse/health").then((r) => r.data),
   pulseByRegion: (hours = 24) =>

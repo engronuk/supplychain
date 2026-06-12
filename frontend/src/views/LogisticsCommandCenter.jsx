@@ -3,9 +3,10 @@
 // planning & operations workspace (allocations, transfers, forecast).
 // Route: /manufacturer/logistics-center
 import { useState } from "react";
-import { Map, RadioTower, Satellite, SlidersHorizontal } from "lucide-react";
+import { BrainCircuit, Map, RadioTower, Satellite, SlidersHorizontal } from "lucide-react";
 import { ControlTowerView } from "./logistics/ControlTowerView";
 import { RoutePlanningView } from "./logistics/RoutePlanningView";
+import { LogisticsAIView } from "./logistics/LogisticsAIView";
 import { LogisticsOperations } from "./logistics/LogisticsOperations";
 
 export default function LogisticsCommandCenter() {
@@ -27,6 +28,7 @@ export default function LogisticsCommandCenter() {
         <div className="inline-flex items-center rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm" data-testid="logistics-tab-switch">
           <TabBtn active={tab === "tower"} onClick={() => switchTab("tower")} Icon={RadioTower} label="Control Tower" testId="tab-control-tower" />
           <TabBtn active={tab === "plan"} onClick={() => switchTab("plan")} Icon={Map} label="Route Planning" testId="tab-route-planning" />
+          <TabBtn active={tab === "ai"} onClick={() => switchTab("ai")} Icon={BrainCircuit} label="AI Intelligence" testId="tab-ai-insights" />
           <TabBtn active={tab === "ops"} onClick={() => switchTab("ops")} Icon={SlidersHorizontal} label="Planning & Ops" testId="tab-operations" />
         </div>
       </div>
@@ -34,6 +36,7 @@ export default function LogisticsCommandCenter() {
       {/* Tabs stay mounted after first visit so switching back is instant. */}
       <div className={tab === "tower" ? "" : "hidden"}><ControlTowerView /></div>
       {visited.plan && <div className={tab === "plan" ? "" : "hidden"}><RoutePlanningView /></div>}
+      {visited.ai && <div className={tab === "ai" ? "" : "hidden"}><LogisticsAIView /></div>}
       {visited.ops && <div className={tab === "ops" ? "" : "hidden"}><LogisticsOperations /></div>}
     </div>
   );
