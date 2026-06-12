@@ -9,6 +9,8 @@ import { LogisticsOperations } from "./logistics/LogisticsOperations";
 
 export default function LogisticsCommandCenter() {
   const [tab, setTab] = useState("tower");
+  const [opsVisited, setOpsVisited] = useState(false);
+  const switchTab = (t) => { setTab(t); if (t === "ops") setOpsVisited(true); };
   return (
     <div className="p-4 md:p-8 space-y-5" data-testid="logistics-command-center">
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -22,12 +24,16 @@ export default function LogisticsCommandCenter() {
           </p>
         </div>
         <div className="inline-flex items-center rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm" data-testid="logistics-tab-switch">
-          <TabBtn active={tab === "tower"} onClick={() => setTab("tower")} Icon={RadioTower} label="Control Tower" testId="tab-control-tower" />
-          <TabBtn active={tab === "ops"} onClick={() => setTab("ops")} Icon={SlidersHorizontal} label="Planning & Ops" testId="tab-operations" />
+          <TabBtn active={tab === "tower"} onClick={() => switchTab("tower")} Icon={RadioTower} label="Control Tower" testId="tab-control-tower" />
+          <TabBtn active={tab === "ops"} onClick={() => switchTab("ops")} Icon={SlidersHorizontal} label="Planning & Ops" testId="tab-operations" />
         </div>
       </div>
 
-      {tab === "tower" ? <ControlTowerView /> : <LogisticsOperations />}
+      {/* Both tabs stay mounted after first visit so switching back is instant. */}
+      <div className={tab === "tower" ? "" : "hidden"}><ControlTowerView /></div>
+      {(opsVisited || tab === "ops") && (
+        <div className={tab === "ops" ? "" : "hidden"}><LogisticsOperations /></div>
+      )}
     </div>
   );
 }

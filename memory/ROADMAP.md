@@ -1,8 +1,9 @@
 # TradeKonekt — Roadmap & Backlog
 
-_Last updated: 2026-06-12 — Production blockers fixed (stale `uniq_tenant` index drop, simulator → daily_sales/sales/velocity wiring) and the Flour Mills demo tenant scaled to a 500-entity national network (8 WH / 120 DST / 40 WHO / 332 RTL across all 7 regions)._
+_Last updated: 2026-06-12 (evening) — **Logistics Control Tower Phase 1 SHIPPED**: event-driven cockpit at `/manufacturer/logistics-center` (live map on real Google Routes API geometry, event stream + ack, 5-tier inventory flow, digital twin, vehicle twin sheet). iteration_21: 13/13 backend + 100% frontend._
 
 ## ✅ Done
+- **Logistics Control Tower · Phase 1 (2026-06-12)** — Routes API v2 upgrade in `routing.py`; full dark-cockpit frontend (KPI strip, live map w/ layer toggles, Event Stream w/ ack, Tier Flow, Digital Twin, Live Shipments, VehicleTwinSheet w/ audit trail); Planning & Ops preserved as 2nd tab. Regression: `backend/tests/test_control_tower.py`.
 - **Wholesaler · Phase 1** — Dashboard, Inventory, Procurement, Distributor Network.
 - **Wholesaler · Phase 2** — Distributor Orders + Fulfillment workflow + Shipment Management + Place Order on Behalf modal.
 - **Wholesaler · Phase 3A** — 8-item sidebar restructure + Distributor Analytics Center (KPIs · Status mix · Ranking · BCG matrix · Churn risk · 6-month trend).
@@ -18,6 +19,8 @@ _Last updated: 2026-06-12 — Production blockers fixed (stale `uniq_tenant` ind
 - **Production deploy fixes (2026-06-12)** — stale `uniq_tenant` index auto-drop in `ensure_indexes()`; DuplicateKeyError-safe exec-summary upsert; 404 guards on the three manufacturer snapshot routes; deployment_agent scan PASS.
 
 ## 🟡 P1
+- **Logistics Control Tower · Phase 2** — Route Planning Center UI, Route Builder, Delivery Execution Timeline view.
+- **Logistics Control Tower · Phase 3** — Delay prediction engine (Vertex AI), AI-Powered Logistics Copilot, Demand-to-Delivery correlation.
 - In-app notifications feed (distributor / manufacturer / warehouse / wholesaler) for allocation, transfer, replenishment, order events. (Simulator already emits the source events into `notifications` — the UI feed is what's left.)
 - **Refactor `wholesaler_analytics.py` (1938 lines)** into per-concern modules: `wholesaler_distributor_analytics.py`, `wholesaler_inventory_analytics.py`, `wholesaler_forecast.py`, `wholesaler_intelligence.py`, `wholesaler_control_tower.py`.
 - Refactor `WholesalerAnalytics.jsx` (~1480 lines) — extract each tab into its own file.

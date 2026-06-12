@@ -1285,3 +1285,21 @@ User feedback round:
 - Frontend: queue tabs use `tabOf(status)` cohort mapping with specific chips for the new statuses (actions still gated on literal pending/approved).
 - New one-shot seeder `seed_flour_mills_ops.py` (`fmn_ops_v1` marker, wired in server.py): 130 distributor orders + 92 shipments over 30 days across the FMN network → page shows 83 pending / 22 in transit / 88 delivered / 11 delayed, ₦1.69B value, 6 regions, distributor performance grades.
 - Regression: 85 passed / 6 skipped (shipment_command, distributor_orders, supply_chain, product_intelligence, logistics, manufacturer_drilldown). Unilever command center verified unaffected.
+
+## Updates (2026-06-12, evening) — Logistics Control Tower · Phase 1 Frontend + Routes API upgrade
+
+**Routing upgrade — real Google road geometry** (`services/routing.py`)
+- Legacy Directions API is restricted on the tenant Maps key (REQUEST_DENIED). Added `_routes_api_v2()` calling the modern Routes API (`routes.googleapis.com/directions/v2:computeRoutes`) as the primary source; legacy Directions second; curved estimate last. Verified: 15+ vehicles now carry `route_source="google"` with real road polylines; estimate-cached lanes purged and active vehicles re-routed.
+
+**Control Tower frontend (Phase 1)** — `/manufacturer/logistics-center` is now a 2-tab page:
+- `LogisticsCommandCenter.jsx` — shell with segmented Control Tower (default) / Planning & Ops switch; both tabs stay mounted after first visit (instant switch-back).
+- `logistics/ControlTowerView.jsx` — dark cockpit canvas, 25s poll of `/api/logistics/control-tower`, live status bar (sync time, fleet chip, refresh).
+- `logistics/ControlTowerMap.jsx` — night-styled Google map; trucks colored On-route/Delayed/Route-exception/Breakdown updated **in place** (no flicker); real road polylines (selected = bold); 500 m geofence circles; warehouse markers; distributor risk nodes; retailer cluster layer; 4 layer toggles; click truck → digital twin sheet.
+- `logistics/ControlTowerFeed.jsx` — Event Stream self-fetching `/api/logistics/events` with severity/category filter chips, ack buttons (optimistic), vehicle chips that focus the map/sheet.
+- `logistics/ControlTowerPanels.jsx` — 8-tile KPI strip (active, in-transit units, on-time %, delayed, route exceptions, breakdowns, geofence events, critical unacked), 5-tier Inventory-in-Transit flow strip, Digital Twin panel (warehouse utilization bars, distributor risk pills + cover days, wholesaler pending orders).
+- `logistics/ControlTowerShipments.jsx` — Live Shipments table (71 rows) with bucket filters and Track → twin sheet.
+- `logistics/VehicleTwinSheet.jsx` — vehicle digital twin: telemetry (speed/fuel/ETA/progress), driver, route block with "Google road route" badge, cargo, exception banners, full event audit trail from `/api/logistics/shipment-timeline/{id}`.
+- `logistics/LogisticsOperations.jsx` — original logistics workspace moved intact (allocations, transfers, pipeline, forecast); zero regression.
+- API helpers added: `Api.controlTower`, `Api.logisticsEvents`, `Api.logisticsAckEvent`, `Api.shipmentTimeline`, `Api.logisticsGeofences`.
+
+**Tested** (iteration_21): backend 13/13 pytest (`tests/test_control_tower.py`, runs against preview URL — payload shapes, filters, ack + 404, timeline merge, geofences, distributor/wholesaler 403s, google polyline assertion) · frontend 100% (all 40+ testids, toggles, filters, ack toast, twin sheet, tab switching) · 0 console errors.
