@@ -1389,3 +1389,7 @@ User feedback round:
 - `ControlTowerMap.jsx`: hovering a truck marker opens a dark InfoWindow tooltip (`truckTooltipHtml`) with truck code, live status label, origin→destination, shipment tracking code, ETA, speed, progress bar and driver; closes on mouseout (shared InfoWindow, headerDisabled, disableAutoPan, HTML-escaped).
 - `ControlTowerShipments.jsx` + `ControlTowerView.jsx`: clicking an in-transit/delayed shipment ROW (with truck) scrolls to the map and focuses that truck (new `focusId` state feeds map `selectedVehicleId` → pan/zoom + isolation dim) WITHOUT opening the sheet; the Track→ button (stopPropagation) still opens the side details sheet.
 - Verified via playwright: tooltip content renders on hover; row click scrolls + isolates truck on map.
+
+## 2026-06-12
+- Applied FMN (Flour Mills of Nigeria) logo to topbar brand chip (beside notifications) for Flour Mills tenant. Asset: /frontend/public/brands/fmn.png (auto-trimmed from user upload). Lookup added in Layout.jsx BRAND_LOGOS.
+

@@ -330,6 +330,8 @@ export default function Layout() {
 // ---- Manufacturer Logo (topbar chip beside the bell) ----------------------
 const BRAND_LOGOS = {
   unilever: "/brands/unilever.svg",
+  flourmillsnigeria: "/brands/fmn.png",
+  flourmillsofnigeria: "/brands/fmn.png",
 };
 
 function _brandKey(name) {
