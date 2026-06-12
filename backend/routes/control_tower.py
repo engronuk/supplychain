@@ -16,7 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from core import db, now_iso
 from routes.allocation import _scope_manufacturer
 from services.auth import get_current_user
-from services.control_tower_sim import coords_for
+from services.control_tower_sim import coords_for, maybe_tick
 
 router = APIRouter()
 
@@ -71,6 +71,9 @@ def _risk(cover: Optional[float]) -> str:
 async def control_tower(manufacturer_id: Optional[str] = None,
                         user: Dict[str, Any] = Depends(get_current_user)):
     mfr = await _scope_manufacturer(user, manufacturer_id)
+    # Self-healing simulation: if no background scheduler is ticking in this
+    # deployment, viewing the tower kicks one off (non-blocking).
+    await maybe_tick()
     now = datetime.now(timezone.utc)
     today_iso = now.date().isoformat()
     ids = await _tenant_ids(mfr)
@@ -161,10 +164,16 @@ async def control_tower(manufacturer_id: Optional[str] = None,
             "to_city": to.get("city") or "",
             "to_region": to.get("region") or "",
             "status": "delayed" if is_delayed and status == "in_transit" else status,
-            "eta_minutes": v.get("eta_minutes") if v else None,
-            "route_progress": round(float(v.get("route_progress") or 0) * 100) if v else None,
+            "eta_minutes": (0 if status in ("received", "delivered", "completed")
+                            else (v.get("eta_minutes") if v else None)),
+            "route_progress": (100 if status in ("received", "delivered", "completed")
+                               else (round(float(v.get("route_progress") or 0) * 100)
+                                     if v else None)),
             "driver": v.get("driver_name") if v else None,
             "vehicle_code": v.get("code") if v else None,
+            "items": [{"name": prod_names.get(i.get("product_id"), "Item"),
+                       "quantity": int(i.get("quantity") or 0)}
+                      for i in (s.get("items") or [])[:8]],
             "dispatched_at": s.get("dispatched_at"),
             "received_at": s.get("received_at"),
             "created_at": s.get("created_at"),
@@ -327,6 +336,46 @@ async def control_tower(manufacturer_id: Optional[str] = None,
 
 
 # ===========================================================================
+@router.get("/logistics/wholesalers/{wholesaler_id}/pending-orders")
+async def wholesaler_pending_orders(wholesaler_id: str,
+                                    user: Dict[str, Any] = Depends(get_current_user)):
+    """What's behind a wholesaler's 'pending' badge on the digital twin."""
+    await _scope_manufacturer(user, None)
+    org = await db.organizations.find_one(
+        {"id": wholesaler_id}, {"_id": 0, "organization_name": 1})
+    rows = await db.wholesaler_orders.find(
+        {"wholesaler_id": wholesaler_id,
+         "status": {"$in": ["pending", "submitted", "processing"]}},
+        {"_id": 0, "id": 1, "order_number": 1, "status": 1, "lines": 1,
+         "items": 1, "total_units": 1, "distributor": 1, "distributor_name": 1,
+         "created_at": 1, "requested_delivery_date": 1},
+    ).sort("created_at", -1).to_list(25)
+    orders = []
+    for o in rows:
+        lines = o.get("lines") or o.get("items") or []
+        units = o.get("total_units") or sum(
+            int(ln.get("quantity") or 0) for ln in lines)
+        dist = o.get("distributor")
+        placed_by = ((dist.get("name") if isinstance(dist, dict) else dist)
+                     or o.get("distributor_name") or "Distributor")
+        orders.append({
+            "id": o["id"],
+            "order_number": o.get("order_number") or o["id"][:8].upper(),
+            "status": o.get("status"),
+            "placed_by": placed_by,
+            "lines": len(lines),
+            "units": int(units or 0),
+            "created_at": o.get("created_at"),
+            "requested_delivery_date": o.get("requested_delivery_date"),
+            "items": [{"name": ln.get("product_name") or ln.get("name") or "Item",
+                       "quantity": int(ln.get("quantity") or 0)}
+                      for ln in lines[:8]],
+        })
+    return {"wholesaler_id": wholesaler_id,
+            "wholesaler_name": (org or {}).get("organization_name"),
+            "orders": orders}
+
+
 @router.get("/logistics/events")
 async def list_events(manufacturer_id: Optional[str] = None,
                       category: Optional[str] = None,

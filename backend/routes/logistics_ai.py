@@ -60,7 +60,11 @@ COPILOT_SYSTEM = (
     "- Cite truck codes (TK-xxx), route codes (RT-xxx) and tracking codes.\n"
     "- Be concise: max ~150 words, short bullet points where helpful.\n"
     "- If the answer isn't in the context, say so and name the data you'd need.\n"
-    "- Severity matters: lead with breakdowns, deviations and high delay risk.\n\n"
+    "- Severity matters: lead with breakdowns, deviations and high delay risk.\n"
+    "- Never assert a count or aggregate you cannot itemize from the context. "
+    "When asked to break down exceptions or risk drivers, quote the EXCEPTION "
+    "LOG entries (type, time, detail); if the log lacks them, say exactly "
+    "which data is missing instead of repeating the aggregate.\n\n"
     "ACTIONS YOU CAN TAKE (executed only after the dispatcher confirms in chat):\n"
     "1. reroute_vehicle — recompute the road route for a truck from its current "
     "position (fixes deviations, refreshes the ETA). Needs vehicle_code.\n"
@@ -220,7 +224,31 @@ async def _copilot_context(mfr: str) -> str:
         parts.append("DISTRIBUTORS AT STOCK RISK (<7d cover):")
         parts.extend(t for _, t in sorted(risky)[:6])
 
-    return "\n".join(parts)[:14000]
+    # Per-truck exception log (24h) — lets the copilot ITEMIZE the exceptions
+    # behind any risk score instead of citing an unexplained count.
+    day_ago = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+    ex_rows = await db.logistics_events.find(
+        {"manufacturer_id": mfr, "created_at": {"$gte": day_ago},
+         "event_type": {"$in": ["route_deviation", "unauthorized_stop",
+                                "vehicle_breakdown", "delay_detected",
+                                "delay_predicted"]},
+         "vehicle_code": {"$ne": None}},
+        {"_id": 0, "vehicle_code": 1, "event_type": 1, "title": 1,
+         "detail": 1, "created_at": 1},
+    ).sort("created_at", -1).to_list(60)
+    if ex_rows:
+        by_truck: Dict[str, List[str]] = {}
+        for e in ex_rows:
+            t = (e.get("created_at") or "")[11:16]
+            by_truck.setdefault(e["vehicle_code"], []).append(
+                f"{t}Z {e['event_type'].replace('_', ' ')} — "
+                f"{e.get('detail') or e.get('title')}")
+        parts.append("EXCEPTION LOG (last 24h, per truck):")
+        for code, lines in list(by_truck.items())[:15]:
+            parts.append(f"- {code}:")
+            parts.extend(f"    • {ln}" for ln in lines[:4])
+
+    return "\n".join(parts)[:16000]
 
 
 @router.post("/logistics/copilot/chat")

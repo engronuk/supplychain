@@ -11,6 +11,7 @@ import { KpiStrip, TierFlow, DigitalTwinPanel } from "./ControlTowerPanels";
 import { EventsFeed } from "./ControlTowerFeed";
 import { ShipmentsTable } from "./ControlTowerShipments";
 import { VehicleTwinSheet } from "./VehicleTwinSheet";
+import { WholesalerPendingSheet } from "./WholesalerPendingSheet";
 
 const POLL_MS = 25000;
 
@@ -21,6 +22,7 @@ export const ControlTowerView = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [lastSync, setLastSync] = useState(null);
   const [sel, setSel] = useState({});
+  const [pendingWho, setPendingWho] = useState(null);
 
   const reload = useCallback((silent = true) => {
     if (!silent) setRefreshing(true);
@@ -128,7 +130,7 @@ export const ControlTowerView = () => {
       </div>
 
       <TierFlow tiers={data.tier_inventory || {}} />
-      <DigitalTwinPanel twin={twin} />
+      <DigitalTwinPanel twin={twin} onShowPending={setPendingWho} />
       <ShipmentsTable shipments={data.shipments || []} onTrack={openShipment} />
 
       <VehicleTwinSheet
@@ -137,6 +139,7 @@ export const ControlTowerView = () => {
         vehicle={selVehicle}
         shipment={selShipment}
       />
+      <WholesalerPendingSheet wholesaler={pendingWho} onClose={() => setPendingWho(null)} />
     </div>
   );
 };

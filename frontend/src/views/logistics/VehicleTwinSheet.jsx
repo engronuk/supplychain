@@ -49,8 +49,13 @@ export const VehicleTwinSheet = ({ open, onOpenChange, vehicle: v, shipment: s }
   const fuelBar = fuel == null ? "" : fuel < 20 ? "bg-rose-500" : fuel < 40 ? "bg-amber-400" : "bg-emerald-500";
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-md bg-[#0B1220] border-slate-800 text-slate-200 overflow-y-auto" data-testid="vehicle-twin-sheet">
+    <Sheet open={open} onOpenChange={onOpenChange} modal={false}>
+      <SheetContent
+        className="w-full sm:max-w-md bg-[#0B1220] border-slate-800 text-slate-200 overflow-y-auto"
+        onInteractOutside={(e) => e.preventDefault()}
+        onPointerDownOutside={(e) => e.preventDefault()}
+        data-testid="vehicle-twin-sheet"
+      >
         <SheetHeader className="space-y-1">
           <SheetTitle className="text-white flex items-center gap-2 flex-wrap">
             {v ? <>Truck {v.code}</> : <>Shipment {s?.tracking_code}</>}
@@ -154,16 +159,36 @@ export const VehicleTwinSheet = ({ open, onOpenChange, vehicle: v, shipment: s }
           {s && (
             <div className="rounded-xl bg-slate-900/70 border border-slate-800 p-3.5" data-testid="twin-shipment">
               <div className="text-[10px] uppercase tracking-wide text-slate-500 font-semibold mb-2">Shipment</div>
+              {!v && !["received", "delivered", "completed"].includes(s.status) && (
+                <div className="mb-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-[11px] text-amber-300">
+                  {["in_transit", "delayed"].includes(s.status)
+                    ? "Truck being assigned — live tracking starts shortly."
+                    : "Awaiting dispatch — no truck assigned yet."}
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-y-1.5 text-[12px]">
                 <span className="text-slate-500">Tracking</span>
                 <span className="text-slate-200 font-mono text-right">{s.tracking_code}</span>
-                <span className="text-slate-500">Cargo</span>
-                <span className="text-slate-200 text-right truncate">{s.product}{s.skus > 1 ? ` +${s.skus - 1}` : ""}</span>
+                <span className="text-slate-500">Status</span>
+                <span className="text-slate-200 text-right uppercase text-[11px] font-semibold">{(s.status || "").replace(/_/g, " ")}</span>
                 <span className="text-slate-500">Units</span>
                 <span className="text-slate-200 text-right tabular-nums">{num(s.units)}</span>
                 <span className="text-slate-500">To</span>
                 <span className="text-slate-200 text-right truncate">{s.to_name}{s.to_city ? ` · ${s.to_city}` : ""}</span>
               </div>
+              {(s.items || []).length > 0 && (
+                <div className="mt-2.5 pt-2 border-t border-slate-800/70" data-testid="twin-cargo-manifest">
+                  <div className="text-[10px] uppercase tracking-wide text-slate-500 font-semibold mb-1.5">Cargo manifest</div>
+                  <div className="space-y-1">
+                    {s.items.map((it, i) => (
+                      <div key={i} className="flex items-center justify-between gap-2 text-[11px]">
+                        <span className="text-slate-300 truncate">{it.name}</span>
+                        <span className="text-slate-400 tabular-nums shrink-0">{num(it.quantity)} units</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

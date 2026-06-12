@@ -1362,3 +1362,13 @@ User feedback round:
 - `control_tower.py` — destination resolution fallback (organizations + retailers) so every leg shows a real to_name; `to_role` added to board payload.
 
 **Validated** (iteration_25, frontend-only): dead-end crawl across 4 personas (manufacturer 12 nav items, wholesaler 8, distributor 8, 2nd tenant) — 100%, 0 console errors, NO dead ends. FAC-/WSHIP- legs render in Live Shipments with resolved names; vehicle twin sheet shows factory-dispatch milestones; tenant isolation intact. Backend self-verified: warehouse inventory +units exact on factory arrival, wholesaler ledger delivered-sync, distributor/warehouse notifications.
+
+## 2026-06-12 (evening) — Control Tower usability fixes (user feedback round)
+- **Track isolation**: Track → opens a NON-MODAL twin sheet (map stays visible/interactive beside it); selected truck stays full-color while all others dim to 22%; map pans/zooms to it; page scrolls to the map. Twin sheet gained a per-SKU **cargo manifest** + awaiting-dispatch banner for truckless shipments.
+- **Fullscreen map**: `map-fullscreen-btn` toggle (Expand/Exit, Esc to exit) — fixed inset-0 z-200 monitoring mode with layers + legend intact.
+- **Received = 100%**: backend forces route_progress=100/eta=0 for received/delivered/completed; FE shows sky progress bar + "Delivered" in ETA column.
+- **Every live shipment trackable**: MAX_ACTIVE_VEHICLES 32→80 with SPAWN_PER_TICK=10 (spreads Google API load); verified 60/60 in-transit shipments have trucks with ETA + driver. Truckless in-transit shows "assigning truck…".
+- **Wholesaler pending click-through**: pending badge → `WholesalerPendingSheet` via new `GET /api/logistics/wholesalers/{id}/pending-orders` (order cards with placed-by, units, line items).
+- **Copilot explainability**: `_copilot_context` now includes per-truck EXCEPTION LOG (24h, itemized type/time/detail); system rule forbids citing counts it cannot itemize. Verified: copilot lists exceptions with timestamps.
+- **Production self-healing sim**: `maybe_tick()` — control-tower endpoint kicks a background tick when the heartbeat (sim_meta.tower_tick) is stale, so the simulation runs on deployments without a live scheduler. REQUIRES REDEPLOY to reach app.tradekonekt.com.
+- Fixed during testing: corrupted Dot helper in ControlTowerMap.jsx; missing pendingWho state in ControlTowerView.

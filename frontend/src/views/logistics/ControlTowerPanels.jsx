@@ -91,7 +91,7 @@ export const TierFlow = ({ tiers = {} }) => {
 };
 
 // ===========================================================================
-export const DigitalTwinPanel = ({ twin = {} }) => {
+export const DigitalTwinPanel = ({ twin = {}, onShowPending }) => {
   const warehouses = twin.warehouses || [];
   const distributors = twin.distributors || [];
   const wholesalers = (twin.wholesalers || []).slice()
@@ -153,13 +153,19 @@ export const DigitalTwinPanel = ({ twin = {} }) => {
               <div className="text-[12px] font-semibold text-slate-200 truncate">{w.name}</div>
               <div className="text-[10px] text-slate-500 truncate">{w.city || w.region || "—"} · {unitsCompact(w.units)} units</div>
             </div>
-            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border shrink-0 ${
-              w.orders_pending
-                ? "bg-amber-500/10 border-amber-500/30 text-amber-300"
-                : "bg-slate-800/60 border-slate-700 text-slate-500"
-            }`}>
-              {w.orders_pending || 0} pending
-            </span>
+            <button
+              type="button"
+              onClick={() => w.orders_pending && onShowPending?.(w)}
+              data-testid="wholesaler-pending-chip"
+              className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border shrink-0 transition-colors ${
+                w.orders_pending
+                  ? "bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/25 cursor-pointer"
+                  : "bg-slate-800/60 border-slate-700 text-slate-500 cursor-default"
+              }`}
+              title={w.orders_pending ? "View pending orders" : "No pending orders"}
+            >
+              {w.orders_pending || 0} pending{w.orders_pending ? " →" : ""}
+            </button>
           </div>
         ))}
       </TwinCard>

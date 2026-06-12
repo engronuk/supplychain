@@ -1,8 +1,9 @@
 // Control Tower live map — dark mission-control canvas with trucks moving on
 // real road polylines, warehouse geofences, distributor risk nodes and
 // retailer cluster layers. Truck markers update in place (no flicker).
+// Supports fullscreen monitoring mode and single-vehicle isolation.
 import { useEffect, useRef, useState } from "react";
-import { Crosshair } from "lucide-react";
+import { Crosshair, Maximize2, Minimize2 } from "lucide-react";
 import { useGoogleMaps } from "./LogisticsMap";
 
 const NIGHT_STYLE = [
@@ -66,6 +67,20 @@ export const ControlTowerMap = ({
 
   const [layers, setLayers] = useState({ routes: true, fences: true, distributors: true, retailers: false });
   const toggle = (key) => setLayers((l) => ({ ...l, [key]: !l[key] }));
+  const [full, setFull] = useState(false);
+
+  // Fullscreen: re-render tiles after the container resizes; Esc exits.
+  useEffect(() => {
+    if (mapObj.current && window.google?.maps) {
+      const center = mapObj.current.getCenter();
+      window.google.maps.event.trigger(mapObj.current, "resize");
+      if (center) mapObj.current.setCenter(center);
+    }
+    if (!full) return;
+    const onKey = (e) => { if (e.key === "Escape") setFull(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [full]);
 
   // ---- Map init ------------------------------------------------------------
   useEffect(() => {
@@ -252,7 +267,7 @@ export const ControlTowerMap = ({
     const v = (propsRef.current.fleet || []).find((x) => x.id === selectedVehicleId);
     if (v?.lat != null) {
       mapObj.current.panTo({ lat: v.lat, lng: v.lng });
-      if (mapObj.current.getZoom() < 7) mapObj.current.setZoom(7);
+      if (mapObj.current.getZoom() < 8) mapObj.current.setZoom(8);
     }
   }, [mapsReady, selectedVehicleId]);
 
@@ -261,7 +276,12 @@ export const ControlTowerMap = ({
     v.status === "breakdown" || v.status === "stopped" || (v.deviation && v.deviation.active)).length;
 
   return (
-    <div className="rounded-xl bg-slate-900/60 border border-slate-800 overflow-hidden min-w-0" data-testid="control-tower-map-card">
+    <div
+      className={full
+        ? "fixed inset-0 z-[200] bg-[#070D1A] border border-slate-800 overflow-hidden min-w-0 flex flex-col"
+        : "rounded-xl bg-slate-900/60 border border-slate-800 overflow-hidden min-w-0"}
+      data-testid="control-tower-map-card"
+    >
       <div className="px-4 py-2.5 border-b border-slate-800 flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
           <Crosshair className="h-4 w-4 text-emerald-400" /> Live Network Map
@@ -271,16 +291,26 @@ export const ControlTowerMap = ({
           <LayerChip active={layers.fences} onClick={() => toggle("fences")} label="Geofences" testId="map-toggle-fences" />
           <LayerChip active={layers.distributors} onClick={() => toggle("distributors")} label="Distributors" testId="map-toggle-distributors" />
           <LayerChip active={layers.retailers} onClick={() => toggle("retailers")} label="Retailers" testId="map-toggle-retailers" />
+          <button
+            type="button"
+            onClick={() => setFull((f) => !f)}
+            data-testid="map-fullscreen-btn"
+            title={full ? "Exit fullscreen (Esc)" : "Fullscreen monitoring"}
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-md border text-[11px] font-medium transition-colors bg-slate-900 border-slate-700 text-slate-300 hover:border-emerald-500/50 hover:text-emerald-300"
+          >
+            {full ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+            {full ? "Exit" : "Expand"}
+          </button>
         </div>
       </div>
       {!apiKey ? (
-        <div className="h-[560px] grid place-items-center text-sm text-slate-500 p-6 text-center">
+        <div className={`${full ? "flex-1" : "h-[560px]"} grid place-items-center text-sm text-slate-500 p-6 text-center`}>
           Google Maps API key not configured.
         </div>
       ) : !mapsReady ? (
-        <div className="h-[560px] grid place-items-center text-sm text-slate-500">Loading map…</div>
+        <div className={`${full ? "flex-1" : "h-[560px]"} grid place-items-center text-sm text-slate-500`}>Loading map…</div>
       ) : (
-        <div ref={mapRef} className="h-[560px] w-full" data-testid="control-tower-map" />
+        <div ref={mapRef} className={`${full ? "flex-1" : "h-[560px]"} w-full`} data-testid="control-tower-map" />
       )}
       <div className="px-4 py-2 border-t border-slate-800 text-[11px] text-slate-500 flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-3 flex-wrap">

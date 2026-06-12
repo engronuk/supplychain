@@ -108,7 +108,11 @@ export const ShipmentsTable = ({ shipments = [], onTrack }) => {
                     <div className="flex items-center gap-1.5">
                       <div className="h-1 flex-1 rounded-full bg-slate-800">
                         <div
-                          className={`h-full rounded-full ${s.status === "delayed" ? "bg-rose-500" : "bg-emerald-500"}`}
+                          className={`h-full rounded-full ${
+                            s.status === "delayed" ? "bg-rose-500"
+                              : ["received", "delivered", "completed"].includes(s.status) ? "bg-sky-500"
+                                : "bg-emerald-500"
+                          }`}
                           style={{ width: `${Math.min(100, s.route_progress)}%` }}
                         />
                       </div>
@@ -116,8 +120,12 @@ export const ShipmentsTable = ({ shipments = [], onTrack }) => {
                     </div>
                   ) : <span className="text-[11px] text-slate-600">—</span>}
                 </td>
-                <td className="px-2 py-2 text-[11px] text-slate-300 whitespace-nowrap tabular-nums">
-                  {["in_transit", "delayed"].includes(s.status) ? etaLabel(s.eta_minutes) : "—"}
+                <td className="px-2 py-2 text-[11px] whitespace-nowrap tabular-nums">
+                  {["received", "delivered", "completed"].includes(s.status) ? (
+                    <span className="text-sky-300 font-medium">Delivered</span>
+                  ) : ["in_transit", "delayed"].includes(s.status) ? (
+                    <span className="text-slate-300">{etaLabel(s.eta_minutes)}</span>
+                  ) : <span className="text-slate-600">—</span>}
                 </td>
                 <td className="px-2 py-2">
                   {s.vehicle_code ? (
@@ -125,6 +133,8 @@ export const ShipmentsTable = ({ shipments = [], onTrack }) => {
                       <div className="text-[11px] font-mono text-emerald-300">{s.vehicle_code}</div>
                       <div className="text-[10px] text-slate-500 truncate max-w-[110px]">{s.driver || ""}</div>
                     </>
+                  ) : ["in_transit", "delayed"].includes(s.status) ? (
+                    <span className="text-[10px] text-amber-300/90 italic">assigning truck…</span>
                   ) : <span className="text-[11px] text-slate-600">—</span>}
                 </td>
                 <td className="px-2 py-2 text-right pr-3.5">
@@ -134,7 +144,7 @@ export const ShipmentsTable = ({ shipments = [], onTrack }) => {
                     data-testid="shipment-track-btn"
                     className="text-[10px] font-semibold px-2 py-1 rounded-md border border-slate-700 text-slate-300 hover:bg-slate-800 hover:text-white transition-colors whitespace-nowrap"
                   >
-                    Track →
+                    {s.vehicle_code ? "Track →" : "Details"}
                   </button>
                 </td>
               </tr>

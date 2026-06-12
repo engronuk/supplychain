@@ -108,5 +108,12 @@ visibility (Manufacturer → Warehouse → Distributor → Wholesaler → Retail
   wholesaler, distributor, 2nd tenant: 100%, 0 console errors, NO dead ends. All 6 legs
   visible: factory→WH, WH→WH, WH→distributor, WH→wholesaler, wholesaler→distributor,
   distributor→retailer. Driver app deferred per user (simulation stands in).
+- **Control Tower Usability Round (✅ SHIPPED 2026-06-12 evening)** — user feedback fixes:
+  track isolation (non-modal side sheet + dimmed fleet + cargo manifest), fullscreen map
+  mode, received shipments at 100% progress, every in-transit shipment gets a truck
+  (fleet cap 80), clickable wholesaler pending badge → pending orders sheet, copilot
+  itemizes per-truck exceptions (24h log in context), and `maybe_tick()` self-healing
+  simulation for production deploys (sim runs on page views if scheduler is absent).
+  NOTE: production (app.tradekonekt.com) needs a REDEPLOY to pick all this up.
 
 See `CHANGELOG.md` for dated implementation history and `ROADMAP.md` for the prioritized backlog.

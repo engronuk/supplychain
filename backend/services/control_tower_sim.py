@@ -20,6 +20,7 @@ Everything is event-driven: each state change emits into logistics_events.
 """
 from __future__ import annotations
 
+import asyncio
 import math
 import random
 import uuid
@@ -32,7 +33,9 @@ from services.routing import get_route, haversine_km, point_along
 
 TICK_MINUTES = 2.0
 DEMO_SPEEDUP = 10            # 1 wall-clock minute == 10 trip minutes
-MAX_ACTIVE_VEHICLES = 32     # across all tenants
+MAX_ACTIVE_VEHICLES = 80     # across all tenants — every live shipment
+                             # should have a trackable truck
+SPAWN_PER_TICK = 10          # spread Google route calls across ticks
 GEOFENCE_RADIUS_M = 500
 
 # Network-leg generators: keep every tier of the chain moving.
@@ -219,7 +222,7 @@ async def ensure_fleet(rng: random.Random) -> int:
                     in ("manufacturer", "wholesaler") else 1)
     spawned = 0
     for s in candidates:
-        if active + spawned >= MAX_ACTIVE_VEHICLES:
+        if active + spawned >= MAX_ACTIVE_VEHICLES or spawned >= SPAWN_PER_TICK:
             break
         try:
             if await _spawn_vehicle(s, rng):
@@ -807,3 +810,31 @@ async def tick() -> Dict[str, int]:
     except Exception:
         pass
     return stats
+
+
+# ---------------------------------------------------------------------------
+# Self-healing tick — keeps the simulation alive on request-driven deploys
+# ---------------------------------------------------------------------------
+_tick_guard = asyncio.Lock()
+
+
+async def maybe_tick() -> bool:
+    """If the last heartbeat is stale (scheduler not running in this
+    deployment), fire a tick in the background. Cheap to call per request."""
+    cutoff = (datetime.now(timezone.utc)
+              - timedelta(minutes=TICK_MINUTES + 1)).isoformat()
+    meta = await db.sim_meta.find_one({"id": "tower_tick"}, {"_id": 0, "at": 1})
+    if meta and (meta.get("at") or "") > cutoff:
+        return False
+    if _tick_guard.locked():
+        return False
+    asyncio.create_task(_guarded_tick())
+    return True
+
+
+async def _guarded_tick() -> None:
+    async with _tick_guard:
+        try:
+            await tick()
+        except Exception:
+            logger.exception("[tower] on-demand tick failed")
