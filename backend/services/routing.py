@@ -211,6 +211,132 @@ async def get_route(origin: LatLng, dest: LatLng) -> Dict:
     return route
 
 
+def _latlng_body(p: LatLng) -> Dict:
+    return {"location": {"latLng": {"latitude": p[0], "longitude": p[1]}}}
+
+
+def _thin(pts: List[List[float]], cap: int = 80) -> List[List[float]]:
+    if len(pts) > cap:
+        step = len(pts) // cap + 1
+        return pts[::step] + [pts[-1]]
+    return pts
+
+
+async def _multi_stop_google(origin: LatLng, stops: List[LatLng],
+                             optimize: bool, api_key: str) -> Optional[Dict]:
+    """Routes API computeRoutes with intermediates + waypoint optimization."""
+    if optimize:
+        # Farthest stop anchors the run; the rest are optimizable intermediates.
+        idx_far = max(range(len(stops)), key=lambda i: haversine_km(origin, stops[i]))
+        inter_idx = [i for i in range(len(stops)) if i != idx_far]
+    else:
+        idx_far = len(stops) - 1
+        inter_idx = list(range(len(stops) - 1))
+    body: Dict = {
+        "origin": _latlng_body(origin),
+        "destination": _latlng_body(stops[idx_far]),
+        "travelMode": "DRIVE",
+    }
+    if inter_idx:
+        body["intermediates"] = [_latlng_body(stops[i]) for i in inter_idx]
+        if optimize and len(inter_idx) > 1:
+            body["optimizeWaypointOrder"] = True
+    async with httpx.AsyncClient(timeout=15) as client:
+        r = await client.post(
+            "https://routes.googleapis.com/directions/v2:computeRoutes",
+            headers={
+                "X-Goog-Api-Key": api_key,
+                "X-Goog-FieldMask": (
+                    "routes.distanceMeters,routes.duration,"
+                    "routes.optimizedIntermediateWaypointIndex,"
+                    "routes.legs.distanceMeters,routes.legs.duration,"
+                    "routes.legs.polyline.encodedPolyline"),
+            },
+            json=body,
+        )
+    if r.status_code != 200:
+        logger.warning("[routing] multi-stop Routes API HTTP %s", r.status_code)
+        return None
+    g = ((r.json().get("routes")) or [{}])[0]
+    legs_raw = g.get("legs") or []
+    opt = g.get("optimizedIntermediateWaypointIndex")
+    visit_inter = ([inter_idx[i] for i in opt]
+                   if opt is not None and len(opt) == len(inter_idx) else inter_idx)
+    order = visit_inter + [idx_far]
+    if len(legs_raw) != len(order):
+        return None
+    legs, full = [], []
+    for l in legs_raw:
+        pts = _thin(decode_polyline(((l.get("polyline") or {}).get("encodedPolyline")) or ""))
+        legs.append({
+            "distance_km": round((l.get("distanceMeters") or 0) / 1000.0, 1),
+            "duration_min": round(float(str(l.get("duration") or "0s").rstrip("s") or 0) / 60),
+            "polyline": pts,
+        })
+        full.extend(pts)
+    return {
+        "order": order, "legs": legs,
+        "total_km": round(sum(l["distance_km"] for l in legs), 1),
+        "total_min": sum(l["duration_min"] for l in legs),
+        "polyline": full, "source": "google",
+    }
+
+
+def _multi_stop_estimate(origin: LatLng, stops: List[LatLng],
+                         optimize: bool) -> Dict:
+    """Nearest-neighbour fallback when the Routes API is unavailable."""
+    if optimize:
+        order, remaining, cur = [], list(range(len(stops))), origin
+        while remaining:
+            nxt = min(remaining, key=lambda i: haversine_km(cur, stops[i]))
+            order.append(nxt)
+            remaining.remove(nxt)
+            cur = stops[nxt]
+    else:
+        order = list(range(len(stops)))
+    legs, full, cur = [], [], origin
+    for idx in order:
+        est = _estimate_route(cur, stops[idx])
+        legs.append({"distance_km": est["distance_km"],
+                     "duration_min": est["duration_min"],
+                     "polyline": est["polyline"]})
+        full.extend(est["polyline"])
+        cur = stops[idx]
+    return {
+        "order": order, "legs": legs,
+        "total_km": round(sum(l["distance_km"] for l in legs), 1),
+        "total_min": sum(l["duration_min"] for l in legs),
+        "polyline": full, "source": "estimate",
+    }
+
+
+async def get_multi_stop_route(origin: LatLng, stops: List[LatLng],
+                               optimize: bool = True) -> Dict:
+    """Multi-stop road route with optional stop-sequence optimization.
+
+    Returns {order, legs[{distance_km, duration_min, polyline}], total_km,
+    total_min, polyline, source}. `order` maps visit position → index into
+    the input stops list. Not cached (combinatorial keyspace).
+    """
+    if not stops:
+        raise ValueError("stops required")
+    if len(stops) == 1:
+        r = await get_route(origin, stops[0])
+        leg = {k: r[k] for k in ("distance_km", "duration_min", "polyline")}
+        return {"order": [0], "legs": [leg], "total_km": r["distance_km"],
+                "total_min": r["duration_min"], "polyline": r["polyline"],
+                "source": r["source"]}
+    api_key = os.environ.get("GOOGLE_MAPS_API_KEY")
+    if api_key:
+        try:
+            result = await _multi_stop_google(origin, stops, optimize, api_key)
+            if result:
+                return result
+        except Exception as e:
+            logger.warning("[routing] multi-stop Routes API failed (%s) — estimating", e)
+    return _multi_stop_estimate(origin, stops, optimize)
+
+
 def point_along(polyline: List[List[float]], progress: float) -> LatLng:
     """Interpolate a position at `progress` (0..1) of the path length."""
     if not polyline:

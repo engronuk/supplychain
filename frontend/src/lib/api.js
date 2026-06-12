@@ -185,6 +185,16 @@ export const Api = {
     api.get(`/logistics/shipment-timeline/${id}`).then((r) => r.data),
   logisticsGeofences: () => api.get("/logistics/geofences").then((r) => r.data),
 
+  // ---- Route Planning Center (Phase 2) ----
+  routePlanningBoard: () =>
+    api.get("/logistics/route-planning").then((r) => r.data),
+  routePreview: (payload) =>
+    api.post("/logistics/route-planning/preview", payload).then((r) => r.data),
+  routeDispatch: (payload) =>
+    api.post("/logistics/route-planning/dispatch", payload).then((r) => r.data),
+  routeDetail: (id) =>
+    api.get(`/logistics/route-planning/routes/${id}`).then((r) => r.data),
+
   // ---- Real-Time Pulse (GCP) ----
   pulseHealth: () => api.get("/pulse/health").then((r) => r.data),
   pulseByRegion: (hours = 24) =>

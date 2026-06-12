@@ -85,6 +85,12 @@ async def control_tower(manufacturer_id: Optional[str] = None,
 
     # ---- Shipments (unified live feed) --------------------------------------
     vehicle_by_ref = {v.get("ref_id"): v for v in vehicles if v.get("ref_id")}
+    # Multi-stop route vehicles carry several shipments — map each to its truck.
+    for v in vehicles:
+        for st in (v.get("stops") or []):
+            sid = st.get("shipment_id")
+            if sid and sid not in vehicle_by_ref:
+                vehicle_by_ref[sid] = v
     horizon = (now - timedelta(days=14)).isoformat()
     raw_shipments = await db.shipments.find(
         {"manufacturer_id": mfr,

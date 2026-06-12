@@ -3,14 +3,15 @@
 // planning & operations workspace (allocations, transfers, forecast).
 // Route: /manufacturer/logistics-center
 import { useState } from "react";
-import { RadioTower, Satellite, SlidersHorizontal } from "lucide-react";
+import { Map, RadioTower, Satellite, SlidersHorizontal } from "lucide-react";
 import { ControlTowerView } from "./logistics/ControlTowerView";
+import { RoutePlanningView } from "./logistics/RoutePlanningView";
 import { LogisticsOperations } from "./logistics/LogisticsOperations";
 
 export default function LogisticsCommandCenter() {
   const [tab, setTab] = useState("tower");
-  const [opsVisited, setOpsVisited] = useState(false);
-  const switchTab = (t) => { setTab(t); if (t === "ops") setOpsVisited(true); };
+  const [visited, setVisited] = useState({ tower: true });
+  const switchTab = (t) => { setTab(t); setVisited((v) => ({ ...v, [t]: true })); };
   return (
     <div className="p-4 md:p-8 space-y-5" data-testid="logistics-command-center">
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -25,15 +26,15 @@ export default function LogisticsCommandCenter() {
         </div>
         <div className="inline-flex items-center rounded-lg border border-slate-200 bg-white p-0.5 shadow-sm" data-testid="logistics-tab-switch">
           <TabBtn active={tab === "tower"} onClick={() => switchTab("tower")} Icon={RadioTower} label="Control Tower" testId="tab-control-tower" />
+          <TabBtn active={tab === "plan"} onClick={() => switchTab("plan")} Icon={Map} label="Route Planning" testId="tab-route-planning" />
           <TabBtn active={tab === "ops"} onClick={() => switchTab("ops")} Icon={SlidersHorizontal} label="Planning & Ops" testId="tab-operations" />
         </div>
       </div>
 
-      {/* Both tabs stay mounted after first visit so switching back is instant. */}
+      {/* Tabs stay mounted after first visit so switching back is instant. */}
       <div className={tab === "tower" ? "" : "hidden"}><ControlTowerView /></div>
-      {(opsVisited || tab === "ops") && (
-        <div className={tab === "ops" ? "" : "hidden"}><LogisticsOperations /></div>
-      )}
+      {visited.plan && <div className={tab === "plan" ? "" : "hidden"}><RoutePlanningView /></div>}
+      {visited.ops && <div className={tab === "ops" ? "" : "hidden"}><LogisticsOperations /></div>}
     </div>
   );
 }

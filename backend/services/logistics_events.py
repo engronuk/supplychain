@@ -30,6 +30,8 @@ EVENT_TYPES: Dict[str, tuple] = {
     "geofence_exit":       ("geofence", "info"),
     "route_deviation":     ("route",    "critical"),
     "deviation_resolved":  ("route",    "info"),
+    "route_planned":       ("route",    "info"),
+    "route_completed":     ("route",    "info"),
     "unauthorized_stop":   ("route",    "warning"),
     "stop_resolved":       ("route",    "info"),
     "delay_detected":      ("shipment", "warning"),

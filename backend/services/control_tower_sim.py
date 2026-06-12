@@ -192,8 +192,13 @@ async def ensure_fleet(rng: random.Random) -> int:
         {"status": {"$in": ["in_transit", "stopped", "breakdown"]}})
     if active >= MAX_ACTIVE_VEHICLES:
         return 0
-    assigned_ids = await db.vehicles.distinct(
-        "ref_id", {"ref_type": "shipment", "status": {"$ne": "idle"}})
+    assigned_ids = list(await db.vehicles.distinct(
+        "ref_id", {"ref_type": "shipment", "status": {"$ne": "idle"}}))
+    # Shipments riding on an active multi-stop planned route already have a truck.
+    async for rv in db.vehicles.find(
+            {"ref_type": "route", "status": {"$in": ["in_transit", "stopped", "breakdown"]}},
+            {"_id": 0, "stops.shipment_id": 1}):
+        assigned_ids.extend(st.get("shipment_id") for st in (rv.get("stops") or []))
     candidates = await db.shipments.find(
         {"status": "in_transit", "id": {"$nin": assigned_ids}},
         {"_id": 0, "id": 1, "manufacturer_id": 1, "from_id": 1, "to_id": 1,
@@ -243,6 +248,65 @@ async def _complete_delivery(v: Dict[str, Any]) -> None:
         "lat": v.get("dest_lat"), "lng": v.get("dest_lng"),
         "dest_name": None, "dest_lat": None, "dest_lng": None,
         "deviation": None, "stopped_since": None, "breakdown_since": None,
+        "delivered_at": now_iso(), "updated_at": now_iso(),
+    }})
+
+
+async def _deliver_stop(v: Dict[str, Any], st: Dict[str, Any]) -> None:
+    """Complete one stop of a multi-stop planned route."""
+    mfr = v.get("manufacturer_id")
+    now = now_iso()
+    sid = st.get("shipment_id")
+    if sid:
+        await db.shipments.update_one(
+            {"id": sid, "status": {"$in": ["in_transit", "delayed"]}},
+            {"$set": {"status": "received", "received_at": now}})
+        await db.distributor_orders.update_one(
+            {"shipment_id": sid, "status": "dispatched"},
+            {"$set": {"status": "delivered", "delivered_at": now}})
+    await emit(mfr, "delivery_completed",
+               f"Truck {v['code']} delivered stop {st.get('seq')} at {st.get('dest_name')}",
+               f"Route {v.get('shipment_code') or ''} · {(st.get('units') or 0):,} units".strip(),
+               vehicle_id=v["id"], vehicle_code=v["code"],
+               shipment_id=sid, ref_code=st.get("tracking_code"),
+               lat=st.get("lat"), lng=st.get("lng"),
+               location_name=st.get("dest_name"),
+               meta={"route_id": v.get("ref_id"), "seq": st.get("seq")})
+    await db.planned_routes.update_one(
+        {"id": v.get("ref_id"), "stops.seq": st.get("seq")},
+        {"$set": {"stops.$.status": "delivered", "stops.$.delivered_at": now,
+                  "status": "in_progress", "updated_at": now}})
+
+
+async def _complete_route(v: Dict[str, Any]) -> None:
+    """Final stop reached — close the planned route and park the truck."""
+    mfr = v.get("manufacturer_id")
+    now = now_iso()
+    for st in (v.get("stops") or []):
+        if not st.get("delivered"):
+            await _deliver_stop(v, st)
+            st["delivered"] = True
+            st["delivered_at"] = now
+    await db.planned_routes.update_one(
+        {"id": v.get("ref_id")},
+        {"$set": {"status": "completed", "completed_at": now, "updated_at": now}})
+    await emit(mfr, "route_completed",
+               f"Route {v.get('shipment_code')} completed by {v['code']}",
+               f"{len(v.get('stops') or [])} stops delivered · "
+               f"{(v.get('units') or 0):,} units",
+               vehicle_id=v["id"], vehicle_code=v["code"],
+               lat=v.get("dest_lat"), lng=v.get("dest_lng"),
+               location_name=v.get("dest_name"),
+               meta={"route_id": v.get("ref_id")})
+    await db.vehicles.update_one({"id": v["id"]}, {"$set": {
+        "status": "idle", "progress": None, "route_progress": None,
+        "eta_minutes": 0, "speed_kmh": 0,
+        "origin_lat": v.get("dest_lat"), "origin_lng": v.get("dest_lng"),
+        "origin_name": v.get("dest_name"),
+        "lat": v.get("dest_lat"), "lng": v.get("dest_lng"),
+        "dest_name": None, "dest_lat": None, "dest_lng": None,
+        "deviation": None, "stopped_since": None, "breakdown_since": None,
+        "stops": [], "ref_type": None, "ref_id": None,
         "delivered_at": now_iso(), "updated_at": now_iso(),
     }})
 
@@ -451,6 +515,25 @@ async def tick() -> Dict[str, int]:
             # ---- Geofences ----------------------------------------------------
             update["fences_inside"] = await _check_geofences(v, fences, lat, lng)
 
+            # ---- Multi-stop planned-route deliveries ----------------------------
+            stops_list = v.get("stops") or []
+            if stops_list:
+                hit = False
+                for st in stops_list:
+                    if not st.get("delivered") and \
+                            progress + 1e-9 >= float(st.get("threshold") or 1.0):
+                        try:
+                            await _deliver_stop(v, st)
+                        except Exception:
+                            logger.exception("[tower] stop delivery failed for %s",
+                                             v.get("code"))
+                        st["delivered"] = True
+                        st["delivered_at"] = now_iso()
+                        hit = True
+                        stats["delivered"] += 1
+                if hit:
+                    update["stops"] = stops_list
+
             await db.vehicles.update_one({"id": v["id"]}, {"$set": update})
             stats["moved"] += 1
 
@@ -458,6 +541,8 @@ async def tick() -> Dict[str, int]:
             if progress >= 1.0 and update.get("status") not in ("breakdown", "stopped"):
                 if v.get("ref_type") == "transfer":
                     pass  # transfers are completed by the transfer delivery flow
+                elif v.get("ref_type") == "route":
+                    await _complete_route({**v, **update})
                 else:
                     await _complete_delivery({**v, **update})
                     stats["delivered"] += 1

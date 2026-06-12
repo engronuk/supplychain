@@ -1,0 +1,35 @@
+{
+  "summary": "Phase 2 Route Planning Center fully verified on flour.admin@tradekonekt.io (Flour Mills tenant). Backend: 25/25 pytest cases PASSED against the public preview URL covering board payload shape (pending_shipments w/ lat/lng/to_name/units/age_hours/from_id, warehouses w/ coords, idle_vehicles, destinations distributors+wholesalers w/ coords, products, routes w/ progress_pct + stops_delivered), preview happy path (Google-sourced polyline >=2 points, ordered stops w/ seq/leg_km/leg_min/cum_km/cum_min/threshold ending at 1.0, optimized flag), preview validation (empty stops 400, unknown origin 404, unknown destination 404, unknown shipment 404, ad-hoc without items 400, >8 stops 400, shipment from different warehouse 400), dispatch (RT- code generated, route + vehicle docs created, idle-vehicle REUSE path verified, 400 when re-using a non-idle vehicle, route_planned + vehicle_dispatched + shipment_loaded events emitted with meta.route_id, ad-hoc stops materialized into real shipments w/ source=route_planner), route_detail (full payload + audit events + 404 unknown id), tenant security (distributor & wholesaler both → 403 on all 4 endpoints). Sim execution: ran tick() — RT-002 (2 stops) + RT-003 (1 stop) both flipped dispatched → in_progress → completed with stops marked delivered in seq order, vehicles returned idle, delivery_completed events fired with meta.route_id + seq; ensure_fleet correctly excludes route-mounted shipments (db aggregation found 0 shipments with duplicate vehicles). Frontend: full Lagos-area happy path — selected DSP-2026-062 pending shipment (chip added, origin auto-locked to 'Flour Mills Lagos Warehouse'), opened adhoc-dialog (30 destinations, 6 products), added ad-hoc 10-unit stop to Prime Distribution Services Ltd, clicked builder-preview-btn → builder-itinerary rendered 2 numbered stops (12.5km/28min + 11.7km/26min), builder-totals showed '24.2 km · 0h 54m drive · 844 units · Google roads · optimized', polyline + numbered markers visible on RouteBuilderMap, dispatched → RT-004 created, success state, builder reset, active-routes-table grew to 4 rows, route-timeline-btn opened route-execution-sheet with all 5 sub-blocks (exec-status-badge=DISPATCHED, exec-summary 24.2km/0h54m/844, exec-progress 0%, exec-itinerary w/ origin 'departed' + 2 exec-stop-row showing 'En route — next stop' for seq 1 and 'Pending' for seq 2, exec-events trail with route_planned + vehicle_dispatched + 2x shipment_loaded + shipment_created), Esc closes sheet cleanly, regression check tab-control-tower still renders tower-kpi-strip. No functional console errors — only 2 Radix a11y warnings about missing DialogTitle on adhoc-dialog (cosmetic, non-blocking).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "AdHocStopDialog", "issues": ["Radix DialogContent renders without a DialogTitle, triggering an a11y console warning twice when opening the dialog. Wrap the heading in DialogTitle (or use Radix VisuallyHidden) for screen-reader users. Non-blocking."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_route_planning.py",
+    "/app/test_reports/pytest/route_planning_iter22.xml"
+  ],
+  "action_items": [
+    "Add a <DialogTitle> (or VisuallyHidden one) inside AdHocStopDialog to silence the Radix a11y console warning."
+  ],
+  "critical_code_review_comments": [
+    "routes/route_planning.py:178 — last leg uses route['legs'][pos] but when optimize=true Google may return order that does not equal range(len(stops)); legs[] indexing assumes order index aligns with leg position. Spot-check: optimized==true with len>1 actually works (sim+preview produced sane cum totals), so the assumption holds for this implementation, but a comment explaining the legs[] vs order[] alignment would help future maintainers.",
+    "routes/route_planning.py:240 — assigned set built via db.vehicles.distinct + per-route find iterates every route vehicle on each board call; consider a single aggregation pipeline.",
+    "routes/route_planning.py:387 — counters.find_one_and_update with upsert+return_document=True will return the post-increment doc, so seq starts at 1; works but {return_document: True} is implicit ReturnDocument.AFTER — explicit import would be clearer.",
+    "routes/route_planning.py:495 — events query unions meta.route_id with shipment_id, which can pull pre-route shipment_created events from other contexts if the same shipment was reused; not an issue today (ad-hoc shipments are brand new + ids unique) but worth noting.",
+    "Frontend AdHocStopDialog missing DialogTitle — see design issue above; add VisuallyHidden DialogTitle to comply with Radix a11y contract."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_route_planning.py"
+  ],
+  "success_rate": {"backend": "100%", "frontend": "100%"},
+  "test_credentials": "flour.admin@tradekonekt.io / TradeKonekt2026! (primary); lagos.distributor + unilever.wholesaler used for 403 isolation.",
+  "seed_data_creation": "None added. Test dispatched 1 new route (RT-004, 2-stop Lagos route, ~24km) which the 2-min sim tick will deliver organically. Three RT-001..RT-003 routes were already present and were all completed by the manual tick() call.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Canonical Phase-2 regression file: /app/backend/tests/test_route_planning.py — 25 tests in ~14s. The pending-shipment pool is finite on the Flour Mills tenant (was 3, will deplete as routes dispatch); favor ad-hoc-only dispatch in repeat tests, or pick an idle vehicle from idle_vehicles[] to avoid spawning new trucks. Sim ticks deliver short Lagos routes in 1 tick — to observe in_progress UI, dispatch then DO NOT tick. Critical Phase-2 testids confirmed: route-planning-view, plan-stat-{pending,idle,routes}, plan-refresh-btn, pending-shipments-panel, pending-shipment-row, builder-origin-select, builder-optimize-toggle, builder-preview-btn, builder-itinerary, itinerary-stop, builder-totals, builder-stop-chip, adhoc-stop-btn, adhoc-dialog, adhoc-dest-search, adhoc-dest-row, adhoc-product-select, adhoc-qty-input, adhoc-add-btn, builder-dispatch-btn, active-routes-table, route-row, route-timeline-btn, route-execution-sheet, exec-status-badge, exec-summary, exec-progress, exec-itinerary, exec-stop-row, exec-events. Phase-1 regression file test_control_tower.py still green (not re-run this iteration — quick tower-kpi-strip render check via Playwright sufficed).",
+  "rca of the issue": "N/A — no defects. Only nit is Radix DialogTitle a11y warning on AdHocStopDialog; fix by adding <VisuallyHidden><DialogTitle>Add ad-hoc delivery</DialogTitle></VisuallyHidden> inside the dialog content."
+}
