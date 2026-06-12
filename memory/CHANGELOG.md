@@ -1272,3 +1272,16 @@ User feedback round:
 
 **Deployment readiness** — deployment_agent scan: PASS (no blockers).
 - `participants/seed-demo` now also tags every org with `metadata.seeded_by=seed_flour_mills_network`, so a clear→restore cycle (or the panel button) brings back all 877 participants, not just the 385 name-pattern curated set. `tagged_parents` cap raised to 5000.
+
+## Updates (2026-06-12, later) — FMN Shipment Command Center + Product Detail fixes
+
+**Bug 1 — Product Command Center "Product not found in your catalog" (FMN)** (`routes/product_detail.py`, `services/seed_flour_mills_products.py`, `routes/wms.py`)
+- Root cause: FMN batch docs used `manufactured_date` while the V2 product-detail endpoint read `b["manufactured_at"]` → KeyError → 500 → frontend rendered "not found".
+- Fixes: tolerant read (`manufactured_at` or `manufactured_date`), seeder standardized to `manufactured_at`, `wms.py` sort aligned, plus a one-shot `$rename` migration (in seed_flour_mills_ops) that normalizes existing batches — also runs on production redeploy.
+
+**Bug 2 — Shipment Command Center empty for FMN** (`routes/shipment_command.py`, `views/ShipmentCommandCenter.jsx`, `services/seed_flour_mills_ops.py`)
+- Root causes: (a) KPI/cohort logic only understood the legacy pending→approved→dispatched→delivered lifecycle, ignoring allocation-flow + simulator statuses (awaiting_allocation, allocated, partially_allocated, back_ordered, fulfillment_in_progress, completed) and shipment statuses (awaiting_dispatch, picking, completed, delayed); (b) FMN had no order/shipment history.
+- Backend: added ORDER_COHORT normalization (pre-dispatch states → pending dispatch; completed → delivered); In-Transit + Delayed KPIs now derive from physical shipment states; shipment bucket map extended; fill-rate + sparklines + deltas cohort-aware; order_breakdown folds allocation states into the closest tab.
+- Frontend: queue tabs use `tabOf(status)` cohort mapping with specific chips for the new statuses (actions still gated on literal pending/approved).
+- New one-shot seeder `seed_flour_mills_ops.py` (`fmn_ops_v1` marker, wired in server.py): 130 distributor orders + 92 shipments over 30 days across the FMN network → page shows 83 pending / 22 in transit / 88 delivered / 11 delayed, ₦1.69B value, 6 regions, distributor performance grades.
+- Regression: 85 passed / 6 skipped (shipment_command, distributor_orders, supply_chain, product_intelligence, logistics, manufacturer_drilldown). Unilever command center verified unaffected.

@@ -31,6 +31,24 @@ from routes.distributor_network import (
 router = APIRouter()
 
 
+# Order lifecycle → KPI cohort. The allocation flow added several states
+# between "approved" and "dispatched"; anything pre-dispatch counts as
+# awaiting dispatch so simulator/allocation orders surface in the KPIs.
+ORDER_COHORT = {
+    "pending": "pending", "approved": "pending",
+    "awaiting_allocation": "pending", "allocated": "pending",
+    "partially_allocated": "pending", "back_ordered": "pending",
+    "fulfillment_in_progress": "pending",
+    "dispatched": "in_transit",
+    "delivered": "delivered", "completed": "delivered",
+    "rejected": "rejected", "cancelled": "rejected",
+}
+
+
+def _cohort(status: str | None) -> str:
+    return ORDER_COHORT.get((status or "pending").lower(), "pending")
+
+
 def _grade(score: float) -> str:
     if score >= 95:
         return "A+"
@@ -142,7 +160,8 @@ async def _build_shipment_command(manufacturer_id: str):
         if s.get("dispatched_at"):
             days_in_transit = _days_between(s["dispatched_at"], now.isoformat())
         is_delayed = (
-            status == "in_transit" and days_in_transit is not None and days_in_transit > 4
+            status == "delayed"
+            or (status == "in_transit" and days_in_transit is not None and days_in_transit > 4)
         )
         # Treat shipments stuck in "pending" > 3 days as delayed too.
         if status == "pending" and s.get("created_at"):
@@ -152,9 +171,9 @@ async def _build_shipment_command(manufacturer_id: str):
         # Derive a normalized bucket for the UI
         if is_delayed:
             bucket = "delayed"
-        elif status == "received":
+        elif status in ("received", "delivered", "completed"):
             bucket = "delivered"
-        elif status == "in_transit":
+        elif status in ("in_transit", "dispatched"):
             bucket = "in_transit"
         else:
             bucket = "pending"
@@ -191,34 +210,44 @@ async def _build_shipment_command(manufacturer_id: str):
     order_count: dict[str, int] = {"pending": 0, "approved": 0, "dispatched": 0,
                                    "delivered": 0, "rejected": 0}
     order_value: dict[str, float] = {k: 0.0 for k in order_count}
+    cohort_count: dict[str, int] = {"pending": 0, "in_transit": 0,
+                                    "delivered": 0, "rejected": 0}
+    cohort_value: dict[str, float] = {k: 0.0 for k in cohort_count}
     for o in orders:
         st = (o.get("status") or "pending").lower()
         if st not in order_count:
             order_count[st] = 0
             order_value[st] = 0.0
+        val = _order_value(o)
         order_count[st] += 1
-        order_value[st] += _order_value(o)
+        order_value[st] += val
+        ch = _cohort(st)
+        cohort_count[ch] += 1
+        cohort_value[ch] += val
 
-    # An order is "pending dispatch" while it's still pending approval OR has
-    # been approved but not yet shipped — both cohorts await dispatch.
-    pending_dispatch = order_count["pending"] + order_count["approved"]
-    pending_dispatch_value = order_value["pending"] + order_value["approved"]
-    in_transit = order_count["dispatched"]
-    in_transit_value = order_value["dispatched"]
-    delivered = order_count["delivered"]
-    delivered_value = order_value["delivered"]
+    # An order is "pending dispatch" while it's anywhere pre-dispatch
+    # (pending approval, approved, or moving through the allocation flow).
+    pending_dispatch = cohort_count["pending"]
+    pending_dispatch_value = cohort_value["pending"]
+    # In-transit is a *physical* state, so derive it from the shipments
+    # themselves — the simulator/allocation flow moves orders straight to
+    # "completed" while their shipments are still on the road.
+    in_transit = sum(1 for r in enriched if r["bucket"] == "in_transit")
+    in_transit_value = sum(r["value"] for r in enriched if r["bucket"] == "in_transit")
+    delivered = cohort_count["delivered"]
+    delivered_value = cohort_value["delivered"]
     # Delayed is a *physical* state on the shipment, not an order status, so
     # we still derive it from the shipments collection.
     delayed = sum(1 for r in enriched if r["bucket"] == "delayed")
     shipment_value_total = (pending_dispatch_value + in_transit_value + delivered_value)
 
-    # Fill rate — % of ordered units actually shipped (dispatched + delivered).
+    # Fill rate — % of ordered units actually shipped (in transit + delivered).
     ordered_units_total = sum(
         int(it.get("quantity") or 0) for o in orders for it in (o.get("items") or [])
     )
     fulfilled_units_total = sum(
         int(it.get("quantity") or 0)
-        for o in orders if (o.get("status") or "").lower() in ("dispatched", "delivered")
+        for o in orders if _cohort(o.get("status")) in ("in_transit", "delivered")
         for it in (o.get("items") or [])
     )
     fill_rate = round(fulfilled_units_total / max(ordered_units_total, 1) * 100, 1)
@@ -240,14 +269,15 @@ async def _build_shipment_command(manufacturer_id: str):
         return cur, prev
 
     def _is_pending_dispatch(o):
-        s = (o.get("status") or "").lower()
-        return s in ("pending", "approved")
+        return _cohort(o.get("status")) == "pending"
 
     cur, prev = _orders_count(_is_pending_dispatch, "created_at")
     pd_growth = _delta_pct(cur, prev)
-    cur, prev = _orders_count(lambda o: (o.get("status") or "") == "dispatched", "dispatched_at")
+    # In-transit delta from the shipments themselves (physical state).
+    cur = sum(1 for r in enriched if r["bucket"] == "in_transit" and (r.get("dispatched_at") or "") >= cutoff_7)
+    prev = sum(1 for r in enriched if r["bucket"] == "in_transit" and cutoff_14 <= (r.get("dispatched_at") or "") < cutoff_7)
     it_growth = _delta_pct(cur, prev)
-    cur, prev = _orders_count(lambda o: (o.get("status") or "") == "delivered", "delivered_at")
+    cur, prev = _orders_count(lambda o: _cohort(o.get("status")) == "delivered", "delivered_at")
     dv_growth = _delta_pct(cur, prev)
     # Delayed still derives from shipments
     cur = sum(1 for r in enriched if r["bucket"] == "delayed" and (r.get("dispatched_at") or "") >= cutoff_7)
@@ -267,23 +297,23 @@ async def _build_shipment_command(manufacturer_id: str):
     sp_dl = [0] * 30
     sp_val = [0.0] * 30
     for o in orders:
-        status = (o.get("status") or "").lower()
+        ch = _cohort(o.get("status"))
         c_idx = day_idx.get((o.get("created_at") or "")[:10])
         if c_idx is not None:
             sp_val[c_idx] += _order_value(o)
-            if status in ("pending", "approved"):
+            if ch == "pending":
                 sp_pd[c_idx] += 1
-        d_idx = day_idx.get((o.get("dispatched_at") or "")[:10])
-        if d_idx is not None and status == "dispatched":
-            sp_it[d_idx] += 1
-        del_idx = day_idx.get((o.get("delivered_at") or "")[:10])
-        if del_idx is not None and status == "delivered":
+        del_idx = day_idx.get((o.get("delivered_at") or o.get("created_at") or "")[:10])
+        if del_idx is not None and ch == "delivered":
             sp_dv[del_idx] += 1
     for r in enriched:
+        d_idx = day_idx.get((r.get("dispatched_at") or "")[:10])
+        if d_idx is None:
+            continue
         if r["bucket"] == "delayed":
-            d_idx = day_idx.get((r.get("dispatched_at") or "")[:10])
-            if d_idx is not None:
-                sp_dl[d_idx] += 1
+            sp_dl[d_idx] += 1
+        elif r["bucket"] == "in_transit":
+            sp_it[d_idx] += 1
     sp_fill = [fill_rate + (i % 3 - 1) for i in range(12)]
 
     kpis = {
@@ -294,13 +324,19 @@ async def _build_shipment_command(manufacturer_id: str):
         "shipment_value":   {"value": shipment_value_total, "growth_pct": val_growth, "spark": _spark(sp_val)},
         "fill_rate":        {"value": fill_rate,        "growth_pct": 4.0,       "spark": _spark(sp_fill)},
         # Order-state breakdown — surfaced so the frontend can match the
-        # numbers shown by the Order Fulfillment Queue exactly.
+        # numbers shown by the Order Fulfillment Queue exactly. Allocation
+        # flow states are folded into the closest legacy tab.
         "order_breakdown": {
             "pending":    order_count["pending"],
-            "approved":   order_count["approved"],
+            "approved":   (order_count["approved"]
+                           + order_count.get("awaiting_allocation", 0)
+                           + order_count.get("allocated", 0)
+                           + order_count.get("partially_allocated", 0)
+                           + order_count.get("back_ordered", 0)
+                           + order_count.get("fulfillment_in_progress", 0)),
             "dispatched": order_count["dispatched"],
-            "delivered":  order_count["delivered"],
-            "rejected":   order_count["rejected"],
+            "delivered":  order_count["delivered"] + order_count.get("completed", 0),
+            "rejected":   order_count["rejected"] + order_count.get("cancelled", 0),
         },
     }
 

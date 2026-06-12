@@ -546,7 +546,7 @@ async def product_detail(manufacturer_id: str, product_id: str):
         "batches": [
             {
                 "id": b["id"], "batch_number": b["batch_number"],
-                "manufactured_at": b["manufactured_at"],
+                "manufactured_at": b.get("manufactured_at") or b.get("manufactured_date"),
                 "expiry_date": b["expiry_date"],
                 "units_produced": int(b["quantity"]),
                 "units_available": int(b["units_available"]),

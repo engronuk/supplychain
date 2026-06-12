@@ -91,7 +91,7 @@ async def inventory_detail(
 
     batches = await db.batches.find(
         {"product_id": product_id}, {"_id": 0},
-    ).sort("manufactured_date", -1).to_list(50)
+    ).sort("manufactured_at", -1).to_list(50)
 
     # Movement history — synthesize from shipments that touched this product
     # at this warehouse. We treat any shipment item matching product_id and

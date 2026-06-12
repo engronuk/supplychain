@@ -298,6 +298,16 @@ async def _background_bootstrap():
     except Exception:
         logger.exception("Flour Mills network seed failed (continuing)")
 
+    # Flour Mills 30-day ops history — orders + shipments so the Shipment
+    # Command Center is populated immediately. One-shot (seed_meta-gated).
+    try:
+        from services.seed_flour_mills_ops import run as seed_fmn_ops
+        result = await seed_fmn_ops()
+        if result and result.get("orders"):
+            logger.info("Flour Mills ops history seeded: %s", result)
+    except Exception:
+        logger.exception("Flour Mills ops seed failed (continuing)")
+
     # Universal organizations backfill (foundation refactor — additive).
     try:
         result = await migrate_organizations()

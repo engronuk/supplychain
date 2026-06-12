@@ -1168,10 +1168,30 @@ function HealthGauge({ score }) {
 const ORDER_STATUS_CHIP = {
   pending:    { bg: "bg-amber-50",   text: "text-amber-700",   label: "Pending Approval" },
   approved:   { bg: "bg-blue-50",    text: "text-blue-700",    label: "Approved" },
+  awaiting_allocation:    { bg: "bg-sky-50",    text: "text-sky-700",    label: "Awaiting Allocation" },
+  allocated:              { bg: "bg-blue-50",   text: "text-blue-700",   label: "Allocated" },
+  partially_allocated:    { bg: "bg-indigo-50", text: "text-indigo-700", label: "Partially Allocated" },
+  back_ordered:           { bg: "bg-orange-50", text: "text-orange-700", label: "Back-ordered" },
+  fulfillment_in_progress:{ bg: "bg-cyan-50",   text: "text-cyan-700",   label: "Fulfilling" },
   dispatched: { bg: "bg-violet-50",  text: "text-violet-700",  label: "Dispatched" },
   delivered:  { bg: "bg-emerald-50", text: "text-emerald-700", label: "Delivered" },
+  completed:  { bg: "bg-emerald-50", text: "text-emerald-700", label: "Completed" },
   rejected:   { bg: "bg-rose-50",    text: "text-rose-700",    label: "Rejected" },
+  cancelled:  { bg: "bg-rose-50",    text: "text-rose-700",    label: "Cancelled" },
 };
+
+// Allocation-flow statuses fold into the closest legacy tab so every order
+// is visible somewhere in the queue.
+const ORDER_TAB_FOR_STATUS = {
+  pending: "pending",
+  approved: "approved", awaiting_allocation: "approved", allocated: "approved",
+  partially_allocated: "approved", back_ordered: "approved",
+  fulfillment_in_progress: "approved",
+  dispatched: "dispatched",
+  delivered: "delivered", completed: "delivered",
+  rejected: "rejected", cancelled: "rejected",
+};
+const tabOf = (status) => ORDER_TAB_FOR_STATUS[status] || "pending";
 
 const ORDER_TABS = [
   { k: "pending",    l: "Pending Approval" },
@@ -1187,11 +1207,11 @@ function OrderFulfillmentQueue({ orders, manufacturerId, onChanged }) {
   const [rejectFor, setRejectFor] = useState(null);
   const counts = useMemo(() => {
     const c = { pending: 0, approved: 0, dispatched: 0, delivered: 0, rejected: 0 };
-    orders.forEach((o) => { c[o.status] = (c[o.status] || 0) + 1; });
+    orders.forEach((o) => { c[tabOf(o.status)] = (c[tabOf(o.status)] || 0) + 1; });
     return c;
   }, [orders]);
   const filtered = useMemo(
-    () => orders.filter((o) => o.status === tab).slice(0, 20),
+    () => orders.filter((o) => tabOf(o.status) === tab).slice(0, 20),
     [orders, tab],
   );
   const totalPending = counts.pending;
