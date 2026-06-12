@@ -22,6 +22,7 @@ export const ControlTowerView = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [lastSync, setLastSync] = useState(null);
   const [sel, setSel] = useState({});
+  const [focusId, setFocusId] = useState(null);
   const [pendingWho, setPendingWho] = useState(null);
 
   const reload = useCallback((silent = true) => {
@@ -51,6 +52,15 @@ export const ControlTowerView = () => {
   const openShipment = useCallback((s) => {
     const v = (data?.fleet || []).find((x) => x.ref_id === s.id && x.status !== "idle");
     setSel({ vehicleId: v?.id || null, shipmentId: s.id });
+  }, [data]);
+  // Row click on a moving shipment → jump to its truck on the map
+  // (isolates the marker, others dim; no sheet).
+  const locateShipment = useCallback((s) => {
+    const v = (data?.fleet || []).find((x) => x.ref_id === s.id && x.status !== "idle");
+    if (!v) return;
+    setFocusId(v.id);
+    document.querySelector('[data-testid="control-tower-map-card"]')
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [data]);
 
   if (loading) {
@@ -123,7 +133,7 @@ export const ControlTowerView = () => {
           warehouses={twin.warehouses || []}
           distributors={twin.distributors || []}
           retailerClusters={data.retailer_clusters || []}
-          selectedVehicleId={sel.vehicleId}
+          selectedVehicleId={sel.vehicleId || focusId}
           onSelectVehicle={openVehicle}
         />
         <EventsFeed refreshKey={lastSync} unackedCritical={k.unacked_critical} onFocusVehicle={openVehicle} />
@@ -131,7 +141,7 @@ export const ControlTowerView = () => {
 
       <TierFlow tiers={data.tier_inventory || {}} />
       <DigitalTwinPanel twin={twin} onShowPending={setPendingWho} />
-      <ShipmentsTable shipments={data.shipments || []} onTrack={openShipment} />
+      <ShipmentsTable shipments={data.shipments || []} onTrack={openShipment} onLocate={locateShipment} />
 
       <VehicleTwinSheet
         open={sheetOpen}

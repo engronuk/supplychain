@@ -50,6 +50,60 @@ const truckIcon = (color, selected) =>
 const ACTIVE_STATUSES = ["in_transit", "stopped", "breakdown"];
 const num = (n) => (Number(n) || 0).toLocaleString();
 
+// ---- Hover tooltip (live shipment details on the truck marker) -------------
+const escHtml = (s) =>
+  String(s ?? "").replace(/[&<>"']/g, (c) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+const statusLabel = (v) => {
+  if (v.status === "breakdown") return "BREAKDOWN";
+  if (v.status === "stopped") return "UNSCHEDULED STOP";
+  if (v.deviation?.active) return "OFF ROUTE";
+  if ((Number(v.speed_kmh) || 55) < 40) return "RUNNING SLOW";
+  return "ON ROUTE";
+};
+
+const etaText = (m) => {
+  const mins = Number(m);
+  if (!Number.isFinite(mins) || mins <= 0) return "arriving";
+  if (mins < 60) return `${Math.round(mins)} min`;
+  return `${Math.floor(mins / 60)}h ${Math.round(mins % 60)}m`;
+};
+
+function truckTooltipHtml(v) {
+  const color = vehicleColor(v);
+  const prog = Math.min(100, Math.round((Number(v.route_progress) || 0) * 100));
+  return (
+    `<div style="font-family:Inter,system-ui,sans-serif;background:#0B1220;color:#e2e8f0;` +
+    `padding:10px 12px;margin:-10px -14px;min-width:230px;max-width:270px;border-radius:10px;` +
+    `border:1px solid #1e293b">` +
+    `<div style="display:flex;align-items:center;gap:6px">` +
+    `<span style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0"></span>` +
+    `<span style="font-weight:700;font-size:13px;font-family:ui-monospace,monospace">${escHtml(v.code)}</span>` +
+    `<span style="margin-left:auto;font-size:9px;font-weight:700;letter-spacing:.06em;color:${color}">${statusLabel(v)}</span>` +
+    `</div>` +
+    `<div style="font-size:11px;color:#94a3b8;margin-top:6px;line-height:1.4">` +
+    `${escHtml(v.origin_name || "—")} <span style="color:#475569">→</span> ` +
+    `<span style="color:#e2e8f0">${escHtml(v.dest_name || "—")}</span></div>` +
+    (v.shipment_code
+      ? `<div style="font-size:10px;color:#64748b;margin-top:2px">Shipment ` +
+        `<span style="color:#a7f3d0;font-family:ui-monospace,monospace">${escHtml(v.shipment_code)}</span></div>`
+      : "") +
+    `<div style="display:flex;gap:14px;margin-top:8px;font-size:11px;color:#cbd5e1">` +
+    `<span>ETA <b>${etaText(v.eta_minutes)}</b></span>` +
+    `<span><b>${Math.round(Number(v.speed_kmh) || 0)}</b> km/h</span>` +
+    `<span><b>${prog}%</b> done</span></div>` +
+    `<div style="height:3px;background:#1e293b;border-radius:99px;margin-top:6px">` +
+    `<div style="height:3px;width:${prog}%;background:${color};border-radius:99px"></div></div>` +
+    (v.driver_name
+      ? `<div style="font-size:10px;color:#64748b;margin-top:6px">Driver ${escHtml(v.driver_name)}` +
+        (v.driver_phone ? ` · ${escHtml(v.driver_phone)}` : "") + `</div>`
+      : "") +
+    `<div style="font-size:9px;color:#475569;margin-top:5px">Click the truck for full details</div>` +
+    `</div>`
+  );
+}
+
 export const ControlTowerMap = ({
   fleet, geofences, warehouses, distributors, retailerClusters,
   selectedVehicleId, onSelectVehicle,
@@ -62,6 +116,7 @@ export const ControlTowerMap = ({
   const staticOverlays = useRef([]);
   const truckMarkers = useRef(new Map());
   const routeLines = useRef(new Map());
+  const hoverInfo = useRef(null); // shared hover tooltip (InfoWindow)
   const didFit = useRef(false);
   const propsRef = useRef({});
   propsRef.current = { fleet, geofences, warehouses, distributors, retailerClusters, onSelectVehicle };
@@ -213,6 +268,17 @@ export const ControlTowerMap = ({
       if (!m) {
         m = new g.Marker({ position: pos, map, zIndex: isSel ? 60 : 50, title: `Truck ${v.code}` });
         m.addListener("click", () => propsRef.current.onSelectVehicle?.(v.id));
+        // Hover tooltip with live shipment details
+        m.addListener("mouseover", () => {
+          const fv = (propsRef.current.fleet || []).find((x) => x.id === v.id);
+          if (!fv) return;
+          if (!hoverInfo.current) {
+            hoverInfo.current = new g.InfoWindow({ disableAutoPan: true, headerDisabled: true });
+          }
+          hoverInfo.current.setContent(truckTooltipHtml(fv));
+          hoverInfo.current.open({ map, anchor: m });
+        });
+        m.addListener("mouseout", () => hoverInfo.current?.close());
         truckMarkers.current.set(v.id, m);
       } else {
         m.setPosition(pos);

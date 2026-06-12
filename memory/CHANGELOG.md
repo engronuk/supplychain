@@ -1384,3 +1384,8 @@ User feedback round:
 - `LogisticsCommandCenter.jsx`: slimmed to 3 tabs — Control Tower · Route Planning · AI Intelligence (tab-operations removed).
 - App.js: manufacturer ProcurementGate → ProcurementWorkspace.
 - Verified via playwright: tab switch, 5 KPIs, no map, allocation/auth/transfer panels intact, quick-action cross-tab jump, Logistics Center 3 tabs.
+
+## 2026-06-12 (late 2) — Map hover tooltips + row-click truck locate
+- `ControlTowerMap.jsx`: hovering a truck marker opens a dark InfoWindow tooltip (`truckTooltipHtml`) with truck code, live status label, origin→destination, shipment tracking code, ETA, speed, progress bar and driver; closes on mouseout (shared InfoWindow, headerDisabled, disableAutoPan, HTML-escaped).
+- `ControlTowerShipments.jsx` + `ControlTowerView.jsx`: clicking an in-transit/delayed shipment ROW (with truck) scrolls to the map and focuses that truck (new `focusId` state feeds map `selectedVehicleId` → pan/zoom + isolation dim) WITHOUT opening the sheet; the Track→ button (stopPropagation) still opens the side details sheet.
+- Verified via playwright: tooltip content renders on hover; row click scrolls + isolates truck on map.
