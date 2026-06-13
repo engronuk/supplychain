@@ -852,6 +852,15 @@ async def main() -> None:
     print("[6/6] Hierarchy audit…")
     report = await audit(db)
 
+    # Map a login user onto every entity in the tree (224 accounts) on top of
+    # the per-role admin shortcuts created above.
+    try:
+        from scripts.map_users import main as map_users_main
+        await map_users_main()
+    except Exception:
+        # Fall back gracefully — admin shortcuts still work.
+        pass
+
     # Drop a sentinel so the FastAPI bootstrap skips its demo seeders on
     # next reload (otherwise the legacy FMN / Unilever seeders would
     # re-inject parallel entities and pollute our hierarchy).
