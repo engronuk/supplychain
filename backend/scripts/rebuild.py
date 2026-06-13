@@ -726,6 +726,42 @@ async def remap_users(db, trees: list[dict]) -> dict:
     if not await db.users.find_one({"email": "admin@tradekonekt.io"}):
         await db.users.insert_one(base_user(
             "admin@tradekonekt.io", "super_admin", "Super Admin", "", ""))
+
+    # Enrich every seeded user with hierarchy refs so role-scoped routes
+    # (which expect `manufacturer_id`/`warehouse_id`/etc on the user dict)
+    # can resolve scope without falling back to 403.
+    async for u in db.users.find({"role": {"$ne": "super_admin"}}, {"_id": 0}):
+        entity_id = u.get("entity_id")
+        if not entity_id:
+            continue
+        org = await db.organizations.find_one({"id": entity_id}, {"_id": 0})
+        if not org:
+            continue
+        md = org.get("metadata") or {}
+        patch = {
+            "organization_id": entity_id,
+            "manufacturer_id": md.get("manufacturer_id")
+                or (entity_id if org.get("organization_type") == "manufacturer" else None),
+        }
+        otype = org.get("organization_type")
+        if otype == "warehouse":
+            patch["warehouse_id"] = entity_id
+        elif otype == "distributor":
+            patch["warehouse_id"] = md.get("warehouse_id")
+            patch["distributor_id"] = entity_id
+        elif otype == "wholesaler":
+            patch["warehouse_id"] = md.get("warehouse_id")
+            patch["distributor_id"] = md.get("distributor_id")
+            patch["wholesaler_id"] = entity_id
+        elif otype == "retailer":
+            patch["warehouse_id"] = md.get("warehouse_id")
+            patch["distributor_id"] = md.get("distributor_id")
+            patch["wholesaler_id"] = md.get("wholesaler_id")
+            patch["retailer_id"] = entity_id
+        patch = {k: v for k, v in patch.items() if v is not None}
+        if patch:
+            await db.users.update_one({"id": u["id"]}, {"$set": patch})
+
     return {"users_created": created}
 
 

@@ -2,6 +2,21 @@
 
 Dated record of what has been implemented. Newest entries at the bottom.
 
+## Updates (2026-02-13d) — Live-activity seed on the canonical hierarchy
+- **New script** `backend/scripts/live_activity.py` orchestrates every existing idempotent seeder + adds tailored seeders so dashboards feel like a live platform-in-use. Stamps a `seed_meta.live_activity_v1` marker for re-run skip.
+- **Hierarchy-aware seed_warehouse_operations** — replaced the hard-coded WHR codes with dynamic warehouse resolution; now picks two warehouses per manufacturer from the live org tree.
+- **User enrichment** — `scripts/enrich_users.py` (and inlined into `scripts/rebuild.py`) stamps `manufacturer_id` / `warehouse_id` / `distributor_id` / `wholesaler_id` on every seeded user so role-scoped routes (e.g. `/api/allocation/*`) resolve scope without 403'ing.
+- **Resulting data volume** (preview database):
+  - 122 fulfillment_orders, 180 wholesaler_fulfillment_orders, 46 order_allocations
+  - 1,969 inventory_movements, 50 GRNs, 30 returns, 24 cycle_counts, 50 warehouse tasks
+  - 1,149 retailer POs, 269 wholesaler POs, 252 wholesaler customer orders, 156 distributor orders, 775 shipments, 72 wholesaler shipments
+  - 30,206 daily_sales rows, 2,220 inventory snapshots, 318 notifications, 78 back-orders
+  - 27 intel alerts, 1,723 intel forecasts, 150 delay predictions, 12 planned routes, 10 inter-warehouse transfers, 29 replenishment requests, 4 promotions, 9,630 pulse-intelligence rows
+- **Verified**: Order Allocation now shows 60.3% fill rate · top warehouse "Unilever North" · all buckets populated with realistic counts (8 new, 6 awaiting, 9 allocated, 19 completed, 4 back-orders, 5 rejected).
+- New scripts: `backend/scripts/live_activity.py`, `backend/scripts/enrich_users.py`.
+
+
+
 ## Updates (2026-02-13c) — Canonical supply-chain rebuild
 - **Backed up** existing database to `/app/backups/pre_rebuild_20260613_073553` via mongodump (rollback point).
 - **Rebuild script** `scripts/rebuild.py` wipes all transactional + entity data and rebuilds the strict 4-tier hierarchy for **Unilever** and **Flour Mills Nigeria**.

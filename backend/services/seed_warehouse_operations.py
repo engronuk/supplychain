@@ -42,12 +42,7 @@ SEED_TAG = "warehouse_ops_v1"
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
-TARGET_WAREHOUSES = [
-    "WHR-0002",   # Unilever Lagos
-    "WHR-0008",   # Unilever Kano (North West)
-    "WHR-0006",   # Unilever Abuja (North Central)
-    "WHR-0013",   # Flour Mills Lagos
-]
+TARGET_WAREHOUSES: list[str] = []  # populated dynamically — see resolve_targets()
 
 GRN_STATUS_DIST = {
     "received": 15, "receiving": 10, "expected": 15, "delayed": 5, "awaiting_review": 5,
@@ -135,14 +130,28 @@ async def seed() -> Dict[str, int]:
     summary: Dict[str, int] = {}
 
     # ------- 1. Resolve target warehouses + their parent manufacturers -------
+    # Use the hard-coded list when present, otherwise grab one warehouse per
+    # manufacturer (Lagos preferred) from the live hierarchy.
     warehouses: List[dict] = []
-    async for w in db.organizations.find(
-        {"organization_code": {"$in": TARGET_WAREHOUSES}}, {"_id": 0}
-    ):
-        warehouses.append(w)
-    if len(warehouses) != len(TARGET_WAREHOUSES):
-        codes = [w["organization_code"] for w in warehouses]
-        raise RuntimeError(f"Expected 4 target warehouses; found {codes}")
+    if TARGET_WAREHOUSES:
+        async for w in db.organizations.find(
+            {"organization_code": {"$in": TARGET_WAREHOUSES}}, {"_id": 0}
+        ):
+            warehouses.append(w)
+        if len(warehouses) != len(TARGET_WAREHOUSES):
+            codes = [w["organization_code"] for w in warehouses]
+            raise RuntimeError(f"Expected 4 target warehouses; found {codes}")
+    else:
+        async for mfr in db.organizations.find(
+            {"organization_type": "manufacturer"}, {"_id": 0, "id": 1},
+        ):
+            async for w in db.organizations.find(
+                {"organization_type": "warehouse", "parent_organization_id": mfr["id"]},
+                {"_id": 0},
+            ).sort("organization_code", 1).limit(2):
+                warehouses.append(w)
+        if not warehouses:
+            raise RuntimeError("No warehouses found in hierarchy")
     logger.info("[seed] target warehouses: %s", [w["organization_code"] for w in warehouses])
 
     # ------- 2. Wipe previously-tagged rows so re-runs stay clean -------
