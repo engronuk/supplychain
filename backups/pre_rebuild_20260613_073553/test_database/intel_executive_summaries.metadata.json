@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"tenant_id":{"$numberInt":"1"},"scope_role":{"$numberInt":"1"},"scope_id":{"$numberInt":"1"}},"name":"uniq_tenant_scope","unique":true}],"uuid":"1d534c42e4b24b708a9664a89f322aaa","collectionName":"intel_executive_summaries","type":"collection"}

@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"target_type":{"$numberInt":"1"},"target_id":{"$numberInt":"1"},"created_at":{"$numberInt":"-1"}},"name":"by_target_recent"}],"uuid":"b036a8c1285040d3b3d82823c845ffb5","collectionName":"notifications","type":"collection"}

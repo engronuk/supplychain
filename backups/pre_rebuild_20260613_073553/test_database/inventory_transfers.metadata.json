@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"}],"uuid":"019e48b0c2cc4bee84dde696c6180bd4","collectionName":"inventory_transfers","type":"collection"}

@@ -185,15 +185,24 @@ async def _background_bootstrap():
     environment = (os.environ.get("ENVIRONMENT") or "").strip().lower()
     is_production = environment == "production"
 
-    if is_production:
-        logger.info("ENVIRONMENT=production — skipping demo seed/refresh routines.")
+    # Canonical-rebuild sentinel — after scripts/rebuild.py runs, the
+    # `seed_meta` collection carries a doc {"key": "canonical_rebuild_v1"}.
+    # When present we treat the database the same as production: skip the
+    # demo / CSV / per-tenant seeders to keep the hand-curated hierarchy
+    # intact across hot reloads.
+    rebuild_marker = await db.seed_meta.find_one({"key": "canonical_rebuild_v1"})
+    canonical = bool(rebuild_marker)
+    if canonical and not is_production:
+        logger.info("canonical_rebuild_v1 marker present — skipping demo seeders.")
+
+    if is_production or canonical:
         try:
             start_scheduler()
         except Exception:
             logger.exception("Failed to start intel scheduler")
         try:
             get_simulator_runtime().start()
-            logger.info("Activity simulator started (production).")
+            logger.info("Activity simulator started.")
         except Exception:
             logger.exception("Failed to start activity simulator")
         # Pre-warm dashboard snapshots so the very first request is instant.
@@ -201,7 +210,7 @@ async def _background_bootstrap():
             await _prewarm_dashboard_snapshots()
         except Exception:
             logger.exception("Failed to pre-warm dashboard snapshots")
-        logger.info("Background bootstrap complete (production mode).")
+        logger.info("Background bootstrap complete (no-seed mode).")
         return
 
     if await db.manufacturers.count_documents({}) == 0:

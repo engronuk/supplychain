@@ -1,0 +1,30 @@
+{
+  "per_manufacturer": [
+    {
+      "manufacturer": "Unilever",
+      "code": "MFR-0001",
+      "warehouses": 3,
+      "distributors": 6,
+      "wholesalers": 18,
+      "retailers_via_wholesaler": 72,
+      "retailers_key_account_direct": 12,
+      "total_retailers": 84
+    },
+    {
+      "manufacturer": "Flour Mills Nigeria",
+      "code": "MFR-0002",
+      "warehouses": 3,
+      "distributors": 6,
+      "wholesalers": 18,
+      "retailers_via_wholesaler": 72,
+      "retailers_key_account_direct": 12,
+      "total_retailers": 84
+    }
+  ],
+  "integrity": {
+    "retailers_without_parent": 0,
+    "wholesalers_without_distributor": 0,
+    "distributors_without_warehouse": 0,
+    "warehouses_without_manufacturer": 0
+  }
+}

@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"id":{"$numberInt":"1"}},"name":"uniq_id","unique":true},{"v":{"$numberInt":"2"},"key":{"manufacturer_id":{"$numberInt":"1"}},"name":"by_manufacturer"}],"uuid":"d5c08c1e8cf549a1baa6bbf7145f7b29","collectionName":"distributors","type":"collection"}

@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"facility_id":{"$numberInt":"1"}},"name":"uniq_facility","unique":true}],"uuid":"b7d2de3aac7f41a1abcad1dfd7230ffc","collectionName":"geofences","type":"collection"}

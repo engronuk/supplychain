@@ -2,6 +2,19 @@
 
 Dated record of what has been implemented. Newest entries at the bottom.
 
+## Updates (2026-02-13c) — Canonical supply-chain rebuild
+- **Backed up** existing database to `/app/backups/pre_rebuild_20260613_073553` via mongodump (rollback point).
+- **Rebuild script** `scripts/rebuild.py` wipes all transactional + entity data and rebuilds the strict 4-tier hierarchy for **Unilever** and **Flour Mills Nigeria**.
+  - Per tenant: 3 warehouses · 6 distributors · 18 wholesalers · 84 retailers (72 wholesaler-served + 12 direct key-account like Shoprite / Spar / Game) · 10 SKUs.
+  - Hierarchy fields enforced on every node: `parent_organization_id`, `parent_id`, `parent_type`, `lineage_path`.
+  - 90 days of operational data seeded: 30k+ daily_sales rows, ~1,150 retailer POs, ~160 wholesaler POs, ~70 distributor orders, ~650 shipments, all spread across draft/submitted/approved/rejected/picking/packed/shipped/in_transit/delivered/closed.
+- **Demo users remapped** to the new entities and stored in `/app/memory/test_credentials.md`. Password `TradeKonekt2026!`.
+- **Bootstrap sentinel** — rebuild stamps `seed_meta.canonical_rebuild_v1`; FastAPI's startup now skips all idempotent demo seeders while that marker exists so the hand-curated tree survives hot reloads.
+- **Audit report** at `/app/backups/rebuild_audit_report.json` — integrity checks all green (0 orphans across every tier).
+- New scripts: `backend/scripts/rebuild.py`, `backend/scripts/dump_hierarchy.py`.
+
+
+
 ## Updates (2026-02-13b) — `wholesaler_orders` direction migration + unified Customer Orders
 - **Schema migration**: `wholesaler_orders` rows now carry customer-neutral fields (`customer_type`, `customer_id`, `customer`). New idempotent backfill (`services/data_backfills.py`) stamped these on **535 legacy rows** at startup with `customer_type="distributor"`. New rows can be created with either `customer_type="retailer"` (spec-canonical) or `customer_type="distributor"` (legacy/key-account).
 - **Create endpoint** `POST /api/wholesaler/{wid}/orders` now accepts `customer_type` + `customer_id`; falls back to legacy `distributor_id` when omitted. Status history note updated to "Submitted by {customer.name}".

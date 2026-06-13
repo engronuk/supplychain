@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"organization_id":{"$numberInt":"1"}},"name":"by_organization"}],"uuid":"30bb1bda83ae49e782056b212f6fb69b","collectionName":"supplier_quotes","type":"collection"}
