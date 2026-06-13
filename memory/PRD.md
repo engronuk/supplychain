@@ -122,5 +122,11 @@ visibility (Manufacturer → Warehouse → Distributor → Wholesaler → Retail
   /procurement is now a 2-tab workspace (Shipments | Planning & Ops). Legacy map and
   duplicated shipment KPIs removed from Planning & Ops; Logistics Center slimmed to
   Control Tower · Route Planning · AI Intelligence.
+- **Order Allocation → Procurement consolidation (✅ SHIPPED 2026-02-13)** —
+  /procurement is now a 3-tab workspace (Order Allocation · Shipments · Planning & Ops).
+  Order Allocation moved out of the sidebar and into Procurement as the default tab;
+  Shipment Authorization Center moved from Planning & Ops to the top of the Shipments
+  tab (collapsible). Planning & Ops trimmed to Transfers + Pipeline + Forecast + Alerts.
+  Legacy `/manufacturer/allocation` redirects to `/procurement?tab=allocation`.
 
 See `CHANGELOG.md` for dated implementation history and `ROADMAP.md` for the prioritized backlog.

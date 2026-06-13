@@ -28,7 +28,7 @@ import ProductCommandCenter from "@/views/ProductCommandCenter";
 import ManufacturerDistributorDetail from "@/views/ManufacturerDistributorDetail";
 import ProductIntelligenceCenter from "@/views/ProductIntelligenceCenter";
 import ManufacturerWarehouses, { ManufacturerWarehouseDetail } from "@/views/ManufacturerWarehouses";
-import AllocationCenter from "@/views/AllocationCenter";
+// AllocationCenter is now mounted inside the manufacturer Procurement workspace (Order Allocation tab).
 import CommandCenter from "@/views/CommandCenter";
 import LogisticsCommandCenter from "@/views/LogisticsCommandCenter";
 import WholesalerDashboard from "@/views/WholesalerDashboard";
@@ -152,7 +152,7 @@ function App() {
               <Route path="/network" element={<NetworkView />} />
               <Route path="/manufacturer/warehouses" element={<ManufacturerWarehouses />} />
               <Route path="/manufacturer/warehouses/:id" element={<ManufacturerWarehouseDetail />} />
-              <Route path="/manufacturer/allocation" element={<AllocationCenter />} />
+              <Route path="/manufacturer/allocation" element={<Navigate to="/procurement?tab=allocation" replace />} />
               <Route path="/manufacturer/command-center" element={<CommandCenter />} />
               <Route path="/manufacturer/logistics-center" element={<LogisticsCommandCenter />} />
               <Route path="/network/retailer/:retailerId" element={<DistributorRetailerDetail />} />

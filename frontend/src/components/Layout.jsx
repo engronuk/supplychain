@@ -58,7 +58,6 @@ function navForRole(role) {
     base.push({ to: "/intel", label: "Intelligence", icon: BrainCircuit });
     base.push({ to: "/network-map", label: "Network Map", icon: Radar });
     base.push({ to: "/network", label: "Distributors", icon: Network });
-    base.push({ to: "/manufacturer/allocation", label: "Order Allocation", icon: ClipboardList });
     base.push({ to: "/manufacturer/warehouses", label: "Warehouses", icon: Warehouse });
   } else if (role === "distributor") {
     base.push({ to: "/intel", label: "Intelligence", icon: BrainCircuit });

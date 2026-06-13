@@ -2,6 +2,13 @@
 
 Dated record of what has been implemented. Newest entries at the bottom.
 
+## Updates (2026-02-13) — Procurement Workspace consolidation
+- **Order Allocation moved into Procurement** as the new default tab; standalone sidebar entry removed. `/manufacturer/allocation` now redirects to `/procurement?tab=allocation`.
+- **Shipments tab gains Authorization Center**: new `AuthorizationSection` (collapsible, self-fetching) renders above the Shipment Command Center so authorize-to-ship lives next to outbound shipments.
+- **Planning & Ops cleaned up**: removed duplicated `AllocationPanel` and `AuthorizationPanel`, retired the redundant Open Orders KPI; tab now focuses on Transfers, Alerts, Quick Actions, Pipeline and Forecast.
+- Files: `ProcurementWorkspace.jsx`, `AuthorizationSection.jsx` (new), `AllocationCenter.jsx` (heading trim), `logistics/LogisticsOperations.jsx`, `Layout.jsx`, `App.js`.
+
+
 ## What's been implemented (2026-05-16)
 - Full backend with 8 collections + auto-seed from CSVs in /app/backend/data
 - 91 Unilever distributors, 91 retailers, 15 products with barcodes, 2,745 inventory rows

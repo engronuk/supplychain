@@ -4,15 +4,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Boxes, Warehouse, ClipboardList, Banknote, Gauge, RefreshCw,
+  Boxes, Warehouse, Banknote, Gauge, RefreshCw,
 } from "lucide-react";
 import { Api } from "../../lib/api";
 import { Button } from "../../components/ui/button";
 import { toast } from "sonner";
 import { AlertsPanel, QuickActionsPanel, PipelinePanel, ForecastPanel } from "./LogisticsPanels";
-import {
-  AllocationPanel, AuthorizationPanel, TransfersPanel, CreateTransferDialog,
-} from "./LogisticsActionPanels";
+import { TransfersPanel, CreateTransferDialog } from "./LogisticsActionPanels";
 
 const naira = (n) => `₦${(Number(n) || 0).toLocaleString("en-NG", { maximumFractionDigits: 0 })}`;
 const num = (n) => (Number(n) || 0).toLocaleString();
@@ -35,8 +33,6 @@ export const LogisticsOperations = ({ onGoShipments }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
-  const allocationRef = useRef(null);
-  const authRef = useRef(null);
   const forecastRef = useRef(null);
 
   const reload = useCallback((silent = false) => {
@@ -85,16 +81,14 @@ export const LogisticsOperations = ({ onGoShipments }) => {
         </Button>
       </div>
 
-      {/* KPI bar — inventory & network health (shipment KPIs live on the
-          Shipments tab to avoid double-reporting) */}
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3" data-testid="logistics-kpi-bar">
+      {/* KPI bar — inventory & network health. Open Orders + shipment KPIs
+          live on the dedicated Order Allocation / Shipments tabs to avoid
+          double-reporting. */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3" data-testid="logistics-kpi-bar">
         <Kpi label="Total Inventory" value={unitsCompact(k.total_inventory_units)} suffix="Units" Icon={Boxes} tint="blue"
              sub={`Across ${k.regions || 0} regions`} onClick={() => navigate("/manufacturer/warehouses")} testId="kpi-total-inventory" />
         <Kpi label="Warehouses" value={num(k.warehouses)} Icon={Warehouse} tint="emerald"
              sub="Active facilities" onClick={() => navigate("/manufacturer/warehouses")} testId="kpi-warehouses" />
-        <Kpi label="Open Orders" value={num(k.open_orders)} Icon={ClipboardList} tint="amber"
-             sub={`${k.open_orders_growth_pct >= 0 ? "▲" : "▼"} ${Math.abs(k.open_orders_growth_pct || 0)}% vs last week`}
-             onClick={() => scrollTo(allocationRef)} testId="kpi-open-orders" />
         <Kpi label="Inventory Value" value={nairaCompact(k.inventory_value)} Icon={Banknote} tint="violet"
              sub="Warehouse stock" onClick={() => navigate("/manufacturer/warehouses")} testId="kpi-inventory-value" />
         <Kpi label="Forecast Accuracy" value={`${k.forecast_accuracy || 0}%`} Icon={Gauge} tint="emerald"
@@ -106,32 +100,21 @@ export const LogisticsOperations = ({ onGoShipments }) => {
         <AlertsPanel alerts={data.alerts || []} />
         <QuickActionsPanel
           onCreateTransfer={() => setTransferOpen(true)}
-          onApproveRequests={() => scrollTo(authRef)}
-          onCreateShipment={() => (onGoShipments ? onGoShipments() : navigate("/procurement"))}
+          onApproveRequests={() => (onGoShipments ? onGoShipments() : navigate("/procurement?tab=shipments"))}
+          onCreateShipment={() => (onGoShipments ? onGoShipments() : navigate("/procurement?tab=shipments"))}
           onViewWarehouse={() => navigate("/manufacturer/warehouses")}
           onGenerateReport={() => navigate("/reports")}
         />
       </div>
 
-      {/* Decision panels */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-5">
-        <div ref={allocationRef} className="scroll-mt-20 min-w-0">
-          <AllocationPanel
-            queue={data.allocation_queue || []}
-            aiRec={data.ai_recommendation}
-            onChanged={() => reload(true)}
-          />
-        </div>
-        <div ref={authRef} className="scroll-mt-20 min-w-0">
-          <AuthorizationPanel authorization={data.authorization || {}} onChanged={() => reload(true)} />
-        </div>
-        <div className="min-w-0 lg:col-span-2 2xl:col-span-1">
-          <TransfersPanel
-            transfers={data.transfers || { active: [], total: 0 }}
-            onCreate={() => setTransferOpen(true)}
-            onChanged={() => reload(true)}
-          />
-        </div>
+      {/* Transfer management lives here (allocations and authorizations are
+          now their own dedicated tabs in Procurement). */}
+      <div className="grid grid-cols-1 gap-5">
+        <TransfersPanel
+          transfers={data.transfers || { active: [], total: 0 }}
+          onCreate={() => setTransferOpen(true)}
+          onChanged={() => reload(true)}
+        />
       </div>
 
       {/* Pipeline + Forecast */}

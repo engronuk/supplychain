@@ -71,8 +71,7 @@ export default function AllocationCenter() {
       {/* Heading */}
       <div className="flex items-start justify-between gap-6 flex-wrap">
         <div>
-          <div className="text-xs uppercase tracking-wider font-medium text-slate-500">Manufacturer · Workflow</div>
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Order Allocation Center</h1>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Order Allocation</h1>
           <p className="text-sm text-slate-500 mt-1 max-w-2xl">
             Central command surface for every distributor order. Allocate inventory to warehouses for execution; warehouses cannot accept orders directly.
           </p>
