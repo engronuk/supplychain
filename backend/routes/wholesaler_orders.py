@@ -42,7 +42,14 @@ class OrderLineIn(BaseModel):
 
 
 class WholesalerOrderCreate(BaseModel):
-    distributor_id: str
+    # Legacy field — wholesalers had only distributor customers historically.
+    distributor_id: Optional[str] = None
+    # Customer-neutral fields per the foundational spec ("Retailers order
+    # from Wholesalers"). If `customer_type`/`customer_id` are provided
+    # they take precedence; otherwise we fall back to distributor_id for
+    # back-compat.
+    customer_id: Optional[str] = None
+    customer_type: Optional[Literal["retailer", "distributor"]] = None
     items: List[OrderLineIn]
     priority: Literal["normal", "high", "urgent"] = "normal"
     requested_delivery_date: Optional[str] = None
@@ -98,6 +105,7 @@ async def _enrich_distributor(distributor_id: str) -> dict:
             "region": org.get("region", ""),
             "city": org.get("city", ""),
             "address": org.get("address", ""),
+            "type": "distributor",
         }
     legacy = await db.distributors.find_one(
         {"id": distributor_id},
@@ -111,7 +119,45 @@ async def _enrich_distributor(distributor_id: str) -> dict:
         "region": legacy.get("region", ""),
         "city": legacy.get("city", ""),
         "address": "",
+        "type": "distributor",
     }
+
+
+async def _enrich_retailer(retailer_id: str) -> dict:
+    org = await db.organizations.find_one(
+        {"id": retailer_id, "organization_type": "retailer"},
+        {"_id": 0, "id": 1, "organization_name": 1, "organization_code": 1,
+         "region": 1, "city": 1, "address": 1},
+    )
+    if org:
+        return {
+            "id": retailer_id,
+            "name": org.get("organization_name", ""),
+            "code": org.get("organization_code", ""),
+            "region": org.get("region", ""),
+            "city": org.get("city", ""),
+            "address": org.get("address", ""),
+            "type": "retailer",
+        }
+    legacy = await db.retailers.find_one(
+        {"id": retailer_id},
+        {"_id": 0, "id": 1, "name": 1, "region": 1, "city": 1},
+    ) or {}
+    return {
+        "id": retailer_id,
+        "name": legacy.get("name", ""),
+        "code": "",
+        "region": legacy.get("region", ""),
+        "city": legacy.get("city", ""),
+        "address": "",
+        "type": "retailer",
+    }
+
+
+async def _enrich_customer(customer_type: str, customer_id: str) -> dict:
+    if customer_type == "retailer":
+        return await _enrich_retailer(customer_id)
+    return await _enrich_distributor(customer_id)
 
 
 async def _enrich_products(product_ids: List[str]) -> dict:
@@ -350,10 +396,11 @@ def _history_event(status: str, actor: str, note: Optional[str] = None) -> dict:
 @router.get("/wholesaler/{wholesaler_id}/orders/dashboard")
 async def orders_dashboard(wholesaler_id: str,
                            _user: dict = Depends(require_wholesaler_access)):
-    """KPI cards + funnel counts for the Distributor Orders module."""
-    cursor = db.wholesaler_orders.find(
-        {"wholesaler_id": wholesaler_id}, {"_id": 0, "status": 1, "created_at": 1},
-    )
+    """KPI cards + funnel counts for the Customer Orders module.
+
+    Counts orders from BOTH ledgers: legacy `wholesaler_orders` and the
+    new retailer-direct `purchase_orders` flow (supplier_type='wholesaler').
+    """
     new_orders = 0
     pending_approval = 0
     approved = 0
@@ -363,17 +410,19 @@ async def orders_dashboard(wholesaler_id: str,
     backordered = 0
     funnel = defaultdict(int)
     today = datetime.now(timezone.utc).date().isoformat()
-    async for o in cursor:
-        st = o.get("status", "submitted")
+
+    def _ingest(st: str, created_at: str | None) -> None:
+        nonlocal new_orders, pending_approval, approved, in_fulfillment
+        nonlocal shipped, delivered, backordered
         funnel[st] += 1
         if st == "submitted":
             pending_approval += 1
-            if (o.get("created_at") or "")[:10] == today:
+            if (created_at or "")[:10] == today:
                 new_orders += 1
         elif st == "approved":
             approved += 1
         elif st in ("allocated", "picking", "picked", "packing", "packed",
-                    "ready_for_dispatch"):
+                    "ready_for_dispatch", "processing"):
             in_fulfillment += 1
         elif st == "shipped":
             shipped += 1
@@ -381,6 +430,18 @@ async def orders_dashboard(wholesaler_id: str,
             delivered += 1
         elif st == "backordered":
             backordered += 1
+
+    async for o in db.wholesaler_orders.find(
+        {"wholesaler_id": wholesaler_id}, {"_id": 0, "status": 1, "created_at": 1},
+    ):
+        _ingest(o.get("status", "submitted"), o.get("created_at"))
+
+    # Retailer POs targeting this wholesaler
+    async for po in db.purchase_orders.find(
+        {"distributor_id": wholesaler_id, "supplier_type": "wholesaler"},
+        {"_id": 0, "status": 1, "created_at": 1},
+    ):
+        _ingest(po.get("status", "submitted"), po.get("created_at"))
 
     return {
         "wholesaler_id": wholesaler_id,
@@ -404,6 +465,24 @@ async def orders_dashboard(wholesaler_id: str,
         },
         "as_of": now_iso(),
     }
+
+
+def _normalise_customer_fields(row: dict) -> dict:
+    """Make every wholesaler_orders row look customer-neutral, even legacy
+    docs the backfill hasn't touched yet."""
+    if not row.get("customer_type"):
+        dist = row.get("distributor") or {}
+        row["customer_type"] = "distributor"
+        row["customer_id"] = row.get("distributor_id") or dist.get("id") or ""
+        row["customer"] = {
+            "id": row["customer_id"],
+            "name": dist.get("name", ""),
+            "code": dist.get("code", ""),
+            "region": dist.get("region", ""),
+            "city": dist.get("city", ""),
+            "type": "distributor",
+        }
+    return row
 
 
 @router.get("/wholesaler/{wholesaler_id}/orders")
@@ -431,7 +510,134 @@ async def list_orders(wholesaler_id: str,
     rows = await db.wholesaler_orders.find(q, {"_id": 0}).sort(
         "created_at", -1
     ).to_list(500)
-    return rows
+    return [_normalise_customer_fields(r) for r in rows]
+
+
+# ---------------------------------------------------------------------------
+# Unified customer-orders view (spec-aligned).
+# Merges:
+#   - wholesaler_orders            (legacy distributor → wholesaler ledger,
+#                                   now customer-neutral after migration)
+#   - purchase_orders              (retailer → wholesaler POs created via
+#                                   /api/procurement/* with supplier_type="wholesaler")
+# ---------------------------------------------------------------------------
+@router.get("/wholesaler/{wholesaler_id}/customer-orders")
+async def list_customer_orders(wholesaler_id: str,
+                               status: Optional[str] = None,
+                               customer_type: Optional[str] = None,
+                               limit: int = 500,
+                               _user: dict = Depends(require_wholesaler_access)):
+    """Combined feed of every order the wholesaler is fulfilling.
+
+    Output is sorted newest-first and uses a normalised shape so the
+    frontend can render both legacy `wholesaler_orders` rows AND new
+    retailer `purchase_orders` in the same table.
+    """
+    out: List[dict] = []
+
+    # 1) wholesaler_orders ledger (legacy + new direction)
+    q1: dict = {"wholesaler_id": wholesaler_id}
+    if status:
+        q1["status"] = status
+    if customer_type:
+        q1["customer_type"] = customer_type
+    async for row in db.wholesaler_orders.find(q1, {"_id": 0}).sort(
+        "created_at", -1,
+    ).limit(limit):
+        n = _normalise_customer_fields(row)
+        out.append({
+            "id": n["id"],
+            "source": "wholesaler_orders",
+            "order_number": n.get("order_number"),
+            "wholesaler_id": wholesaler_id,
+            "customer_type": n["customer_type"],
+            "customer_id": n["customer_id"],
+            "customer": n["customer"],
+            # Legacy distributor enrichment kept for old UI shims.
+            "distributor": n.get("distributor") or n["customer"],
+            "items": n.get("items", []),
+            "total_units": n.get("total_units", 0),
+            "total_amount": n.get("total_amount", 0),
+            "status": n.get("status", "submitted"),
+            "priority": n.get("priority", "normal"),
+            "requested_delivery_date": n.get("requested_delivery_date"),
+            "created_at": n.get("created_at"),
+        })
+
+    # 2) retailer purchase_orders targeting this wholesaler
+    if not customer_type or customer_type == "retailer":
+        po_q: dict = {
+            "distributor_id": wholesaler_id,
+            "supplier_type": "wholesaler",
+        }
+        if status:
+            po_q["status"] = status
+        retailer_ids: set = set()
+        product_ids: set = set()
+        po_docs: List[dict] = []
+        async for po in db.purchase_orders.find(po_q, {"_id": 0}).sort(
+            "created_at", -1,
+        ).limit(limit):
+            po_docs.append(po)
+            if po.get("retailer_id"):
+                retailer_ids.add(po["retailer_id"])
+            for it in (po.get("items") or []):
+                if it.get("product_id"):
+                    product_ids.add(it["product_id"])
+        rmap: dict = {}
+        if retailer_ids:
+            rmap = {r["id"]: r for r in await db.retailers.find(
+                {"id": {"$in": list(retailer_ids)}},
+                {"_id": 0, "id": 1, "name": 1, "region": 1, "city": 1},
+            ).to_list(len(retailer_ids))}
+        pmap: dict = {}
+        if product_ids:
+            pmap = {p["id"]: p for p in await db.products.find(
+                {"id": {"$in": list(product_ids)}},
+                {"_id": 0, "id": 1, "name": 1, "sku": 1},
+            ).to_list(len(product_ids))}
+        for po in po_docs:
+            r = rmap.get(po.get("retailer_id")) or {}
+            customer = {
+                "id": po.get("retailer_id") or "",
+                "name": r.get("name", "Retailer"),
+                "code": "",
+                "region": r.get("region", ""),
+                "city": r.get("city", ""),
+                "type": "retailer",
+            }
+            enriched_items = []
+            total_units = 0
+            for it in (po.get("items") or []):
+                p = pmap.get(it.get("product_id")) or {}
+                qty = int(it.get("quantity") or 0)
+                total_units += qty
+                enriched_items.append({
+                    **it,
+                    "product_name": p.get("name", "Unknown"),
+                    "sku": p.get("sku", ""),
+                })
+            out.append({
+                "id": po.get("id"),
+                "source": "purchase_orders",
+                "order_number": po.get("po_number"),
+                "wholesaler_id": wholesaler_id,
+                "customer_type": "retailer",
+                "customer_id": po.get("retailer_id"),
+                "customer": customer,
+                # Keep distributor key empty so legacy UI doesn't choke.
+                "distributor": customer,
+                "items": enriched_items,
+                "total_units": total_units,
+                "total_amount": po.get("total_amount", 0),
+                "status": po.get("status", "submitted"),
+                "priority": "normal",
+                "requested_delivery_date": None,
+                "created_at": po.get("created_at"),
+            })
+
+    out.sort(key=lambda r: r.get("created_at") or "", reverse=True)
+    return out[:limit]
 
 
 @router.get("/wholesaler/{wholesaler_id}/orders/{order_id}")
@@ -442,6 +648,7 @@ async def get_order(wholesaler_id: str, order_id: str,
     )
     if not order:
         raise HTTPException(404, "Order not found")
+    order = _normalise_customer_fields(order)
     # Live availability check
     items = order.get("items", [])
     inv_map = await _inventory_for(wholesaler_id, [it["product_id"] for it in items])
@@ -485,14 +692,26 @@ async def get_order(wholesaler_id: str, order_id: str,
 @router.post("/wholesaler/{wholesaler_id}/orders")
 async def create_order(wholesaler_id: str, payload: WholesalerOrderCreate,
                        user: dict = Depends(require_wholesaler_access)):
-    """A distributor (or admin) submits an order to the wholesaler.
+    """A retailer (primary) or distributor (legacy / key-account) submits
+    an order to the wholesaler.
 
-    Tenant validation: products must belong to the wholesaler's tenant.
+    Customer is determined by `customer_type` + `customer_id` when given,
+    otherwise falls back to legacy `distributor_id`.
     """
     wh = await get_wholesaler_org(wholesaler_id)
     tenant_id = await tenant_id_for(wh)
 
-    if user.get("role") == "distributor" and user.get("entity_id") != payload.distributor_id:
+    # Resolve customer.
+    if payload.customer_type and payload.customer_id:
+        customer_type = payload.customer_type
+        customer_id = payload.customer_id
+    elif payload.distributor_id:
+        customer_type = "distributor"
+        customer_id = payload.distributor_id
+    else:
+        raise HTTPException(400, "customer_id or distributor_id is required")
+
+    if user.get("role") in ("distributor", "retailer") and user.get("entity_id") != customer_id:
         raise HTTPException(403, "Can only submit orders for your own organization")
 
     # Validate products
@@ -506,7 +725,7 @@ async def create_order(wholesaler_id: str, payload: WholesalerOrderCreate,
         raise HTTPException(400, "One or more products are not in tenant catalog")
     pmap = {p["id"]: p for p in products}
 
-    distributor = await _enrich_distributor(payload.distributor_id)
+    customer = await _enrich_customer(customer_type, customer_id)
 
     items_in = [{
         "product_id": it.product_id,
@@ -525,8 +744,12 @@ async def create_order(wholesaler_id: str, payload: WholesalerOrderCreate,
         "order_number": order_number,
         "wholesaler_id": wholesaler_id,
         "tenant_id": tenant_id,
-        "distributor_id": payload.distributor_id,
-        "distributor": distributor,
+        "customer_type": customer_type,
+        "customer_id": customer_id,
+        "customer": customer,
+        # Legacy mirrors kept so old read paths don't break.
+        "distributor_id": customer_id if customer_type == "distributor" else "",
+        "distributor": customer if customer_type == "distributor" else {},
         "items": totals["items"],
         "total_units": totals["total_units"],
         "total_amount": totals["total_amount"],
@@ -535,8 +758,8 @@ async def create_order(wholesaler_id: str, payload: WholesalerOrderCreate,
         "note": payload.note or "",
         "requested_delivery_date": payload.requested_delivery_date,
         "status_history": [
-            _history_event("submitted", user.get("email", "distributor"),
-                           f"Submitted by {distributor['name']}"),
+            _history_event("submitted", user.get("email", customer_type),
+                           f"Submitted by {customer['name']}"),
         ],
         "created_at": now_iso(),
         "submitted_at": now_iso(),

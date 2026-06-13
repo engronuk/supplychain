@@ -483,6 +483,8 @@ export const WholesalerApi = {
     api.get(`/wholesaler/${wid}/orders/dashboard`).then((r) => r.data),
   listOrders: (wid, params = {}) =>
     api.get(`/wholesaler/${wid}/orders`, { params }).then((r) => r.data),
+  customerOrders: (wid, params = {}) =>
+    api.get(`/wholesaler/${wid}/customer-orders`, { params }).then((r) => r.data),
   orderDetail: (wid, oid) =>
     api.get(`/wholesaler/${wid}/orders/${oid}`).then((r) => r.data),
   createOrder: (wid, payload) =>

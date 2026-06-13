@@ -2,6 +2,19 @@
 
 Dated record of what has been implemented. Newest entries at the bottom.
 
+## Updates (2026-02-13b) — `wholesaler_orders` direction migration + unified Customer Orders
+- **Schema migration**: `wholesaler_orders` rows now carry customer-neutral fields (`customer_type`, `customer_id`, `customer`). New idempotent backfill (`services/data_backfills.py`) stamped these on **535 legacy rows** at startup with `customer_type="distributor"`. New rows can be created with either `customer_type="retailer"` (spec-canonical) or `customer_type="distributor"` (legacy/key-account).
+- **Create endpoint** `POST /api/wholesaler/{wid}/orders` now accepts `customer_type` + `customer_id`; falls back to legacy `distributor_id` when omitted. Status history note updated to "Submitted by {customer.name}".
+- **Unified read endpoint** `GET /api/wholesaler/{wid}/customer-orders` merges:
+  - `wholesaler_orders` (with normalised customer fields)
+  - `purchase_orders` with `supplier_type="wholesaler"` (retailer→wholesaler POs)
+  Sorted newest-first, with a `source` discriminator so the frontend can route legacy fulfillment actions safely.
+- **Dashboard KPIs**: `GET /api/wholesaler/{wid}/orders/dashboard` now sums both ledgers (new/pending/approved/in_fulfillment/shipped/delivered/backordered).
+- **Frontend**: `WholesalerOrders.jsx` now uses the merged endpoint, renamed to **"Customer Orders"**, table shows a customer-type chip (retailer vs distributor) and customer name/region. Sidebar entry renamed too. Detail modal title adapts ("Retailer" or "Distributor").
+- Files: `backend/services/data_backfills.py` (new), `backend/server.py` (startup hook), `backend/routes/wholesaler_orders.py`, `frontend/src/views/WholesalerOrders.jsx`, `frontend/src/lib/api.js`, `frontend/src/components/Layout.jsx`.
+
+
+
 ## Updates (2026-02-13) — Foundational supply-chain logic alignment
 Brought the procurement & order direction in line with the spec:
 **Manufacturer → Warehouse → Distributor → Wholesaler → Retailer.**

@@ -161,6 +161,14 @@ async def boot_app():
     except Exception:
         logger.exception("ensure_indexes failed on startup (continuing)")
 
+    try:
+        from services.data_backfills import run_all as run_data_backfills
+        bf = await run_data_backfills()
+        if any(v for v in bf.values()):
+            logger.info("Data backfills applied: %s", bf)
+    except Exception:
+        logger.exception("data backfills failed on startup (continuing)")
+
     # Fire-and-forget. The task keeps a reference on the app state so the
     # garbage collector doesn't drop it mid-flight.
     app.state.bootstrap_task = asyncio.create_task(_background_bootstrap())

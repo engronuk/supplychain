@@ -69,7 +69,7 @@ export default function WholesalerOrders({ embedded = false }) {
     setLoading(true);
     Promise.all([
       WholesalerApi.ordersDashboard(wid),
-      WholesalerApi.listOrders(wid),
+      WholesalerApi.customerOrders(wid),
     ])
       .then(([d, l]) => { setDashboard(d); setOrders(l); })
       .finally(() => setLoading(false));
@@ -80,7 +80,8 @@ export default function WholesalerOrders({ embedded = false }) {
   const filtered = useMemo(() => {
     return orders.filter((o) => {
       if (statusFilter !== "all" && o.status !== statusFilter) return false;
-      if (search && !`${o.order_number} ${o.distributor?.name}`.toLowerCase().includes(search.toLowerCase())) return false;
+      const hay = `${o.order_number || ""} ${o.customer?.name || o.distributor?.name || ""}`.toLowerCase();
+      if (search && !hay.includes(search.toLowerCase())) return false;
       return true;
     });
   }, [orders, statusFilter, search]);
@@ -98,8 +99,8 @@ export default function WholesalerOrders({ embedded = false }) {
     <div className={embedded ? "space-y-6" : "p-6 md:p-8 space-y-6"} data-testid="wholesaler-orders">
       {!embedded && (
         <PageHeader
-          title="Distributor Orders"
-          subtitle="Incoming orders from your regional distributor network."
+          title="Customer Orders"
+          subtitle="Incoming orders from retailers (primary) and distributors (legacy / key-account)."
           action={
             <Button variant="outline" size="sm" onClick={refresh} data-testid="orders-refresh">
               <RefreshCw className="h-4 w-4 mr-1.5" /> Refresh
@@ -158,7 +159,7 @@ export default function WholesalerOrders({ embedded = false }) {
           <CardTitle className="text-base">Order Queue ({filtered.length})</CardTitle>
           <div className="flex items-center gap-2">
             <Input
-              placeholder="Search order / distributor…"
+              placeholder="Search order / customer…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-56"
@@ -190,7 +191,8 @@ export default function WholesalerOrders({ embedded = false }) {
                 <thead>
                   <tr className="text-left text-xs text-slate-500 border-b border-slate-200">
                     <th className="py-2 px-3 font-medium">Order #</th>
-                    <th className="py-2 px-3 font-medium">Distributor</th>
+                    <th className="py-2 px-3 font-medium">Customer</th>
+                    <th className="py-2 px-3 font-medium">Type</th>
                     <th className="py-2 px-3 font-medium">Region</th>
                     <th className="py-2 px-3 font-medium text-right">Lines</th>
                     <th className="py-2 px-3 font-medium text-right">Units</th>
@@ -201,32 +203,46 @@ export default function WholesalerOrders({ embedded = false }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((o) => (
-                    <tr
-                      key={o.id}
-                      onClick={() => setActiveId(o.id)}
-                      className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer"
-                      data-testid={`order-row-${o.order_number}`}
-                    >
-                      <td className="py-2 px-3 font-medium text-slate-800">{o.order_number}</td>
-                      <td className="py-2 px-3 text-slate-700">{o.distributor?.name}</td>
-                      <td className="py-2 px-3 text-slate-500">{o.distributor?.region || "—"}</td>
-                      <td className="py-2 px-3 text-right">{o.items?.length || 0}</td>
-                      <td className="py-2 px-3 text-right">{fmtNumber(o.total_units)}</td>
-                      <td className="py-2 px-3 text-right">{fmtCurrency(o.total_amount)}</td>
-                      <td className="py-2 px-3 text-slate-500 text-xs">
-                        {o.requested_delivery_date ? new Date(o.requested_delivery_date).toLocaleDateString() : "—"}
-                      </td>
-                      <td className="py-2 px-3">
-                        <Badge className={`font-medium ${PRIORITY_TONE[o.priority] || PRIORITY_TONE.normal}`}>
-                          {o.priority}
-                        </Badge>
-                      </td>
-                      <td className="py-2 px-3">
-                        <Badge className={`font-medium ${STATUS_TONE[o.status] || ""}`}>{o.status}</Badge>
-                      </td>
-                    </tr>
-                  ))}
+                  {filtered.map((o) => {
+                    const customer = o.customer || o.distributor || {};
+                    const ctype = o.customer_type || customer.type || "distributor";
+                    return (
+                      <tr
+                        key={o.id}
+                        onClick={() => o.source !== "purchase_orders" && setActiveId(o.id)}
+                        className={`border-b border-slate-100 hover:bg-slate-50 ${o.source === "purchase_orders" ? "cursor-default" : "cursor-pointer"}`}
+                        data-testid={`order-row-${o.order_number}`}
+                      >
+                        <td className="py-2 px-3 font-medium text-slate-800">{o.order_number}</td>
+                        <td className="py-2 px-3 text-slate-700">{customer.name || "—"}</td>
+                        <td className="py-2 px-3">
+                          <Badge
+                            className={`font-medium ${
+                              ctype === "retailer" ? "bg-violet-100 text-violet-700"
+                              : "bg-amber-100 text-amber-700"
+                            }`}
+                          >
+                            {ctype}
+                          </Badge>
+                        </td>
+                        <td className="py-2 px-3 text-slate-500">{customer.region || "—"}</td>
+                        <td className="py-2 px-3 text-right">{o.items?.length || 0}</td>
+                        <td className="py-2 px-3 text-right">{fmtNumber(o.total_units)}</td>
+                        <td className="py-2 px-3 text-right">{fmtCurrency(o.total_amount)}</td>
+                        <td className="py-2 px-3 text-slate-500 text-xs">
+                          {o.requested_delivery_date ? new Date(o.requested_delivery_date).toLocaleDateString() : "—"}
+                        </td>
+                        <td className="py-2 px-3">
+                          <Badge className={`font-medium ${PRIORITY_TONE[o.priority] || PRIORITY_TONE.normal}`}>
+                            {o.priority}
+                          </Badge>
+                        </td>
+                        <td className="py-2 px-3">
+                          <Badge className={`font-medium ${STATUS_TONE[o.status] || ""}`}>{o.status}</Badge>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -332,12 +348,17 @@ function OrderDetailModal({ orderId, wid, onClose, onChange }) {
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Distributor + summary */}
+          {/* Customer + summary */}
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div>
-              <div className="text-xs uppercase tracking-wider text-slate-500">Distributor</div>
-              <div className="font-medium text-slate-800">{order.distributor?.name}</div>
-              <div className="text-xs text-slate-500">{order.distributor?.region}{order.distributor?.city ? ` · ${order.distributor.city}` : ""}</div>
+              <div className="text-xs uppercase tracking-wider text-slate-500">
+                {(order.customer_type || order.customer?.type) === "retailer" ? "Retailer" : "Distributor"}
+              </div>
+              <div className="font-medium text-slate-800">{(order.customer || order.distributor)?.name}</div>
+              <div className="text-xs text-slate-500">
+                {(order.customer || order.distributor)?.region}
+                {(order.customer || order.distributor)?.city ? ` · ${(order.customer || order.distributor).city}` : ""}
+              </div>
             </div>
             <div className="text-right">
               <div className="text-xs uppercase tracking-wider text-slate-500">Requested Delivery</div>
