@@ -195,6 +195,14 @@ export default function CartTab({ retailerId, onMutated }) {
 }
 
 function SupplierGroup({ group, busy, onUpdateQty, onRemoveItem }) {
+  const supplier = group.supplier || group.distributor || {};
+  const stype = group.supplier_type || "wholesaler";
+  const supplierName = supplier.name || supplier.organization_name || "—";
+  const supplierCity = supplier.city || "";
+  const supplierRegion = supplier.region || "";
+  const typeBadge = stype === "wholesaler"
+    ? { label: "Wholesaler", cls: "bg-violet-100 text-violet-700 ring-violet-200" }
+    : { label: "Distributor (direct)", cls: "bg-amber-100 text-amber-800 ring-amber-200" };
   return (
     <Card className="rounded-2xl shadow-sm border-slate-200 overflow-hidden" data-testid={`supplier-group-${group.distributor_id}`}>
       <div className="bg-slate-50 px-5 py-3 border-b border-slate-200 flex items-center justify-between">
@@ -203,8 +211,13 @@ function SupplierGroup({ group, busy, onUpdateQty, onRemoveItem }) {
             <Truck className="h-4 w-4" />
           </div>
           <div>
-            <div className="text-sm font-semibold text-slate-900">{group.distributor?.name || "—"}</div>
-            <div className="text-[11px] text-slate-500">{group.distributor?.city || ""} · {group.distributor?.region || ""}</div>
+            <div className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+              {supplierName}
+              <span className={`text-[10px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded ring-1 ${typeBadge.cls}`}>
+                {typeBadge.label}
+              </span>
+            </div>
+            <div className="text-[11px] text-slate-500">{supplierCity} · {supplierRegion}</div>
           </div>
         </div>
         <div className="text-right">
@@ -215,7 +228,7 @@ function SupplierGroup({ group, busy, onUpdateQty, onRemoveItem }) {
       <div className="divide-y divide-slate-100">
         {group.items.map((it) => (
           <CartRow
-            key={`${it.product_id}_${it.distributor_id}_${it.quantity}`}
+            key={`${it.product_id}_${it.distributor_id}_${it.supplier_type || "wholesaler"}_${it.quantity}`}
             item={it}
             busy={busy}
             onQty={(q) => onUpdateQty(it, q)}

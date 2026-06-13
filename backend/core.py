@@ -46,7 +46,7 @@ POStatus = Literal[
     "shipped", "delivered", "cancelled", "rejected",
 ]
 QuoteStatus = Literal["open", "responded", "closed", "expired"]
-PartyRole = Literal["manufacturer", "distributor", "retailer"]
+PartyRole = Literal["manufacturer", "distributor", "retailer", "wholesaler", "warehouse"]
 
 # Universal organization architecture.
 # Order matters in this list — it follows the natural supply-chain hierarchy

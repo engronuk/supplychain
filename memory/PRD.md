@@ -128,5 +128,13 @@ visibility (Manufacturer → Warehouse → Distributor → Wholesaler → Retail
   Shipment Authorization Center moved from Planning & Ops to the top of the Shipments
   tab (collapsible). Planning & Ops trimmed to Transfers + Pipeline + Forecast + Alerts.
   Legacy `/manufacturer/allocation` redirects to `/procurement?tab=allocation`.
+- **Supply-chain logic alignment (✅ SHIPPED 2026-02-13)** — procurement/order
+  direction now matches the spec: Mfr → Warehouse → Distributor → Wholesaler → Retailer.
+  Retailers order from wholesalers (primary) with distributor-direct as fallback
+  for large-format retailers; wholesalers order from distributors (primary) with
+  factory/warehouse direct as legacy. Cart/PO/Shipment models carry a `supplier_type`
+  discriminator and ship_po now emits `wholesaler → retailer` shipments. New
+  endpoints: `/api/procurement/retailer/{id}/suppliers` and
+  `/api/distributor/{id}/incoming-wholesaler-pos`.
 
 See `CHANGELOG.md` for dated implementation history and `ROADMAP.md` for the prioritized backlog.

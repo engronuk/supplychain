@@ -69,12 +69,9 @@ def _spark(series: List[float], length: int = 12) -> List[float]:
     return out[:length]
 
 
-async def _get_wholesaler(wid: str) -> dict:
-    """Local re-export of the shared helper (imported with same alias above).
-    Kept so existing call sites keep working without further edits.
-    """
-    from routes._wholesaler_shared import get_wholesaler_org
-    return await get_wholesaler_org(wid)
+async def _get_wholesaler_local(wid: str) -> dict:
+    """Local wrapper around the shared helper to avoid F811."""
+    return await _get_wholesaler(wid)
 
 
 # ---- ENTITY ENDPOINT (used by frontend SessionContext.fetchEntity) ---------
@@ -515,8 +512,8 @@ class POLineIn(BaseModel):
 
 
 class POCreatePayload(BaseModel):
-    supplier_id: str                                # manufacturer or warehouse org id
-    supplier_type: Literal["manufacturer", "warehouse"]
+    supplier_id: str                                # manufacturer / warehouse / distributor
+    supplier_type: Literal["manufacturer", "warehouse", "distributor"]
     items: List[POLineIn]
     note: Optional[str] = None
     expected_delivery: Optional[str] = None
@@ -708,13 +705,56 @@ async def transition_po(wholesaler_id: str, po_id: str,
 @router.get("/wholesaler/{wholesaler_id}/procurement/suppliers")
 async def list_suppliers(wholesaler_id: str,
                          _user: dict = Depends(_require_wholesaler_access)):
-    """Return suppliers a wholesaler can buy from: manufacturer + the
-    region's warehouse(s) within the same tenant."""
+    """Return suppliers a wholesaler can buy from.
+
+    Per the foundational supply-chain spec — Distributors **serve**
+    Wholesalers — distributors are the primary upstream. The manufacturer
+    and the regional warehouses are retained as legacy/secondary so
+    factory-direct procurement is still possible when a distributor is
+    not in the region or for key-account flows.
+    """
     wh = await _get_wholesaler(wholesaler_id)
     tenant_id = await _tenant_id(wh)
 
     out: List[dict] = []
     if tenant_id:
+        # Primary — distributors in the wholesaler's tenant.
+        # If the wholesaler has a parent distributor (org hierarchy)
+        # surface it first; otherwise list every distributor in tenant.
+        parent_id = wh.get("parent_organization_id")
+        parent_dist = None
+        if parent_id:
+            parent_dist = await db.organizations.find_one(
+                {"id": parent_id, "organization_type": "distributor"}, {"_id": 0},
+            )
+            if parent_dist:
+                out.append({
+                    "id": parent_dist["id"], "type": "distributor",
+                    "name": parent_dist.get("organization_name"),
+                    "code": parent_dist.get("organization_code"),
+                    "region": parent_dist.get("region") or "",
+                    "is_primary": True,
+                })
+        async for d_doc in db.organizations.find(
+            {"organization_type": "distributor",
+             "$or": [
+                 {"parent_organization_id": tenant_id},
+                 {"manufacturer_id": tenant_id},
+             ]},
+            {"_id": 0},
+        ):
+            if parent_dist and d_doc["id"] == parent_dist["id"]:
+                continue
+            out.append({
+                "id": d_doc["id"], "type": "distributor",
+                "name": d_doc.get("organization_name"),
+                "code": d_doc.get("organization_code"),
+                "region": d_doc.get("region") or "",
+                "is_primary": False,
+            })
+
+        # Legacy — manufacturer & warehouses (kept for factory-direct
+        # / key-account procurement).
         mfr = await db.organizations.find_one(
             {"id": tenant_id, "organization_type": "manufacturer"}, {"_id": 0},
         )
@@ -724,6 +764,8 @@ async def list_suppliers(wholesaler_id: str,
                 "name": mfr.get("organization_name"),
                 "code": mfr.get("organization_code"),
                 "region": mfr.get("region") or "",
+                "is_primary": False,
+                "note": "Legacy / factory-direct",
             })
         async for wh_doc in db.organizations.find(
             {"organization_type": "warehouse",
@@ -734,6 +776,8 @@ async def list_suppliers(wholesaler_id: str,
                 "name": wh_doc.get("organization_name"),
                 "code": wh_doc.get("organization_code"),
                 "region": wh_doc.get("region") or "",
+                "is_primary": False,
+                "note": "Legacy / factory-direct",
             })
     return out
 
@@ -899,3 +943,49 @@ async def list_distributors_served(wholesaler_id: str,
         },
         "insights": insights[:3],
     }
+
+
+
+# ============================================================================
+# Distributor → incoming wholesaler purchase orders
+# ----------------------------------------------------------------------------
+# Per the foundational spec ("Distributors serve Wholesalers"), wholesalers
+# place POs on distributors. This endpoint surfaces those POs on the
+# distributor side so they can be reviewed / actioned.
+# ============================================================================
+@router.get("/distributor/{distributor_id}/incoming-wholesaler-pos")
+async def list_incoming_wholesaler_pos(distributor_id: str,
+                                        status: Optional[str] = None,
+                                        limit: int = 200):
+    """List wholesaler purchase orders where this distributor is the supplier."""
+    q: dict = {"supplier_id": distributor_id, "supplier_type": "distributor"}
+    if status:
+        q["status"] = status
+    pos = await db.wholesaler_purchase_orders.find(q, {"_id": 0}).sort(
+        "created_at", -1,
+    ).to_list(limit)
+
+    wh_ids = list({p["wholesaler_id"] for p in pos if p.get("wholesaler_id")})
+    product_ids = list({i["product_id"] for p in pos for i in (p.get("items") or [])})
+    wh_map = {o["id"]: o for o in await db.organizations.find(
+        {"id": {"$in": wh_ids}, "organization_type": "wholesaler"},
+        {"_id": 0, "id": 1, "organization_name": 1, "organization_code": 1, "region": 1, "city": 1},
+    ).to_list(len(wh_ids))} if wh_ids else {}
+    prod_map = {p["id"]: p for p in await db.products.find(
+        {"id": {"$in": product_ids}}, {"_id": 0, "id": 1, "name": 1, "sku": 1},
+    ).to_list(len(product_ids))} if product_ids else {}
+
+    for p in pos:
+        wh = wh_map.get(p.get("wholesaler_id")) or {}
+        p["wholesaler_name"] = wh.get("organization_name", "Unknown wholesaler")
+        p["wholesaler_code"] = wh.get("organization_code", "")
+        p["wholesaler_region"] = wh.get("region", "")
+        p["wholesaler_city"] = wh.get("city", "")
+        units = 0
+        for it in (p.get("items") or []):
+            pr = prod_map.get(it.get("product_id")) or {}
+            it["product_name"] = pr.get("name", "Unknown")
+            it["sku"] = pr.get("sku", "")
+            units += int(it.get("quantity") or 0)
+        p["total_units"] = units
+    return pos

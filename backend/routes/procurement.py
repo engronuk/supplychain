@@ -69,19 +69,32 @@ def _line_total(qty: int, unit_cost: float) -> float:
     return round(qty * unit_cost, 2)
 
 
-async def _denorm_po(po: dict, distributors: dict, retailers: dict, products: dict) -> dict:
-    po["distributor"] = distributors.get(po["distributor_id"], {})
+async def _denorm_po(po: dict, distributors: dict, retailers: dict, products: dict, wholesalers: dict) -> dict:
+    stype = po.get("supplier_type") or "wholesaler"
+    if stype == "wholesaler":
+        po["supplier"] = wholesalers.get(po["distributor_id"], {})
+        po["distributor"] = po["supplier"]  # legacy field kept for old UI
+    else:
+        po["supplier"] = distributors.get(po["distributor_id"], {})
+        po["distributor"] = po["supplier"]
+    po["supplier_type"] = stype
     po["retailer"] = retailers.get(po["retailer_id"], {})
     for it in po.get("items", []):
         it["product"] = products.get(it["product_id"], {})
     return po
 
 
-async def _load_lookups() -> tuple[dict, dict, dict]:
+async def _load_lookups() -> tuple[dict, dict, dict, dict]:
     distributors = {d["id"]: d for d in await db.distributors.find({}, {"_id": 0}).to_list(5000)}
     retailers = {r["id"]: r for r in await db.retailers.find({}, {"_id": 0}).to_list(20000)}
     products = {p["id"]: p for p in await db.products.find({}, {"_id": 0}).to_list(5000)}
-    return distributors, retailers, products
+    wholesalers = {
+        w["id"]: {**w, "name": w.get("name") or w.get("organization_name", "")}
+        for w in await db.organizations.find(
+            {"organization_type": "wholesaler"}, {"_id": 0},
+        ).to_list(20000)
+    }
+    return distributors, retailers, products, wholesalers
 
 
 async def _push_status_event(po_id: str, status: str, by: Optional[str] = None,
@@ -99,6 +112,61 @@ def _is_terminal(status: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
+# Retailer-side supplier discovery
+# ---------------------------------------------------------------------------
+@router.get("/procurement/retailer/{retailer_id}/suppliers")
+async def list_retailer_suppliers(retailer_id: str):
+    """Suppliers a retailer can buy from:
+
+    - Primary: the **wholesaler** they're parented under (the retailer's
+      organization `parent_organization_id`). Wholesalers serve retailers.
+    - Fallback: the legacy **distributor** linked on the `retailers` doc
+      (kept open so large retailers like Shoprite can be served directly
+      by a distributor).
+    """
+    retailer_doc = await db.retailers.find_one({"id": retailer_id}, {"_id": 0})
+    if not retailer_doc:
+        raise HTTPException(404, "Retailer not found")
+    out: List[dict] = []
+
+    # Primary — wholesaler parent (organization hierarchy).
+    org = await db.organizations.find_one(
+        {"id": retailer_id, "organization_type": "retailer"}, {"_id": 0},
+    )
+    if org and org.get("parent_organization_id"):
+        wh = await db.organizations.find_one(
+            {"id": org["parent_organization_id"], "organization_type": "wholesaler"},
+            {"_id": 0},
+        )
+        if wh:
+            out.append({
+                "id": wh["id"], "supplier_type": "wholesaler",
+                "name": wh.get("organization_name") or wh.get("name", ""),
+                "code": wh.get("organization_code", ""),
+                "region": wh.get("region", ""),
+                "city": wh.get("city", ""),
+                "is_primary": True,
+            })
+
+    # Fallback — direct distributor (legacy link).
+    dist_id = retailer_doc.get("distributor_id")
+    if dist_id:
+        dist = await db.distributors.find_one({"id": dist_id}, {"_id": 0})
+        if dist:
+            out.append({
+                "id": dist["id"], "supplier_type": "distributor",
+                "name": dist.get("name", ""),
+                "code": dist.get("code", ""),
+                "region": dist.get("region", ""),
+                "city": dist.get("city", ""),
+                "is_primary": False,
+                "note": "Direct distributor (key-account / large-format)",
+            })
+    return out
+
+
+
+# ---------------------------------------------------------------------------
 # Cart
 # ---------------------------------------------------------------------------
 @router.get("/procurement/cart/{retailer_id}")
@@ -111,21 +179,27 @@ async def get_cart(retailer_id: str):
 
 
 async def _enrich_cart(cart: dict) -> dict:
-    distributors, _, products = await _load_lookups()
+    distributors, _, products, wholesalers = await _load_lookups()
     enriched_items = []
     subtotal = 0.0
     by_supplier: Dict[str, dict] = {}
     for it in cart.get("items", []):
         product = products.get(it["product_id"], {})
-        distributor = distributors.get(it["distributor_id"], {})
+        stype = it.get("supplier_type") or "wholesaler"
+        if stype == "wholesaler":
+            supplier = wholesalers.get(it["distributor_id"], {})
+        else:
+            supplier = distributors.get(it["distributor_id"], {})
         line_total = _line_total(int(it["quantity"]), float(it["unit_cost"]))
         subtotal += line_total
-        row = {**it, "product": product, "distributor": distributor, "line_total": line_total}
+        row = {**it, "supplier_type": stype, "product": product,
+               "distributor": supplier, "supplier": supplier, "line_total": line_total}
         enriched_items.append(row)
-        # Group by supplier for split-submit
         sid = it["distributor_id"]
-        bucket = by_supplier.setdefault(sid, {
-            "distributor_id": sid, "distributor": distributor,
+        key = f"{stype}:{sid}"
+        bucket = by_supplier.setdefault(key, {
+            "supplier_type": stype, "supplier_id": sid, "supplier": supplier,
+            "distributor_id": sid, "distributor": supplier,  # legacy
             "items": [], "subtotal": 0.0,
         })
         bucket["items"].append(row)
@@ -147,7 +221,9 @@ async def add_or_replace_cart_item(retailer_id: str, payload: CartItemUpsert):
     items = [CartItem(**it) for it in cart_doc.get("items", [])]
     found = False
     for it in items:
-        if it.product_id == payload.product_id and it.distributor_id == payload.distributor_id:
+        if (it.product_id == payload.product_id
+                and it.distributor_id == payload.distributor_id
+                and (it.supplier_type or "wholesaler") == (payload.supplier_type or "wholesaler")):
             it.quantity = payload.quantity
             it.unit_cost = payload.unit_cost
             found = True
@@ -216,16 +292,19 @@ async def clear_cart(retailer_id: str):
 
 @router.post("/procurement/cart/{retailer_id}/submit")
 async def submit_cart(retailer_id: str, payload: Optional[POAction] = None):
-    """Splits the cart by supplier and creates one PO per supplier (submitted)."""
+    """Splits the cart by supplier (type + id) and creates one PO per supplier."""
     cart_doc = await db.procurement_carts.find_one({"retailer_id": retailer_id})
     if not cart_doc or not cart_doc.get("items"):
         raise HTTPException(400, "Cart is empty")
     by_supplier: Dict[str, List[dict]] = {}
     for it in cart_doc["items"]:
-        by_supplier.setdefault(it["distributor_id"], []).append(it)
+        stype = it.get("supplier_type") or "wholesaler"
+        key = f"{stype}:{it['distributor_id']}"
+        by_supplier.setdefault(key, []).append(it)
     note = (payload.reason if payload else None)
     created_pos: List[dict] = []
-    for distributor_id, items in by_supplier.items():
+    for key, items in by_supplier.items():
+        stype, supplier_id = key.split(":", 1)
         po_lines = [
             POLine(
                 product_id=it["product_id"],
@@ -239,7 +318,8 @@ async def submit_cart(retailer_id: str, payload: Optional[POAction] = None):
         po = PurchaseOrder(
             po_number=await _next_po_number(),
             retailer_id=retailer_id,
-            distributor_id=distributor_id,
+            distributor_id=supplier_id,
+            supplier_type=stype,
             items=po_lines,
             total_amount=total,
             status="submitted",
@@ -247,13 +327,13 @@ async def submit_cart(retailer_id: str, payload: Optional[POAction] = None):
             submitted_at=now_iso(),
             status_history=[
                 StatusEvent(status="draft", note="Created from cart"),
-                StatusEvent(status="submitted", note="Sent to distributor"),
+                StatusEvent(status="submitted", note=f"Sent to {stype}"),
             ],
         )
         await db.purchase_orders.insert_one(po.model_dump())
         created_pos.append(po.model_dump())
         await push_notification(
-            "distributor", distributor_id,
+            stype, supplier_id,
             "New Purchase Order",
             f"New PO {po.po_number} received from a retailer (₦{total:,.0f}).",
             "order",
@@ -297,21 +377,22 @@ async def list_purchase_orders(
     if product_id:
         query["items.product_id"] = product_id
     docs = await db.purchase_orders.find(query, {"_id": 0}).sort("created_at", -1).to_list(limit)
-    distributors, retailers, products = await _load_lookups()
+    distributors, retailers, products, wholesalers = await _load_lookups()
     enriched = []
     for d in docs:
         if q:
-            # Filter by free-text on PO number / distributor / product names
+            # Filter by free-text on PO number / supplier / product names
+            supplier_map = wholesalers if (d.get("supplier_type") or "wholesaler") == "wholesaler" else distributors
             hay = " ".join([
                 d.get("po_number", ""),
-                distributors.get(d["distributor_id"], {}).get("name", ""),
+                (supplier_map.get(d["distributor_id"], {}) or {}).get("name", ""),
                 retailers.get(d["retailer_id"], {}).get("name", ""),
                 " ".join(products.get(it["product_id"], {}).get("name", "")
                          for it in d.get("items", [])),
             ]).lower()
             if q.lower() not in hay:
                 continue
-        enriched.append(await _denorm_po(d, distributors, retailers, products))
+        enriched.append(await _denorm_po(d, distributors, retailers, products, wholesalers))
     return enriched
 
 
@@ -320,8 +401,8 @@ async def get_purchase_order(po_id: str):
     po = await db.purchase_orders.find_one({"id": po_id}, {"_id": 0})
     if not po:
         raise HTTPException(404, "Purchase order not found")
-    distributors, retailers, products = await _load_lookups()
-    return await _denorm_po(po, distributors, retailers, products)
+    distributors, retailers, products, wholesalers = await _load_lookups()
+    return await _denorm_po(po, distributors, retailers, products, wholesalers)
 
 
 @router.post("/procurement/purchase-orders", response_model=PurchaseOrder)
@@ -339,10 +420,13 @@ async def create_purchase_order(payload: PurchaseOrderCreate, submit: bool = Fal
         raise HTTPException(400, "At least one line required")
     total = round(sum(line.line_total for line in po_lines), 2)
     status = "submitted" if submit else "draft"
+    # Per-item supplier_type may vary; take the first as the PO's supplier.
+    supplier_type = next((it.supplier_type for it in payload.items if it.supplier_type), "wholesaler")
     po = PurchaseOrder(
         po_number=await _next_po_number(),
         retailer_id=payload.retailer_id,
         distributor_id=payload.distributor_id,
+        supplier_type=supplier_type,
         items=po_lines,
         total_amount=total,
         status=status,
@@ -355,7 +439,7 @@ async def create_purchase_order(payload: PurchaseOrderCreate, submit: bool = Fal
     await db.purchase_orders.insert_one(po.model_dump())
     if submit:
         await push_notification(
-            "distributor", payload.distributor_id,
+            supplier_type, payload.distributor_id,
             "New Purchase Order",
             f"New PO {po.po_number} (₦{total:,.0f}).", "order",
         )
@@ -369,10 +453,11 @@ async def submit_po(po_id: str):
         raise HTTPException(404, "PO not found")
     if po["status"] != "draft":
         raise HTTPException(400, f"Only drafts can be submitted (current: {po['status']})")
-    await _push_status_event(po_id, "submitted", note="Sent to distributor",
+    stype = po.get("supplier_type") or "wholesaler"
+    await _push_status_event(po_id, "submitted", note=f"Sent to {stype}",
                              extra={"submitted_at": now_iso()})
     await push_notification(
-        "distributor", po["distributor_id"],
+        stype, po["distributor_id"],
         "New Purchase Order",
         f"PO {po['po_number']} submitted for review.", "order",
     )
@@ -432,9 +517,10 @@ async def ship_po(po_id: str):
         raise HTTPException(404, "PO not found")
     if po["status"] not in ("approved", "processing"):
         raise HTTPException(400, "PO must be approved/processing before shipping")
-    denorm = denorm_ids("distributor", po["distributor_id"], "retailer", po["retailer_id"])
+    stype = po.get("supplier_type") or "wholesaler"
+    denorm = denorm_ids(stype, po["distributor_id"], "retailer", po["retailer_id"])
     sh = Shipment(
-        from_role="distributor", from_id=po["distributor_id"],
+        from_role=stype, from_id=po["distributor_id"],
         to_role="retailer", to_id=po["retailer_id"],
         items=[ShipmentLine(product_id=it["product_id"], quantity=it["quantity"])
                for it in po["items"]],
@@ -526,7 +612,7 @@ async def list_quotes(
     if status:
         query["status"] = status
     docs = await db.supplier_quotes.find(query, {"_id": 0}).sort("created_at", -1).to_list(limit)
-    distributors, retailers, products = await _load_lookups()
+    distributors, retailers, products, _ws = await _load_lookups()
     out = []
     for d in docs:
         d["product"] = products.get(d["product_id"], {})
@@ -548,7 +634,7 @@ async def get_quote(quote_id: str):
     q = await db.supplier_quotes.find_one({"id": quote_id}, {"_id": 0})
     if not q:
         raise HTTPException(404, "Quote not found")
-    distributors, retailers, products = await _load_lookups()
+    distributors, retailers, products, _ws = await _load_lookups()
     q["product"] = products.get(q["product_id"], {})
     q["retailer"] = retailers.get(q["retailer_id"], {})
     q["distributors"] = [distributors.get(did, {"id": did, "name": "—"})

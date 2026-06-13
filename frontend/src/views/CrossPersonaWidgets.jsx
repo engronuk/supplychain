@@ -111,10 +111,12 @@ export function ManufacturerWholesalerPosWidget({ manufacturerId }) {
 }
 
 /* =======================================================================
- * Distributor side — My Orders to Wholesalers
+ * Distributor side — Incoming Wholesaler POs (new direction per spec) +
+ * legacy My Orders to Wholesalers (kept for back-compat data).
  * ===================================================================== */
 export function DistributorWholesalerOrdersWidget({ distributorId }) {
   const [data, setData] = useState(null);
+  const [incoming, setIncoming] = useState([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -122,35 +124,82 @@ export function DistributorWholesalerOrdersWidget({ distributorId }) {
     CrossPersonaApi.distributorWholesalerOrders(distributorId)
       .then(setData)
       .catch(() => setData(null));
+    CrossPersonaApi.distributorIncomingWholesalerPos(distributorId)
+      .then(setIncoming)
+      .catch(() => setIncoming([]));
   }, [distributorId]);
 
-  if (!data) return null;
-  const { kpis, orders, shipments } = data;
+  if (!data && incoming.length === 0) return null;
+  const { kpis, orders, shipments } = data || { kpis: {}, orders: [], shipments: [] };
+  const openIncoming = incoming.filter((p) => !["delivered", "cancelled", "rejected"].includes(p.status)).length;
 
   return (
     <Card data-testid="distributor-wholesaler-orders-widget">
       <CardHeader className="flex flex-row items-center justify-between space-y-0">
         <CardTitle className="text-base flex items-center gap-2">
           <ShoppingCart className="h-4 w-4 text-violet-600" />
-          My Orders to Wholesalers
+          Wholesaler Orders
         </CardTitle>
         <Badge variant="secondary" className="text-[10px] uppercase tracking-wider">
-          {kpis.open_orders} open
+          {openIncoming + (kpis.open_orders || 0)} open
         </Badge>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
-          <KpiTile label="Open Orders" value={FMT_NUM.format(kpis.open_orders)} tone={kpis.open_orders ? "warning" : "default"} />
-          <KpiTile label="Delivered (90d)" value={FMT_NUM.format(kpis.delivered_90d)} tone="positive" />
-          <KpiTile label="Active Shipments" value={FMT_NUM.format(kpis.active_shipments)} />
-          <KpiTile label="Open Value" value={FMT_CCY.format(kpis.open_value)} />
+      <CardContent className="space-y-5">
+        {/* Incoming POs from wholesalers — the canonical direction per spec */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-xs uppercase tracking-wider text-slate-500 font-semibold">
+              Incoming POs from Wholesalers
+            </div>
+            <Badge variant="outline" className="text-[10px]" data-testid="dist-incoming-wh-pos-count">
+              {openIncoming} pending
+            </Badge>
+          </div>
+          {incoming.length === 0 ? (
+            <p className="text-sm text-slate-500 py-2">No incoming wholesaler POs yet.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm" data-testid="dist-incoming-wh-pos-table">
+                <thead>
+                  <tr className="text-left text-xs text-slate-500 border-b">
+                    <th className="py-2 px-3 font-medium">PO #</th>
+                    <th className="py-2 px-3 font-medium">Wholesaler</th>
+                    <th className="py-2 px-3 font-medium text-right">Units</th>
+                    <th className="py-2 px-3 font-medium text-right">Value</th>
+                    <th className="py-2 px-3 font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {incoming.slice(0, 8).map((p) => (
+                    <tr key={p.id} className="border-b border-slate-100 hover:bg-slate-50">
+                      <td className="py-2 px-3 font-medium text-slate-800">{p.po_number}</td>
+                      <td className="py-2 px-3">{p.wholesaler_name}</td>
+                      <td className="py-2 px-3 text-right">{FMT_NUM.format(p.total_units || 0)}</td>
+                      <td className="py-2 px-3 text-right">{FMT_CCY.format(p.total_amount || 0)}</td>
+                      <td className="py-2 px-3">
+                        <Badge className={`font-medium ${PO_TONE[p.status] || ""}`}>{p.status}</Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
-        {orders.length === 0 ? (
-          <p className="text-sm text-slate-500 py-3">You haven't placed any orders with wholesalers yet.</p>
-        ) : (
+        {/* Legacy direction kept for back-compat */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+          <KpiTile label="Open Orders" value={FMT_NUM.format(kpis.open_orders || 0)} tone={kpis.open_orders ? "warning" : "default"} />
+          <KpiTile label="Delivered (90d)" value={FMT_NUM.format(kpis.delivered_90d || 0)} tone="positive" />
+          <KpiTile label="Active Shipments" value={FMT_NUM.format(kpis.active_shipments || 0)} />
+          <KpiTile label="Open Value" value={FMT_CCY.format(kpis.open_value || 0)} />
+        </div>
+
+        {orders.length === 0 ? null : (
           <div>
-            <div className="text-xs uppercase tracking-wider text-slate-500 mb-2">Recent Orders</div>
+            <div className="text-xs uppercase tracking-wider text-slate-500 mb-2 font-semibold">
+              Legacy: Distributor orders placed on wholesalers
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm" data-testid="dist-wh-orders-table">
                 <thead>

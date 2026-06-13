@@ -13,8 +13,8 @@ import WholesalerFulfillment from "./WholesalerFulfillment";
 import WholesalerShipments from "./WholesalerShipments";
 
 const TABS = [
-  { value: "purchase",      label: "Purchase Orders" },
-  { value: "orders",        label: "Distributor Orders" },
+  { value: "purchase",      label: "Purchase Orders" },        // wholesaler → distributor (upstream)
+  { value: "orders",        label: "Customer Orders" },        // retailer/dist → wholesaler (incoming)
   { value: "fulfillment",   label: "Fulfillment" },
   { value: "shipments",     label: "Shipments" },
 ];
@@ -79,7 +79,7 @@ export default function WholesalerProcurementHub() {
     <div className="p-6 md:p-8 space-y-6" data-testid="wholesaler-procurement-hub">
       <PageHeader
         title="Procurement"
-        subtitle="Replenishment, distributor orders, fulfillment workflow & outbound shipments — one workspace."
+        subtitle="Buy from distributors upstream · serve retailer orders · pick/pack & ship — one workspace."
       />
 
       <Tabs value={tab} onValueChange={setActiveTab} className="space-y-4">

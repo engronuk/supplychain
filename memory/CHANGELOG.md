@@ -2,6 +2,20 @@
 
 Dated record of what has been implemented. Newest entries at the bottom.
 
+## Updates (2026-02-13) — Foundational supply-chain logic alignment
+Brought the procurement & order direction in line with the spec:
+**Manufacturer → Warehouse → Distributor → Wholesaler → Retailer.**
+
+- **Retailer procurement** now orders from **wholesalers** by default; legacy direct **distributor** path kept as fallback for key-account / large-format retailers (Shoprite-style). Cart, PO and Shipment models carry a new `supplier_type` discriminator. Endpoint `GET /api/procurement/retailer/{id}/suppliers` returns the wholesaler-as-primary + distributor-as-fallback list.
+- **Wholesaler procurement** now lists **distributors** as the primary upstream (parent distributor first), with manufacturer / warehouses kept as legacy "factory-direct" options. `POCreatePayload.supplier_type` accepts `distributor`.
+- **Distributor inbox** gains an "Incoming POs from Wholesalers" section sourced from a new endpoint `GET /api/distributor/{id}/incoming-wholesaler-pos`; legacy "distributor orders to wholesalers" kept underneath for back-compat data.
+- **Shipment role-tagging** — `procurement.py /ship` now stamps `from_role=supplier_type` so retailer→wholesaler POs produce `wholesaler → retailer` shipments (verified by direct DB read).
+- **UI**: `AddCartItemDialog` supplier dropdown shows "Wholesaler · primary" + "Distributor (direct)" chips; `CartTab` group header shows supplier-type badge; Wholesaler Procurement Hub tab "Distributor Orders" relabeled to "Customer Orders"; subtitles refreshed.
+- **Models**: `PartyRole` literal extended to include `wholesaler` and `warehouse` so notifications/shipments to those roles validate.
+- Files: `backend/models.py`, `backend/core.py`, `backend/routes/procurement.py`, `backend/routes/wholesaler.py`, `frontend/src/components/procurement/AddCartItemDialog.jsx`, `frontend/src/components/procurement/CartTab.jsx`, `frontend/src/views/WholesalerProcurement.jsx`, `frontend/src/views/WholesalerProcurementHub.jsx`, `frontend/src/views/CrossPersonaWidgets.jsx`, `frontend/src/lib/api.js`.
+
+
+
 ## Updates (2026-02-13) — Procurement Workspace consolidation
 - **Order Allocation moved into Procurement** as the new default tab; standalone sidebar entry removed. `/manufacturer/allocation` now redirects to `/procurement?tab=allocation`.
 - **Shipments tab gains Authorization Center**: new `AuthorizationSection` (collapsible, self-fetching) renders above the Shipment Command Center so authorize-to-ship lives next to outbound shipments.

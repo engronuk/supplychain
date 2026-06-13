@@ -299,6 +299,8 @@ export const Api = {
     api.post(`/distributor/${distributor_id}/operations-intelligence/refresh`).then((r) => r.data),
 
   // Procurement (Cart · POs · Quotes · AI)
+  retailerSuppliers: (retailer_id) =>
+    api.get(`/procurement/retailer/${retailer_id}/suppliers`).then((r) => r.data),
   cart: (retailer_id) =>
     api.get(`/procurement/cart/${retailer_id}`).then((r) => r.data),
   cartAddItem: (retailer_id, payload) =>
@@ -517,6 +519,8 @@ export const CrossPersonaApi = {
     api.get(`/manufacturer/${mid}/wholesaler-pos`).then((r) => r.data),
   distributorWholesalerOrders: (did) =>
     api.get(`/distributor/${did}/wholesaler-orders`).then((r) => r.data),
+  distributorIncomingWholesalerPos: (did, params = {}) =>
+    api.get(`/distributor/${did}/incoming-wholesaler-pos`, { params }).then((r) => r.data),
 };
 
 // Super-admin Activity Simulator

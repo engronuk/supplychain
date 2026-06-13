@@ -83,7 +83,7 @@ export default function WholesalerProcurement({ embedded = false }) {
       {!embedded && (
         <PageHeader
           title="Procurement Workspace"
-          subtitle="Replenish your aggregation hub — order from the manufacturer or warehouse network."
+          subtitle="Replenish your hub from distributors (primary) or factory/warehouses (legacy / key-account)."
           action={
             <div className="flex gap-2">
               <Button variant="outline" size="sm" onClick={refresh} data-testid="po-refresh">
@@ -304,7 +304,9 @@ function CreatePOModal({ open, onClose, wid, suppliers, catalog, onSuccess }) {
               <SelectContent>
                 {suppliers.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
-                    {s.type === "manufacturer" ? "🏭" : "🏬"} {s.name} ({s.code})
+                    {s.type === "distributor" ? "🚛" : s.type === "manufacturer" ? "🏭" : "🏬"}{" "}
+                    {s.name} ({s.code})
+                    {s.is_primary ? " · primary" : s.note ? ` · ${s.note}` : ""}
                   </SelectItem>
                 ))}
               </SelectContent>

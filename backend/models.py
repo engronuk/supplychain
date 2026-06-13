@@ -216,6 +216,12 @@ from core import POStatus, QuoteStatus  # noqa: E402
 class CartItem(BaseModel):
     product_id: str
     distributor_id: str
+    # Supplier discriminator — retailers normally order from a wholesaler
+    # ("Wholesalers serve Retailers") but large retailers can be served
+    # directly by a distributor (e.g. Shoprite). "distributor_id" still
+    # holds the supplier id for back-compat; supplier_type tells you which
+    # entity that id points to.
+    supplier_type: str = "wholesaler"  # "wholesaler" | "distributor"
     quantity: int
     unit_cost: float
 
@@ -234,6 +240,7 @@ class Cart(BaseModel):
 class CartItemUpsert(BaseModel):
     product_id: str
     distributor_id: str
+    supplier_type: str = "wholesaler"  # "wholesaler" | "distributor"
     quantity: int = Field(ge=1)
     unit_cost: float = Field(ge=0)
 
@@ -262,6 +269,10 @@ class PurchaseOrder(BaseModel):
     po_number: str
     retailer_id: str
     distributor_id: str
+    # "wholesaler" by default — retailers buy from wholesalers. Large
+    # retailers (e.g. Shoprite) can buy direct from a distributor with
+    # supplier_type="distributor".
+    supplier_type: str = "wholesaler"
     items: List[POLine]
     total_amount: float = 0.0
     status: POStatus = "draft"

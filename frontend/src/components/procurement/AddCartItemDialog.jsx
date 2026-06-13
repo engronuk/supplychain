@@ -20,9 +20,9 @@ import { toast } from "sonner";
 export default function AddCartItemDialog({ retailerId, onAdded, trigger }) {
   const [open, setOpen] = useState(false);
   const [products, setProducts] = useState([]);
-  const [distributors, setDistributors] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
   const [productId, setProductId] = useState("");
-  const [distributorId, setDistributorId] = useState("");
+  const [supplierKey, setSupplierKey] = useState(""); // `${supplier_type}:${supplier_id}`
   const [quantity, setQuantity] = useState(10);
   const [unitCost, setUnitCost] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -31,32 +31,32 @@ export default function AddCartItemDialog({ retailerId, onAdded, trigger }) {
     if (!open) return;
     Promise.all([
       Api.products().catch(() => []),
-      Api.distributors().catch(() => []),
-    ]).then(([ps, ds]) => {
+      Api.retailerSuppliers(retailerId).catch(() => []),
+    ]).then(([ps, sups]) => {
       setProducts(ps || []);
-      setDistributors(ds || []);
+      setSuppliers(sups || []);
     });
-  }, [open]);
-
-  // Helpers kept for reference but unused (Api.products/distributors exist).
+  }, [open, retailerId]);
 
   const submit = async () => {
-    if (!productId || !distributorId || quantity < 1) {
+    if (!productId || !supplierKey || quantity < 1) {
       toast.error("Pick a product, a supplier and a quantity");
       return;
     }
+    const [supplierType, supplierId] = supplierKey.split(":", 2);
     setSaving(true);
     try {
       await Api.cartAddItem(retailerId, {
         product_id: productId,
-        distributor_id: distributorId,
+        distributor_id: supplierId,
+        supplier_type: supplierType,
         quantity: Number(quantity),
         unit_cost: Number(unitCost) || 0,
       });
       toast.success("Item added to cart");
       onAdded?.();
       setOpen(false);
-      setProductId(""); setDistributorId(""); setQuantity(10); setUnitCost(0);
+      setProductId(""); setSupplierKey(""); setQuantity(10); setUnitCost(0);
     } catch {
       toast.error("Could not add item");
     } finally { setSaving(false); }
@@ -92,16 +92,24 @@ export default function AddCartItemDialog({ retailerId, onAdded, trigger }) {
           </div>
           <div>
             <Label className="text-xs uppercase tracking-wider text-slate-500">Supplier</Label>
-            <Select value={distributorId} onValueChange={setDistributorId}>
+            <Select value={supplierKey} onValueChange={setSupplierKey}>
               <SelectTrigger className="mt-1" data-testid="add-cart-supplier-select">
                 <SelectValue placeholder="Select a supplier" />
               </SelectTrigger>
               <SelectContent>
-                {distributors.map((d) => (
-                  <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                {suppliers.map((s) => (
+                  <SelectItem key={`${s.supplier_type}:${s.id}`} value={`${s.supplier_type}:${s.id}`}>
+                    {s.name} · {s.supplier_type === "wholesaler" ? "Wholesaler" : "Distributor (direct)"}
+                    {s.is_primary ? " · primary" : ""}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {suppliers.length === 0 && (
+              <p className="text-[11px] text-slate-500 mt-1">
+                No suppliers configured yet for this retailer.
+              </p>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
