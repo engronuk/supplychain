@@ -394,11 +394,50 @@ async def impersonate(user_id: str, request: Request, response: Response):
 async def list_demo_accounts():
     """Public read-only endpoint — returns the demo email roster so the
     landing/login page can offer one-tap demo sign-in. No passwords leak;
-    the user still has to type the shared demo password."""
+    the user still has to type the shared demo password.
+
+    Retailers are capped to the **top 5 most-active per tenant** so the demo
+    wizard isn't drowning in 84 storefronts; "activity" is the sum of
+    purchase-orders + daily-sales rows attributed to the retailer in the
+    last 90 days.
+    """
     rows = await db.users.find(
         {"is_demo": True, "status": "active"},
         {"_id": 0, "email": 1, "role": 1, "name": 1, "entity_id": 1, "manufacturer_id": 1},
     ).to_list(500)
+
+    # ----- Compute top-5 retailers per tenant by activity volume ---------
+    retailer_users = [r for r in rows if r["role"] == "retailer" and r.get("entity_id")]
+    retailer_ids = list({r["entity_id"] for r in retailer_users})
+    activity: Dict[str, int] = {rid: 0 for rid in retailer_ids}
+    if retailer_ids:
+        # purchase_orders authored by these retailers
+        async for d in db.purchase_orders.aggregate([
+            {"$match": {"retailer_id": {"$in": retailer_ids}}},
+            {"$group": {"_id": "$retailer_id", "n": {"$sum": 1}}},
+        ]):
+            activity[d["_id"]] = activity.get(d["_id"], 0) + int(d.get("n") or 0)
+        # daily_sales rows
+        async for d in db.daily_sales.aggregate([
+            {"$match": {"retailer_id": {"$in": retailer_ids}}},
+            {"$group": {"_id": "$retailer_id", "n": {"$sum": 1}}},
+        ]):
+            activity[d["_id"]] = activity.get(d["_id"], 0) + int(d.get("n") or 0)
+
+    by_tenant: Dict[str, list] = {}
+    for r in retailer_users:
+        by_tenant.setdefault(r.get("manufacturer_id", ""), []).append(r)
+    keep_retailer_ids: set[str] = set()
+    for ru_list in by_tenant.values():
+        ru_list.sort(key=lambda u: activity.get(u["entity_id"], 0), reverse=True)
+        for u in ru_list[:5]:
+            keep_retailer_ids.add(u["entity_id"])
+
+    rows = [
+        r for r in rows
+        if r["role"] != "retailer" or r.get("entity_id") in keep_retailer_ids
+    ]
+
     # Hydrate entity name for each so the UI can show "Lagos Distributor · Region"
     out = []
     for r in rows:

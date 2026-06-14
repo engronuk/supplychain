@@ -2,6 +2,13 @@
 
 Dated record of what has been implemented. Newest entries at the bottom.
 
+## Updates (2026-02-14c) — Demo Portal retailer trimmed to top-5 by activity
+- `/api/auth/demo-accounts` now ranks retailers by their 90-day activity score (purchase_orders count + daily_sales count) and surfaces only the **top 5 per tenant** in the demo wizard — so the Step-3 sign-in list stops drowning the user in 84 storefronts.
+- Other tiers (warehouse / distributor / wholesaler / manufacturer / super_admin) are returned in full.
+- Verified: list now shows 10 retailers total (5 Unilever + 5 FMN), highest-activity first.
+
+
+
 ## Updates (2026-02-14b) — Demo Portal fix
 - Demo Portal endpoint `/api/auth/demo-accounts` filtered by `is_demo: true` — neither the rebuild nor `map_users` script set that flag, so the 3-step demo wizard appeared empty after the canonical reseed.
 - Flagged all **235** seeded users with `is_demo=true`; updated both `scripts/rebuild.py` (`base_user` helper) and `scripts/map_users.py` so future re-seeds keep them visible.
