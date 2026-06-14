@@ -128,6 +128,11 @@ visibility (Manufacturer → Warehouse → Distributor → Wholesaler → Retail
   Shipment Authorization Center moved from Planning & Ops to the top of the Shipments
   tab (collapsible). Planning & Ops trimmed to Transfers + Pipeline + Forecast + Alerts.
   Legacy `/manufacturer/allocation` redirects to `/procurement?tab=allocation`.
+- **Production sync endpoint (✅ SHIPPED 2026-06-14)** — `POST /api/admin/sync/{diff,apply}`
+  and `GET /api/admin/sync/status`. Wipe + rebuild + 12mo backfill +
+  forecast recompute, gated by `ADMIN_SYNC_TOKEN`. Fire-and-forget;
+  returns 202 in <250ms; mutex prevents concurrent runs. Runbook:
+  `docs/DEPLOYMENT_RUNBOOK.md`.
 - **Forecast Density (✅ SHIPPED 2026-06-14)** — backfilled 530K daily_sales
   rows (12-month dense history), unified `quantity_sold` → `units` reads,
   re-ran stock-exhaustion compute, surfaced per-urgency counts (critical/

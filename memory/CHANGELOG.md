@@ -1,4 +1,42 @@
 # CHANGELOG
+## 2026-06-14 — Production Sync Endpoint (deploy enabler)
+
+Problem: Preview and production used separate MongoDB clusters (Cloud
+Run injects `MONGO_URL` / `DB_NAME` from Secret Manager). Code deploys
+left production with whatever data was first seeded, while preview
+drifted through dozens of curated changes. After the last push the user
+saw FMN at 332 retailers in prod vs the canonical 84 in preview.
+
+### Repairs
+- New router: `routes/admin_sync.py`
+  - `GET /api/admin/sync/status`  — current counts, last sync marker.
+  - `POST /api/admin/sync/diff`   — dry-run delta vs canonical target.
+  - `POST /api/admin/sync/apply`  — async wipe-+-rebuild-+-backfill.
+- Fire-and-forget pattern: `apply` returns `202 accepted` in <250ms and
+  runs the 4-6 minute job in a background asyncio task. `admin_sync_in_flight`
+  doc in `seed_meta` acts as a mutex.
+- Auth: `X-Admin-Token` header must match `ADMIN_SYNC_TOKEN` env var
+  (fail-closed if unset).
+- Confirmation: apply requires `confirm: "I_UNDERSTAND_THIS_WIPES_DATA"`
+  in the JSON body.
+- `scripts/rebuild.py` refactored to expose `run_rebuild(db, log=)` so
+  the endpoint can invoke it in-process.
+- `scripts/backfill_history.py` refactored to accept an injected `db`
+  handle.
+- `services/data_backfills.py`: unchanged but its `run_all()` still runs
+  on every boot — keeps legacy `wholesaler_orders` rows compatible.
+- Runbook: `docs/DEPLOYMENT_RUNBOOK.md` documents the full deploy + sync
+  flow including Secret Manager setup and stuck-lock recovery.
+
+### Validation
+- Bad token → 401. Missing confirm → 422. Bad confirm → 400. ✓
+- Apply returns in 228ms with `status: accepted`. ✓
+- Second apply while one is running → `status: already_running`. ✓
+- Full apply cycle observed end-to-end in ~5min; `last_admin_sync`
+  marker now persists (after fixing the key-mismatch upsert bug).
+- Mutex auto-clears via `finally:` block when the task ends.
+
+
 ## 2026-06-14 — Forecast Data Sparsity Fix (P1)
 
 User pain: manufacturer dashboard's 12-month Revenue & Shipment Trend was
