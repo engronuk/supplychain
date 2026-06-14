@@ -1,64 +1,64 @@
 # CHANGELOG
 
-## 2026-06-14 — Strict-tier NAVIGATION enforcement (P0 follow-up)
+## 2026-06-14 — Manufacturer-side strict-tier navigation (P0 final)
 
-**The data model was already strict after the morning's ownership migration, but
-the UI was still surfacing tier-skipping drill paths.** This change closes the
-gap end-to-end. Visibility is allowed to skip levels, navigation is not.
+The full 5-hop ladder is now enforced **on both sides** of the platform:
+```
+Manufacturer → Warehouse → Distributor → Wholesaler → Retailer
+```
 
-### Sidebar
-- Distributor sidebar item "Retailers" → **"Wholesalers"** (`/network`).
+### Manufacturer Dashboard
+- Replaced the legacy **"Distributor Intelligence"** card with a new
+  **"Warehouse Network"** card (`data-testid="warehouse-network-card"`).
+  Lists the manufacturer's direct children (warehouses); each row drills
+  into `/manufacturer/warehouses/:id`. Sub-header rollup chips display
+  downstream counts (distributors / wholesalers / retailers) as visibility,
+  but click-through always goes to the warehouse next.
 
-### Distributor → `/network` (rewritten)
-- `NetworkView.jsx` rewired: the distributor role now renders
-  `DistributorWholesalerNetwork`, a Wholesaler-Network table with KPI band,
-  filter pills, CSV export, and tier-explicit footer note.
-- The legacy "Retailer Intelligence" page for distributors is gone.
+### `/network` (Manufacturer)
+- New **Warehouse Hero** strip at the top of the page
+  (`data-testid="warehouse-hero"`) — 3 warehouse tiles in a card grid.
+- Breadcrumb updated: **NETWORK › WAREHOUSES › DISTRIBUTORS · VISIBILITY**.
+- New **`downstream-vis-banner`** alert explicitly directs the user
+  through the strict-tier path for navigation, while keeping the existing
+  Distributor Network Intelligence analytics as *downstream visibility*.
 
-### NEW route: `/distributor/:distributorId/wholesaler/:wholesalerId`
-- New view `DistributorWholesalerDetail.jsx`. Renders the strict middle tier
-  — retailers owned by the selected wholesaler — with breadcrumb
-  *Distributor › Wholesalers › <name>*, KPI strip, retailer directory, recent
-  retailer-orders, and upstream procurement-to-distributor cards.
-- Powered by the existing `GET /api/distributor/{did}/wholesaler/{wid}/detail`
-  endpoint (returns 404 on a wholesaler that is not actually a child of the
-  given distributor).
+### Warehouse Detail page (`/manufacturer/warehouses/:id`)
+- New **Distributors tab** between Overview and Fulfillment
+  (`data-testid="tab-distributors"`). Hosts the warehouse's direct
+  children (distributors) with KPIs and a clickable list pointing to
+  `/distributors/:did`. Powered by the new
+  `GET /api/warehouse/{id}/distributor-network` endpoint.
 
-### Manufacturer → `/distributors/:distributorId` (drill page)
-- Replaced the embedded `RetailerIntelligenceTable` with a new
-  `WholesalerNetworkTable` ("Direct downstream · ownership") — clicking any
-  wholesaler row drills to `/distributor/:did/wholesaler/:wid`.
-- Converted `TopRetailers` + `AttentionList` from `<Link>`-wrapped rows to
-  plain `<div>` rows. They remain as visibility-only rollups; retailer rows
-  are no longer clickable from this page (preventing manufacturer →
-  distributor → retailer skipping the wholesaler tier).
-- Cards now display the framing "DOWNSTREAM VISIBILITY · Owned by wholesalers
-  — open via Wholesaler Network".
-
-### Retailer detail page tier-awareness
-- `DistributorRetailerDetail.jsx` now honors a `?via=<wholesalerId>` query
-  param: the "Back" button reads **"Back to wholesaler"** and routes to
-  `/distributor/:did/wholesaler/:wid` when the user reached the retailer
-  through the strict tier path.
+### Backend
+- New endpoint `GET /api/manufacturer/{id}/warehouse-network` returning
+  per-warehouse cards with all 4 downstream tiers rolled up (distributors,
+  wholesalers, retailers, revenue_90d, inventory, low stock, pending orders).
+- New endpoint `GET /api/warehouse/{id}/distributor-network` returning the
+  warehouse's direct-child distributors with downstream rollups. 404 on a
+  warehouse-id that isn't actually a warehouse organization.
 
 ### Tests
-- `/app/backend/tests/test_wholesaler_drill_navigation.py` — 5 new pytest
-  cases (endpoint shape, retailer membership, 404 on mismatched IDs,
-  wholesaler-network listing). All pass.
-- Strict-ownership migration validator still PASS (0 forbidden, 168 retailers
-  under wholesalers).
-- `testing_agent_v3_fork` (iteration_27): backend 100% · frontend 100% ·
-  0 console errors across distributor + manufacturer flows.
+- New `/app/backend/tests/test_warehouse_network_navigation.py` — 6 pytest
+  cases. All pass.
+- Regression `/app/backend/tests/test_wholesaler_drill_navigation.py` — 5/5
+  still pass.
+- `testing_agent_v3_fork` iteration_28 — 100% backend (11/11) · 100%
+  frontend (all data-testids, 5-hop drill, breadcrumb, banner, distributor
+  regression) · 0 console errors.
 
-## 2026-06-14 — Strict 5-tier OWNERSHIP enforcement (earlier today)
-See previous block in this file. Re-parented 24 key-account retailers
-(Shoprite, Spar, Game, Hubmart, Justrite, MarketSquare) from distributors to
-region-matched wholesalers. Ownership ≠ Transactions ≠ Visibility — these
-three concepts are now cleanly separated platform-wide.
+## 2026-06-14 (earlier) — Strict-tier NAVIGATION (distributor side)
+Distributor sidebar "Retailers" → "Wholesalers". `/network` rewritten as a
+Wholesaler Network. New `/distributor/:did/wholesaler/:wid` drill page.
+Manufacturer's distributor-detail page replaced inline RetailerIntel table
+with a WholesalerNetworkTable; Top/Attention retailer cards converted to
+visibility-only (no click-through). Retailer detail page now respects
+`?via=:wid` for tier-aware back navigation.
 
-## 2026-06-14 — Distributor → Wholesaler Network UI live
-Wired `WholesalerNetworkSection` into Distributor dashboard; hardened
-`RevenueTrendCard` against undefined `trend`.
+## 2026-06-14 (earlier) — Strict 5-tier OWNERSHIP enforcement
+Re-parented 24 key-account retailers (Shoprite, Spar, Game, Hubmart,
+Justrite, MarketSquare) from distributors to region-matched wholesalers.
+Migration is idempotent and ships with a hierarchy validation report.
 
 ## Earlier history
 See PRD.md "Logistics Command Center Vision" section.
