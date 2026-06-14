@@ -62,8 +62,18 @@ export default function DistributorRetailerDetail() {
     overview.stock_health_pct >= 40 ? { tone: "amber", chip: "bg-amber-50 text-amber-700 border-amber-200", dot: "#f59e0b" } :
     { tone: "rose", chip: "bg-rose-50 text-rose-700 border-rose-200", dot: "#ef4444" };
 
-  const backTarget = isManufacturer ? `/distributors/${distributorId}` : "/network";
-  const backLabel = isManufacturer ? "Back to distributor" : "Back to retailers";
+  const viaWholesalerId = params.get("via");
+  const backTarget =
+    isManufacturer
+      ? (viaWholesalerId
+          ? `/distributor/${distributorId}/wholesaler/${viaWholesalerId}`
+          : `/distributors/${distributorId}`)
+      : (viaWholesalerId
+          ? `/distributor/${session?.entity?.id}/wholesaler/${viaWholesalerId}`
+          : "/network");
+  const backLabel = viaWholesalerId
+    ? "Back to wholesaler"
+    : isManufacturer ? "Back to distributor" : "Back to wholesalers";
 
   return (
     <div className="p-6 lg:p-8 max-w-[1500px] mx-auto" data-testid="retailer-detail">

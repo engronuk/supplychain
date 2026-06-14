@@ -117,13 +117,147 @@ export default function ManufacturerDistributorDetail() {
           </div>
         </div>
 
-        <RetailerIntelligenceTable rows={data.retailer_table} distributorId={distributorId} />
+        <WholesalerNetworkTable distributorId={distributorId} />
 
         <EditDistributorDialog
           open={editOpen} onOpenChange={setEditOpen}
           distributor={d}
           onSaved={() => { setEditOpen(false); load(); }}
         />
+      </div>
+    </div>
+  );
+}
+
+// =============================================================================
+// WHOLESALER NETWORK TABLE — replaces the legacy direct-retailer drill table.
+// Reuses the existing /distributor/{id}/wholesaler-network endpoint. Clicking
+// a wholesaler opens the wholesaler detail page where retailers live.
+// =============================================================================
+function WholesalerNetworkTable({ distributorId }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    if (!distributorId) return;
+    let live = true;
+    setLoading(true);
+    Api.distributorWholesalerNetwork(distributorId)
+      .then((d) => { if (live) setRows(d?.wholesalers || []); })
+      .catch(() => { if (live) setRows([]); })
+      .finally(() => { if (live) setLoading(false); });
+    return () => { live = false; };
+  }, [distributorId]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return rows;
+    return rows.filter((w) =>
+      (w.name || "").toLowerCase().includes(q)
+      || (w.code || "").toLowerCase().includes(q)
+      || (w.city || "").toLowerCase().includes(q)
+    );
+  }, [rows, query]);
+
+  return (
+    <div className="bg-white rounded-2xl p-6 shadow-[0_2px_8px_rgba(15,23,42,0.04)] border border-slate-100/70"
+         data-testid="wholesaler-network-table">
+      <div className="flex items-start justify-between mb-1 flex-wrap gap-3">
+        <div>
+          <div className="text-[10.5px] uppercase tracking-[0.18em] text-slate-400 font-semibold">
+            Direct downstream · ownership
+          </div>
+          <h3 className="text-[17px] font-semibold text-slate-900 mt-0.5">
+            Wholesaler Network
+            <span className="ml-2 text-[12px] font-medium text-slate-500">({rows.length} wholesalers)</span>
+          </h3>
+          <p className="text-[12.5px] text-slate-500 mt-1">
+            Strict ownership chain: <span className="font-semibold text-slate-700">Distributor → Wholesaler → Retailer</span>.
+            Open a wholesaler to see the retailers they own.
+          </p>
+        </div>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            type="text"
+            placeholder="Search wholesaler…"
+            className="h-9 pl-9 pr-3 w-[240px] rounded-xl border border-slate-200 bg-slate-50 text-[12.5px] text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-200 focus:border-violet-300 transition-all"
+            data-testid="wholesaler-network-search"
+          />
+        </div>
+      </div>
+
+      <div className="overflow-x-auto mt-3">
+        <table className="w-full text-[12.5px]">
+          <thead>
+            <tr className="text-[10.5px] uppercase tracking-wider text-slate-400 font-semibold border-b border-slate-100">
+              <th className="text-left pb-3 pl-2">Wholesaler</th>
+              <th className="text-left pb-3">Location</th>
+              <th className="text-right pb-3">Retailers</th>
+              <th className="text-right pb-3">Active 30d</th>
+              <th className="text-right pb-3">Revenue (90d)</th>
+              <th className="text-right pb-3">Growth</th>
+              <th className="text-right pb-3">Pending</th>
+              <th className="text-left pb-3">Status</th>
+              <th className="text-right pb-3 pr-2">Action</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-50">
+            {loading && (
+              <tr><td colSpan={9} className="text-center py-10 text-slate-500">Loading wholesalers…</td></tr>
+            )}
+            {!loading && filtered.length === 0 && (
+              <tr><td colSpan={9} className="text-center py-10 text-slate-500">
+                {rows.length === 0
+                  ? "No wholesalers under this distributor yet."
+                  : "No wholesalers match your search."}
+              </td></tr>
+            )}
+            {!loading && filtered.map((w) => {
+              const up = (w.growth_pct ?? 0) >= 0;
+              const tone =
+                w.status === "healthy" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                w.status === "warning" ? "bg-amber-50 text-amber-700 border-amber-200" :
+                "bg-rose-50 text-rose-700 border-rose-200";
+              const drillTo = `/distributor/${distributorId}/wholesaler/${w.id}`;
+              return (
+                <tr key={w.id} data-testid={`wholesaler-net-row-${w.id}`} className="hover:bg-slate-50/50 transition-colors">
+                  <td className="py-3 pl-2">
+                    <Link to={drillTo} className="block group" data-testid={`wholesaler-net-link-${w.id}`}>
+                      <div className="font-medium text-slate-900 group-hover:text-violet-600 transition-colors flex items-center gap-1">
+                        {w.name}
+                        <ArrowUpRight className="h-3.5 w-3.5 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                      </div>
+                      <div className="text-[11px] text-slate-500 mt-0.5 font-mono">{w.code}</div>
+                    </Link>
+                  </td>
+                  <td className="text-slate-600">{w.city || "—"}, {w.region || "—"}</td>
+                  <td className="text-right tabular-nums font-semibold text-slate-900">{fmtInt(w.retailer_count)}</td>
+                  <td className="text-right tabular-nums text-emerald-700">{fmtInt(w.active_retailers_30d)}</td>
+                  <td className="text-right tabular-nums font-semibold">{fmtMoney(w.revenue_90d)}</td>
+                  <td className={`text-right tabular-nums font-semibold ${up ? "text-emerald-600" : "text-rose-600"}`}>
+                    {fmtPct(w.growth_pct)}
+                  </td>
+                  <td className="text-right tabular-nums">{fmtInt(w.pending_orders)}</td>
+                  <td>
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] uppercase tracking-wider font-semibold ${tone}`}>
+                      {w.status || "—"}
+                    </span>
+                  </td>
+                  <td className="text-right pr-2">
+                    <Link to={drillTo} className="text-violet-700 hover:text-violet-900 font-semibold text-xs inline-flex items-center gap-1"
+                          data-testid={`wholesaler-net-drill-${w.id}`}>
+                      <Eye className="h-3.5 w-3.5" /> View retailers
+                    </Link>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     </div>
   );
@@ -755,13 +889,18 @@ const HEALTH_CHIP = {
 };
 
 function TopRetailers({ rows, distributorId }) {
+  // Visibility-only rollup. Retailers are owned by wholesalers — direct
+  // navigation from a distributor view is intentionally disabled to preserve
+  // the strict tier path: open the wholesaler from the network table below
+  // and drill from there.
   return (
     <div className="bg-white rounded-2xl p-5 shadow-[0_2px_8px_rgba(15,23,42,0.04)] border border-slate-100/70 h-full" data-testid="top-retailers-card">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-[14px] font-semibold text-slate-900">Top Performing Retailers</h3>
-        <Link to="#" className="text-[11.5px] font-semibold text-violet-600 hover:text-violet-700 inline-flex items-center gap-1">
-          View all <ArrowRight className="h-3 w-3" />
-        </Link>
+      <div className="flex items-start justify-between mb-3 gap-2">
+        <div>
+          <div className="text-[9.5px] uppercase tracking-[0.18em] text-slate-400 font-semibold">Downstream visibility</div>
+          <h3 className="text-[14px] font-semibold text-slate-900 mt-0.5">Top Performing Retailers</h3>
+          <p className="text-[10.5px] text-slate-400 mt-0.5">Owned by wholesalers — open via Wholesaler Network</p>
+        </div>
       </div>
       {rows.length === 0 ? (
         <div className="text-[12px] text-slate-400 py-6 text-center">No retailer sales recorded yet.</div>
@@ -771,8 +910,8 @@ function TopRetailers({ rows, distributorId }) {
             const h = HEALTH_CHIP[r.health] || HEALTH_CHIP.healthy;
             const up = (r.growth_pct ?? 0) >= 0;
             return (
-              <Link key={r.id} to={`/distributors/${distributorId}/retailers/${r.id}`}
-                className="flex items-center gap-2.5 py-2.5 -mx-2 px-2 rounded-lg hover:bg-slate-50 transition-colors"
+              <div key={r.id}
+                className="flex items-center gap-2.5 py-2.5 -mx-2 px-2 rounded-lg cursor-default"
                 data-testid={`top-retailer-${i}`}>
                 <span className="text-[10.5px] font-bold text-slate-400 w-4 text-center tabular-nums">{i + 1}</span>
                 <div className="min-w-0 flex-1">
@@ -788,7 +927,7 @@ function TopRetailers({ rows, distributorId }) {
                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9.5px] font-bold ${h.bg} ${h.text}`}>
                   {h.label}
                 </span>
-              </Link>
+              </div>
             );
           })}
         </div>
@@ -852,13 +991,13 @@ function ProductPenetration({ rows }) {
 // ATTENTION LIST
 // =============================================================================
 function AttentionList({ rows, distributorId }) {
+  // Visibility-only — same rule as TopRetailers above.
   return (
     <div className="bg-white rounded-2xl p-5 shadow-[0_2px_8px_rgba(15,23,42,0.04)] border border-slate-100/70 h-full" data-testid="attention-list-card">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-[14px] font-semibold text-slate-900">Retailers Requiring Attention</h3>
-        <Link to="#" className="text-[11.5px] font-semibold text-violet-600 hover:text-violet-700 inline-flex items-center gap-1">
-          View all <ArrowRight className="h-3 w-3" />
-        </Link>
+      <div className="mb-3">
+        <div className="text-[9.5px] uppercase tracking-[0.18em] text-slate-400 font-semibold">Downstream visibility</div>
+        <h3 className="text-[14px] font-semibold text-slate-900 mt-0.5">Retailers Requiring Attention</h3>
+        <p className="text-[10.5px] text-slate-400 mt-0.5">Owned by wholesalers — open via Wholesaler Network</p>
       </div>
       {rows.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-8 text-center">
@@ -871,8 +1010,8 @@ function AttentionList({ rows, distributorId }) {
           {rows.map((r, i) => {
             const isRisk = r.status === "At Risk";
             return (
-              <Link key={r.id} to={`/distributors/${distributorId}/retailers/${r.id}`}
-                className="flex items-start gap-3 py-1 -mx-2 px-2 rounded-lg hover:bg-slate-50 transition-colors"
+              <div key={r.id}
+                className="flex items-start gap-3 py-1 -mx-2 px-2 rounded-lg cursor-default"
                 data-testid={`attention-${i}`}>
                 <div className={`h-7 w-7 rounded-lg flex items-center justify-center flex-shrink-0 ${isRisk ? "bg-rose-50 text-rose-600" : "bg-amber-50 text-amber-600"}`}>
                   <AlertTriangle className="h-3.5 w-3.5" />
@@ -884,7 +1023,7 @@ function AttentionList({ rows, distributorId }) {
                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9.5px] font-bold flex-shrink-0 ${isRisk ? "bg-rose-50 text-rose-700" : "bg-amber-50 text-amber-700"}`}>
                   {r.status}
                 </span>
-              </Link>
+              </div>
             );
           })}
         </div>

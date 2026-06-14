@@ -61,7 +61,7 @@ function navForRole(role) {
     base.push({ to: "/manufacturer/warehouses", label: "Warehouses", icon: Warehouse });
   } else if (role === "distributor") {
     base.push({ to: "/intel", label: "Intelligence", icon: BrainCircuit });
-    base.push({ to: "/network", label: "Retailers", icon: Network });
+    base.push({ to: "/network", label: "Wholesalers", icon: Network });
     base.push({ to: "/procurement", label: "Procurement", icon: ShoppingCart });
   } else if (role === "wholesaler") {
     // Phase 3 nav — Procurement (upstream POs) + dedicated Distributor

@@ -11,104 +11,104 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import {
-  Search, Warehouse, Store, ChevronUp, ChevronDown, ChevronsUpDown,
-  Eye, Boxes, Receipt, Send, Phone, Mail, ArrowUpRight, Download,
+  Search, ChevronUp, ChevronDown, ChevronsUpDown,
+  ArrowUpRight, Download, ShoppingBag, Activity, TrendingUp, MapPin, Eye,
 } from "lucide-react";
 import ManufacturerNetworkIntelligence from "./ManufacturerNetworkIntelligence";
 import WholesalerDistributors from "./WholesalerDistributors";
 
 // --- helpers
-const toneFor = (s) =>
-  s === "active" ? { dot: "#10b981", chip: "bg-emerald-50 text-emerald-700 border-emerald-200" } :
-  { dot: "#94a3b8", chip: "bg-slate-50 text-slate-600 border-slate-200" };
 const healthTone = (s) =>
   s === "healthy" ? { dot: "#10b981", chip: "bg-emerald-50 text-emerald-700 border-emerald-200" } :
   s === "warning" ? { dot: "#f59e0b", chip: "bg-amber-50 text-amber-700 border-amber-200" } :
   s === "critical" ? { dot: "#ef4444", chip: "bg-rose-50 text-rose-700 border-rose-200" } :
   { dot: "#94a3b8", chip: "bg-slate-50 text-slate-600 border-slate-200" };
-const fmtMoney = (v) => "₦" + Number(v || 0).toLocaleString();
-const fmtDate = (v) => v ? new Date(v).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—";
+const fmtMoney = (v) => {
+  const n = Number(v || 0);
+  if (n >= 1_000_000_000) return `₦${(n / 1_000_000_000).toFixed(2)}B`;
+  if (n >= 1_000_000) return `₦${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `₦${(n / 1_000).toFixed(0)}K`;
+  return `₦${n.toLocaleString()}`;
+};
+const fmtInt = (v) => Number(v || 0).toLocaleString();
+const fmtPct = (v) => v == null ? "—" : `${v > 0 ? "+" : ""}${Number(v).toFixed(1)}%`;
 
 export default function NetworkView() {
   const { session } = useSession();
   const role = session.role;
   if (role === "manufacturer") return <ManufacturerNetworkIntelligence />;
-  if (role === "distributor") return <DistributorNetwork session={session} />;
+  if (role === "distributor") return <DistributorWholesalerNetwork session={session} />;
   if (role === "wholesaler") return <WholesalerDistributors />;
   return <div className="p-8 text-slate-500">Network view is only available for manufacturer, distributor & wholesaler roles.</div>;
 }
 
 // ============================================================================
-// DISTRIBUTOR — enriched retailer intelligence table
+// DISTRIBUTOR — Wholesaler Network (strict ownership tier)
+//
+// Distributor direct children = Wholesalers. Retailers are owned by wholesalers
+// and therefore only accessible by drilling INTO a wholesaler row. Navigation
+// must NEVER skip the wholesaler tier.
 // ============================================================================
-function DistributorNetwork({ session }) {
-  const [items, setItems] = useState([]);
+function DistributorWholesalerNetwork({ session }) {
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");      // active|inactive|all
-  const [healthFilter, setHealthFilter] = useState("all");      // healthy|warning|critical|all
-  const [sortBy, setSortBy] = useState({ key: "name", dir: "asc" });
+  const [healthFilter, setHealthFilter] = useState("all");
+  const [sortBy, setSortBy] = useState({ key: "revenue_90d", dir: "desc" });
 
   useEffect(() => {
+    if (!session?.entity?.id) return;
     setLoading(true);
-    Api.distributorRetailers(session.entity.id)
-      .then(setItems)
+    Api.distributorWholesalerNetwork(session.entity.id)
+      .then(setData)
       .finally(() => setLoading(false));
-  }, [session.entity.id]);
+  }, [session?.entity?.id]);
+
+  const wholesalers = data?.wholesalers || [];
+  const kpis = data?.kpis || {};
 
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
-    let out = items.filter((x) => {
-      if (statusFilter !== "all" && x.status !== statusFilter) return false;
-      if (healthFilter !== "all" && x.health !== healthFilter) return false;
+    let out = wholesalers.filter((w) => {
+      if (healthFilter !== "all" && w.status !== healthFilter) return false;
       if (!s) return true;
-      return (x.name || "").toLowerCase().includes(s)
-        || (x.city || "").toLowerCase().includes(s)
-        || (x.store_code || "").toLowerCase().includes(s)
-        || (x.contact_name || "").toLowerCase().includes(s);
+      return (w.name || "").toLowerCase().includes(s)
+        || (w.city || "").toLowerCase().includes(s)
+        || (w.code || "").toLowerCase().includes(s);
     });
     const { key, dir } = sortBy;
     out = [...out].sort((a, b) => {
-      let va = a[key], vb = b[key];
-      if (key === "last_order_date") { va = va || ""; vb = vb || ""; }
+      const va = a[key] ?? 0; const vb = b[key] ?? 0;
       if (typeof va === "string") return dir === "asc" ? va.localeCompare(vb || "") : (vb || "").localeCompare(va);
-      return dir === "asc" ? (va || 0) - (vb || 0) : (vb || 0) - (va || 0);
+      return dir === "asc" ? va - vb : vb - va;
     });
     return out;
-  }, [items, search, statusFilter, healthFilter, sortBy]);
+  }, [wholesalers, search, healthFilter, sortBy]);
 
   const toggleSort = (key) => setSortBy((s) => ({
-    key, dir: s.key === key && s.dir === "asc" ? "desc" : "asc"
+    key, dir: s.key === key && s.dir === "desc" ? "asc" : "desc",
   }));
 
-  const summary = useMemo(() => {
-    const total = items.length;
-    const active = items.filter((x) => x.status === "active").length;
-    const totalRev = items.reduce((a, b) => a + (b.revenue || 0), 0);
-    const critical = items.filter((x) => x.health === "critical").length;
-    return { total, active, totalRev, critical };
-  }, [items]);
-
   const exportCsv = () => {
-    const header = ["Name","Store Code","Region","City","Status","Health %","Revenue","Inventory Units","Low Stock SKUs","Last Order","Phone"];
-    const rows = filtered.map((x) => [
-      x.name, x.store_code, x.region, x.city, x.status, x.stock_health_pct,
-      x.revenue, x.inventory_units, x.low_stock_skus,
-      x.last_order_date ? new Date(x.last_order_date).toISOString().slice(0,10) : "",
-      x.phone,
+    const header = ["Wholesaler", "Code", "City", "Region", "Retailers", "Active Retailers (30d)", "Revenue (90d)", "Growth %", "Pending Orders", "Status"];
+    const rows = filtered.map((w) => [
+      w.name, w.code, w.city, w.region, w.retailer_count,
+      w.active_retailers_30d, w.revenue_90d, w.growth_pct,
+      w.pending_orders, w.status,
     ]);
-    const csv = [header, ...rows].map((r) => r.map((c) => `"${String(c || "").replace(/"/g, '""')}"`).join(",")).join("\n");
+    const csv = [header, ...rows].map((r) => r.map((c) => `"${String(c ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement("a"); a.href = url; a.download = "retailers.csv"; a.click(); URL.revokeObjectURL(url);
+    const a = document.createElement("a"); a.href = url; a.download = "wholesalers.csv"; a.click(); URL.revokeObjectURL(url);
   };
 
   return (
-    <div className="p-8 max-w-[1400px] mx-auto" data-testid="distributor-network">
-      <PageHeader title="Retailer Intelligence"
-        description="Status, revenue, stock health, and last order across your retailer network."
+    <div className="p-8 max-w-[1400px] mx-auto" data-testid="distributor-wholesaler-network">
+      <PageHeader
+        title="Wholesaler Network"
+        description="Your direct downstream tier. Click any wholesaler to drill into the retailers they own."
         actions={
-          <Button variant="outline" size="sm" onClick={exportCsv} data-testid="retailers-export-csv">
+          <Button variant="outline" size="sm" onClick={exportCsv} data-testid="wholesalers-export-csv">
             <Download className="h-3.5 w-3.5 mr-1.5" /> Export CSV
           </Button>
         }
@@ -116,10 +116,14 @@ function DistributorNetwork({ session }) {
 
       {/* Summary KPI strip */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
-        <SummaryStat label="Total Retailers" value={summary.total} tone="slate" />
-        <SummaryStat label="Active" value={summary.active} tone="emerald" />
-        <SummaryStat label="Revenue (received)" value={fmtMoney(summary.totalRev)} tone="indigo" />
-        <SummaryStat label="Critical Stock" value={summary.critical} tone="rose" />
+        <KpiTile Icon={ShoppingBag} label="Wholesalers" value={fmtInt(kpis.total_wholesalers)}
+          sub={`${kpis.active_wholesalers_30d ?? 0} active 30d`} tone="violet" />
+        <KpiTile Icon={Activity} label="Retailers (visibility)" value={fmtInt(kpis.total_retailers_in_network)}
+          sub={`${kpis.active_retailers_30d ?? 0} active 30d · owned by wholesalers`} tone="blue" />
+        <KpiTile Icon={TrendingUp} label="Network revenue · 90d" value={fmtMoney(kpis.revenue_90d)}
+          sub="across all wholesalers" tone="emerald" />
+        <KpiTile Icon={MapPin} label="Tier" value="Distributor → Wholesaler"
+          sub="Retailers via drill-down only" tone="slate" />
       </div>
 
       {/* Filters bar */}
@@ -129,103 +133,85 @@ function DistributorNetwork({ session }) {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search store, city, code, contact…"
+            placeholder="Search wholesaler, code, city…"
             className="pl-9 w-80"
-            data-testid="distributor-retailers-search"
+            data-testid="wholesalers-search"
           />
         </div>
-        <Pill label="All" active={statusFilter === "all"} onClick={() => setStatusFilter("all")} />
-        <Pill label="Active" active={statusFilter === "active"} dot="#10b981" onClick={() => setStatusFilter("active")} />
-        <Pill label="Inactive" active={statusFilter === "inactive"} dot="#94a3b8" onClick={() => setStatusFilter("inactive")} />
-        <div className="w-px h-5 bg-slate-200 mx-1" />
-        <Pill label="Any health" active={healthFilter === "all"} onClick={() => setHealthFilter("all")} />
+        <Pill label="All health" active={healthFilter === "all"} onClick={() => setHealthFilter("all")} />
         <Pill label="Healthy" active={healthFilter === "healthy"} dot="#10b981" onClick={() => setHealthFilter("healthy")} />
         <Pill label="Warning" active={healthFilter === "warning"} dot="#f59e0b" onClick={() => setHealthFilter("warning")} />
         <Pill label="Critical" active={healthFilter === "critical"} dot="#ef4444" onClick={() => setHealthFilter("critical")} />
         <div className="ml-auto text-xs text-slate-500">
-          <span className="font-semibold text-slate-900">{filtered.length}</span> / {items.length} retailers
+          <span className="font-semibold text-slate-900">{filtered.length}</span> / {wholesalers.length} wholesalers
         </div>
       </div>
 
       <Card><CardContent className="p-0">
         <div className="overflow-x-auto">
-          <Table data-testid="distributor-retailers-table">
+          <Table data-testid="wholesalers-table">
             <TableHeader>
               <TableRow>
-                <SortHead label="Retailer" k="name" sortBy={sortBy} onClick={toggleSort} />
-                <SortHead label="Status" k="status" sortBy={sortBy} onClick={toggleSort} />
-                <SortHead label="Stock Health" k="stock_health_pct" sortBy={sortBy} onClick={toggleSort} />
-                <SortHead label="Revenue" k="revenue" sortBy={sortBy} onClick={toggleSort} align="right" />
-                <SortHead label="Last Order" k="last_order_date" sortBy={sortBy} onClick={toggleSort} />
-                <TableHead>Contact</TableHead>
-                <TableHead className="text-right pr-4">Actions</TableHead>
+                <SortHead label="Wholesaler" k="name" sortBy={sortBy} onClick={toggleSort} />
+                <SortHead label="Retailers" k="retailer_count" sortBy={sortBy} onClick={toggleSort} align="right" />
+                <SortHead label="Active 30d" k="active_retailers_30d" sortBy={sortBy} onClick={toggleSort} align="right" />
+                <SortHead label="Revenue (90d)" k="revenue_90d" sortBy={sortBy} onClick={toggleSort} align="right" />
+                <SortHead label="Growth %" k="growth_pct" sortBy={sortBy} onClick={toggleSort} align="right" />
+                <SortHead label="Pending" k="pending_orders" sortBy={sortBy} onClick={toggleSort} align="right" />
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right pr-4">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading && (
-                <TableRow><TableCell colSpan={7} className="text-center py-12 text-slate-500">Loading retailers…</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="text-center py-12 text-slate-500">Loading wholesalers…</TableCell></TableRow>
               )}
               {!loading && filtered.length === 0 && (
-                <TableRow><TableCell colSpan={7} className="text-center py-12 text-slate-500">No retailers match your filters.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="text-center py-12 text-slate-500">No wholesalers match your filters.</TableCell></TableRow>
               )}
-              {!loading && filtered.map((x) => {
-                const st = toneFor(x.status);
-                const ht = healthTone(x.health);
+              {!loading && filtered.map((w) => {
+                const ht = healthTone(w.status);
+                const up = (w.growth_pct ?? 0) >= 0;
+                const drillTo = `/distributor/${session.entity.id}/wholesaler/${w.id}`;
                 return (
-                  <TableRow key={x.id} data-testid={`retailer-row-${x.id}`} className="hover:bg-slate-50/50 transition-colors">
+                  <TableRow key={w.id} data-testid={`wholesaler-row-${w.id}`} className="hover:bg-slate-50/50 transition-colors">
                     <TableCell>
-                      <Link to={`/network/retailer/${x.id}`} className="block group">
-                        <div className="font-medium text-slate-900 group-hover:text-indigo-600 transition-colors flex items-center gap-1">
-                          {x.name}
+                      <Link to={drillTo} className="block group" data-testid={`wholesaler-link-${w.id}`}>
+                        <div className="font-medium text-slate-900 group-hover:text-violet-600 transition-colors flex items-center gap-1">
+                          {w.name}
                           <ArrowUpRight className="h-3.5 w-3.5 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
                         </div>
                         <div className="text-[11px] text-slate-500 mt-0.5">
-                          {x.store_code} · {x.city || "—"}, {x.region || "—"}
+                          {w.code} · {w.city || "—"}, {w.region || "—"}
                         </div>
                       </Link>
                     </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={`uppercase text-[10px] tracking-wider font-semibold ${st.chip}`}>
-                        <span className="h-1.5 w-1.5 rounded-full mr-1.5" style={{ background: st.dot }} />
-                        {x.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2 min-w-[140px]">
-                        <div className="w-20 h-1.5 rounded-full bg-slate-100 overflow-hidden">
-                          <div className="h-full rounded-full" style={{ width: `${x.stock_health_pct}%`, background: ht.dot }} />
-                        </div>
-                        <span className="text-[12px] font-semibold text-slate-700 tabular-nums">{x.stock_health_pct}%</span>
-                      </div>
-                      {x.low_stock_skus > 0 && (
-                        <div className="text-[10.5px] text-amber-600 mt-1">{x.low_stock_skus} low · {x.out_of_stock_skus} out</div>
-                      )}
+                    <TableCell className="text-right tabular-nums">
+                      <span className="font-semibold text-slate-900">{fmtInt(w.retailer_count)}</span>
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
-                      <div className="font-semibold text-slate-900">{fmtMoney(x.revenue)}</div>
-                      <div className="text-[10.5px] text-slate-500">{x.inventory_units.toLocaleString()} units</div>
+                      <span className="text-emerald-700 font-medium">{fmtInt(w.active_retailers_30d)}</span>
                     </TableCell>
-                    <TableCell className="text-[12.5px] text-slate-700">{fmtDate(x.last_order_date)}</TableCell>
-                    <TableCell className="text-[11.5px]">
-                      <div className="text-slate-700 font-medium">{x.contact_name}</div>
-                      {x.phone && (
-                        <a href={`tel:${x.phone}`} className="inline-flex items-center gap-1 text-slate-500 hover:text-indigo-600">
-                          <Phone className="h-3 w-3" /> {x.phone}
-                        </a>
-                      )}
-                      {x.email && (
-                        <a href={`mailto:${x.email}`} className="block inline-flex items-center gap-1 text-slate-500 hover:text-indigo-600">
-                          <Mail className="h-3 w-3" /> {x.email}
-                        </a>
-                      )}
+                    <TableCell className="text-right tabular-nums">
+                      <span className="font-semibold text-slate-900">{fmtMoney(w.revenue_90d)}</span>
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      <span className={`font-semibold ${up ? "text-emerald-600" : "text-rose-600"}`}>
+                        {fmtPct(w.growth_pct)}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">{fmtInt(w.pending_orders)}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className={`uppercase text-[10px] tracking-wider font-semibold ${ht.chip}`}>
+                        <span className="h-1.5 w-1.5 rounded-full mr-1.5" style={{ background: ht.dot }} />
+                        {w.status || "—"}
+                      </Badge>
                     </TableCell>
                     <TableCell className="text-right pr-4">
-                      <div className="inline-flex items-center gap-1 opacity-70 hover:opacity-100 transition-opacity">
-                        <IconBtn title="View details" to={`/network/retailer/${x.id}`} icon={Eye} testId={`row-action-view-${x.id}`} />
-                        <IconBtn title="Inventory" to={`/network/retailer/${x.id}?tab=overview`} icon={Boxes} />
-                        <IconBtn title="Transactions" to={`/network/retailer/${x.id}?tab=transactions`} icon={Receipt} />
-                        <IconBtn title="Create delivery" to={`/shipments?retailer=${x.id}`} icon={Send} />
-                      </div>
+                      <Link to={drillTo} title="View retailers under this wholesaler" data-testid={`wholesaler-drill-${w.id}`}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-violet-700 hover:text-violet-900">
+                        <Eye className="h-3.5 w-3.5" /> View retailers
+                      </Link>
                     </TableCell>
                   </TableRow>
                 );
@@ -234,19 +220,31 @@ function DistributorNetwork({ session }) {
           </Table>
         </div>
       </CardContent></Card>
+
+      {/* Ownership disclaimer footer */}
+      <p className="mt-4 text-[11px] text-slate-400 text-center" data-testid="ownership-note">
+        Strict ownership: <span className="font-semibold text-slate-500">Distributor → Wholesaler → Retailer</span>.
+        Retailers are owned by wholesalers and only accessible after selecting one above.
+      </p>
     </div>
   );
 }
 
-function SummaryStat({ label, value, tone }) {
+function KpiTile({ Icon, label, value, sub, tone }) {
   const tones = {
-    slate: "from-slate-50 to-white", emerald: "from-emerald-50 to-white",
-    indigo: "from-indigo-50 to-white", rose: "from-rose-50 to-white",
+    violet:  "from-violet-50 to-white text-violet-700",
+    blue:    "from-blue-50 to-white text-blue-700",
+    emerald: "from-emerald-50 to-white text-emerald-700",
+    slate:   "from-slate-50 to-white text-slate-700",
   };
   return (
     <div className={`rounded-2xl border border-slate-200/80 bg-gradient-to-br ${tones[tone]} p-4`}>
-      <div className="text-[10.5px] uppercase tracking-[0.16em] text-slate-500 font-semibold">{label}</div>
-      <div className="text-[20px] font-bold text-slate-900 mt-1">{value}</div>
+      <div className="flex items-center gap-2 mb-1">
+        <Icon className="h-3.5 w-3.5" />
+        <div className="text-[10.5px] uppercase tracking-[0.16em] font-semibold opacity-80">{label}</div>
+      </div>
+      <div className="text-[20px] font-bold text-slate-900">{value}</div>
+      {sub && <div className="text-[11px] text-slate-500 mt-0.5">{sub}</div>}
     </div>
   );
 }
@@ -269,14 +267,5 @@ function SortHead({ label, k, sortBy, onClick, align = "left" }) {
         {label}<Icon className="h-3 w-3" />
       </button>
     </TableHead>
-  );
-}
-
-function IconBtn({ title, to, icon: Icon, testId }) {
-  return (
-    <Link to={to} title={title} data-testid={testId}
-      className="inline-flex items-center justify-center h-7 w-7 rounded-md hover:bg-slate-100 text-slate-500 hover:text-slate-900 transition-colors">
-      <Icon className="h-3.5 w-3.5" />
-    </Link>
   );
 }

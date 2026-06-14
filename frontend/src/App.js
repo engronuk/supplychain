@@ -26,6 +26,7 @@ import DemoAccountsPage from "@/views/DemoAccountsPage";
 import ManufacturerProductDetail from "@/views/ManufacturerProductDetail";
 import ProductCommandCenter from "@/views/ProductCommandCenter";
 import ManufacturerDistributorDetail from "@/views/ManufacturerDistributorDetail";
+import DistributorWholesalerDetail from "@/views/DistributorWholesalerDetail";
 import ProductIntelligenceCenter from "@/views/ProductIntelligenceCenter";
 import ManufacturerWarehouses, { ManufacturerWarehouseDetail } from "@/views/ManufacturerWarehouses";
 // AllocationCenter is now mounted inside the manufacturer Procurement workspace (Order Allocation tab).
@@ -150,6 +151,7 @@ function App() {
               <Route path="/procurement" element={<ProcurementGate />} />
               <Route path="/organizations" element={<OrganizationManagement />} />
               <Route path="/network" element={<NetworkView />} />
+              <Route path="/distributor/:distributorId/wholesaler/:wholesalerId" element={<DistributorWholesalerDetail />} />
               <Route path="/manufacturer/warehouses" element={<ManufacturerWarehouses />} />
               <Route path="/manufacturer/warehouses/:id" element={<ManufacturerWarehouseDetail />} />
               <Route path="/manufacturer/allocation" element={<Navigate to="/procurement?tab=allocation" replace />} />

@@ -1,0 +1,39 @@
+{
+  "iteration": 27,
+  "date": "2026-01",
+  "scope": "Hierarchy NAVIGATION validation — Distributor → Wholesaler → Retailer drill paths must NEVER skip the wholesaler tier. Validates sidebar rename, /network → Wholesaler Network, new /distributor/:did/wholesaler/:wid drill page, manufacturer drill swap, retailer back-to-wholesaler button, API endpoint correctness, and strict ownership integrity.",
+  "summary": "ALL navigation rules PASS end-to-end across distributor + manufacturer roles. Backend: 5/5 new pytest cases pass against live preview URL, strict-ownership migration validator still reports PASS (0 forbidden, 168 retailers under wholesalers). Frontend: distributor sidebar shows 'Wholesalers' (no Retailers link), /network renders DistributorWholesalerNetwork with all required data-testids, the new /distributor/:did/wholesaler/:wid intermediate page loads with breadcrumb and 6 retailers for Royal Trading 1 (including Shoprite Apapa + Spar Ikeja), retailer rows link to ?via=:wid, retailer detail page shows 'Back to wholesaler'. Manufacturer drill: wholesaler-network-table rendered (3 rows for FMN Pinnacle distributor), legacy retailer-intel-table absent, top-retailers-card + attention-list-card have ZERO <a> children (visibility-only), 'View retailers' link drills correctly into the new wholesaler page. Cross-tier drill manufacturer → distributor → wholesaler → retailer works end-to-end with correct back-button label. 0 console errors observed during any flow.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": { "ui_bugs": [], "integration_issues": [], "design_issues": [] },
+  "verified_flows": [
+    "Strict-ownership migration validator: 0 forbidden direct relationships; 168 retailers under wholesalers, 36 wholesalers under distributors, 12 distributors under warehouses, 6 warehouses under manufacturers. Exit 0 — PASS.",
+    "Backend GET /api/distributor/{Apex}/wholesaler/{RoyalTrading1}/detail returns wholesaler{id,name,code,region,city}, kpis{total_retailers=6, active_retailers_30d=6, revenue_90d=18335329.15, pending_orders_from_retailers=7, pending_procurement_to_distributor=2}, retailers[6] containing Shoprite Apapa + Spar Ikeja, each with id/name/code/region/city/revenue_90d/units_90d/last_sale_date/status. Mismatched IDs return 404.",
+    "Distributor login (unilever.distributor@tradekonekt.io): sidebar shows 'Wholesalers' link → /network; no 'Retailers' nav link to /network exists.",
+    "/network distributor view: data-testid='distributor-wholesaler-network' present, data-testid='wholesalers-table' present, legacy data-testid='distributor-retailers-table' absent, data-testid='ownership-note' present with text 'Strict ownership: Distributor → Wholesaler → Retailer'. KPI band shows WHOLESALERS / RETAILERS (VISIBILITY) / NETWORK REVENUE · 90D / TIER (Distributor → Wholesaler) — all 4 visible (CSS uppercased). 3 wholesaler-row-{wid} and 3 wholesaler-link-{wid} rendered, hrefs = /distributor/{did}/wholesaler/{wid}.",
+    "Drill into Royal Trading 1 → /distributor/:did/wholesaler/:wid loads: data-testid='ws-detail-page', 'ws-breadcrumb' = 'Distributor › Wholesalers › Royal Trading 1', KPI strip shows RETAILERS OWNED / REVENUE · 90D / PENDING ORDERS FROM RETAILERS / PENDING PO TO DISTRIBUTOR, data-testid='retailers-under-wholesaler-table' with 6 retailer-row-{rid} rows incl. Shoprite Apapa and Spar Ikeja. Each row has retailer-drill-{rid} href = /distributors/:did/retailers/:rid?via=:wid.",
+    "Retailer detail page (with ?via=:wid): back link reads 'Back to wholesaler' (NOT 'Back to retailers'/'Back to distributor').",
+    "Manufacturer login (fmn@tradekonekt.io) → click any distributor link from dashboard (/distributors/{did}): page renders data-testid='wholesaler-network-table' with 3 wholesaler-net-row-{wid} rows under header 'DIRECT DOWNSTREAM · OWNERSHIP'. Legacy 'retailer-intel-table' is absent. top-retailers-card has 0 <a> children, attention-list-card has 0 <a> children (visibility-only, no click-through).",
+    "Cross-tier drill: Manufacturer → /distributors/:did → click 'View retailers' on wholesaler row → /distributor/:did/wholesaler/:wid (ws-detail-page + retailers-under-wholesaler-table render) → click retailer Open → /distributors/:did/retailers/:rid?via=:wid loads with 'Back to wholesaler' button.",
+    "0 console errors observed across distributor and manufacturer flows."
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_wholesaler_drill_navigation.py",
+    "/app/test_reports/pytest/iteration_27.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "NetworkView.jsx role-switches cleanly via session.role to DistributorWholesalerNetwork/Manufacturer/Wholesaler. Good separation.",
+    "DistributorWholesalerDetail.jsx properly threads ?via=:wid into retailer drill links so the retailer page can render correct back target.",
+    "ManufacturerDistributorDetail.jsx correctly swaps legacy <RetailerIntelligenceTable /> with <WholesalerNetworkTable />; TopRetailers/AttentionList converted to non-anchored divs — verified 0 <a> children in DOM.",
+    "Backend /api/distributor/{did}/wholesaler/{wid}/detail returns 404 on mismatched parent/child as designed (verified)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_wholesaler_drill_navigation.py (NEW — 5 pytest cases, all passing)"
+  ],
+  "success_rate": { "backend": "100% (5/5 new tests + migration validator PASS)", "frontend": "100% (all required testids, navigation paths, breadcrumb, back-button label verified)" },
+  "test_credentials": "unilever.distributor@tradekonekt.io / TradeKonekt2026!  ·  fmn@tradekonekt.io / TradeKonekt2026!",
+  "seed_data_creation": "None — used existing canonical seed data.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "All NAVIGATION rules for the strict Distributor → Wholesaler → Retailer drill chain are in place and verified. Reusable backend regression: /app/backend/tests/test_wholesaler_drill_navigation.py (5 tests) covers the new /distributor/{did}/wholesaler/{wid}/detail endpoint, wholesaler-network listing, and 404 on mismatched IDs. Apex Distributors id = f9dfaf08-4ee2-3c64-e96b-983c385625b2; Royal Trading 1 wholesaler id = 6458308e-3b90-283c-f156-1a385cc22dd1. The KPI text labels are present in DOM in their original (lowercase/mixed) form and CSS uppercases them visually — any string-match tests should use case-insensitive comparison."
+}
