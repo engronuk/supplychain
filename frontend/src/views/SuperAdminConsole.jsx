@@ -18,8 +18,10 @@ import {
   Loader2,
   FlaskConical,
   UserCog,
+  RefreshCw,
 } from "lucide-react";
 import SuperAdminSimulator from "@/views/SuperAdminSimulator";
+import SyncPanel from "@/views/admin/SyncPanel";
 
 const ROLE_META = {
   super_admin: { Icon: ShieldCheck, label: "Super Admin" },
@@ -57,6 +59,9 @@ export default function SuperAdminConsole() {
             <TabsTrigger value="simulator" data-testid="tab-simulator">
               <FlaskConical className="h-3.5 w-3.5 mr-1.5" /> Simulator
             </TabsTrigger>
+            <TabsTrigger value="sync" data-testid="tab-sync">
+              <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Sync
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="impersonate" className="mt-6">
@@ -64,6 +69,9 @@ export default function SuperAdminConsole() {
           </TabsContent>
           <TabsContent value="simulator" className="mt-6">
             <SuperAdminSimulator />
+          </TabsContent>
+          <TabsContent value="sync" className="mt-6">
+            <SyncPanel />
           </TabsContent>
         </Tabs>
       </div>

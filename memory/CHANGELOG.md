@@ -1,4 +1,15 @@
 # CHANGELOG
+## 2026-06-14 — Sync Now UI panel
+
+Added a self-service Sync surface to `/admin` (Super Admin Console → Sync tab):
+- Token gate (paste `ADMIN_SYNC_TOKEN`, held only in-tab).
+- Live count cards per tier (current vs canonical target, green-tick when aligned).
+- 4-step indicator: Wipe & Rebuild → Backfill → Recompute → Done.
+- "Preview Diff (dry run)" pulls the org-delta + the list of collections that would be wiped.
+- "Sync Now (wipe & rebuild)" opens a confirmation modal with two toggleable options (backfill history, recompute forecasts) and a destructive-action button.
+- Polls `/status` every 5 s while a sync is in flight so the operator sees live progress.
+- Files: `frontend/src/views/admin/SyncPanel.jsx` (new); `frontend/src/lib/api.js` (added `SyncApi`); `frontend/src/views/SuperAdminConsole.jsx` (new Sync tab wired).
+
 ## 2026-06-14 — Production Sync Endpoint (deploy enabler)
 
 Problem: Preview and production used separate MongoDB clusters (Cloud

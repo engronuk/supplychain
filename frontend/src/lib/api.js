@@ -565,3 +565,27 @@ export const SimApi = {
 };
 
 export default api;
+
+// ------------ Admin Sync (production canonical-sync) -----------------
+// The admin token is NEVER stored in browser persistence — operator
+// pastes it once per session.
+export const SyncApi = {
+  status: (token) =>
+    api.get("/admin/sync/status", {
+      headers: { "X-Admin-Token": token },
+    }).then((r) => r.data),
+  diff: (token) =>
+    api.post("/admin/sync/diff", null, {
+      headers: { "X-Admin-Token": token },
+    }).then((r) => r.data),
+  apply: (token, opts = {}) =>
+    api.post(
+      "/admin/sync/apply",
+      {
+        confirm: "I_UNDERSTAND_THIS_WIPES_DATA",
+        backfill_history: opts.backfill_history ?? true,
+        recompute_forecasts: opts.recompute_forecasts ?? true,
+      },
+      { headers: { "X-Admin-Token": token } },
+    ).then((r) => r.data),
+};
