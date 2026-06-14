@@ -1,0 +1,79 @@
+
+==============================================================================
+1. PRODUCT OWNERSHIP & STOCKING VALIDATION
+==============================================================================
+  [PASS]  Products with a valid manufacturer parent               20 / 20
+  Inventory ownership by tier:
+  tier            records    valid  invalid   skus          units
+  manufacturer          0        0        0      0              0
+  warehouse            60       60        0     20        490,050
+  distributor         120      120        0     20        661,271
+  wholesaler          360      360        0     20        363,910
+  retailer           1680     1680        0     20        244,867
+  <missing>             0        0        0      0              0
+  [PASS]  All inventory rows have a valid owner_id                0 orphans
+          Grand-total stocked units (all tiers)                   1,760,098
+  [PASS]  No duplicate (owner_id × product_id) inventory rows     0 dupes
+
+==============================================================================
+2. ORDER FLOW VALIDATION
+==============================================================================
+  Retail purchase_orders by supplier_type:
+        distributor: 169
+         wholesaler: 983
+  [PASS]  Retailer→Wholesaler POs reference correct tiers         0 mismatches
+          Distributor↔Retailer direct POs (key-account flow)      169
+  [PASS]  Distributor→Retailer POs WITHOUT key-account permission 0
+  [PASS]  Wholesaler→Distributor POs reference correct tiers      0 mismatches
+  [PASS]  Distributor→Warehouse orders reference correct tiers    0 mismatches
+
+  Workflow status distribution (must cover the lifecycle):
+    purchase_orders                  delivered:285, submitted:219, approved:125, shipped:120, in_transit:100, picking:71, packed:63, closed:61, draft:54, rejected:54
+    wholesaler_purchase_orders       delivered:85, submitted:67, shipped:49, in_transit:19, approved:17, closed:10, draft:8, picking:7, rejected:5, packed:5
+    distributor_orders               approved:549, completed:40, pending:16, submitted:13, fulfillment_in_progress:12, awaiting_allocation:12, allocated:10, shipped:9, rejected:9, back_ordered:8, partially_allocated:8, packed:7, in_transit:7, picking:3, closed:1, draft:1
+    requests                         pending:9, fulfilled:7, approved:7, rejected:6
+    replenishment_requests           open:135, pending:10
+
+==============================================================================
+3. LOGISTICS / SHIPMENT FLOW VALIDATION
+==============================================================================
+  Shipment route distribution (from_role → to_role):
+    OK   warehouse      → distributor   : 483
+    OK   wholesaler     → retailer      : 480
+    OK   distributor    → wholesaler    : 89
+    OK   distributor    → retailer      : 86
+    OK   warehouse      → warehouse     : 40
+    OK   wholesaler     → distributor   : 25
+    OK   manufacturer   → warehouse     : 21
+  [PASS]  Forbidden shipment warehouse→retailer (must be 0)       0
+  [PASS]  Forbidden shipment warehouse→wholesaler (must be 0)     0
+  [PASS]  Forbidden shipment manufacturer→retailer (must be 0)    0
+  [PASS]  Forbidden shipment manufacturer→wholesaler (must be 0)  0
+  [PASS]  Forbidden shipment manufacturer→distributor (must be 0) 0
+  Wholesaler shipments route distribution:
+    OK   wholesaler     → retailer      : 93
+  [PASS]  Distributor→Retailer shipments are all key-accounts     0 violators
+
+  Shipment status distribution:
+    shipments         delivered:401, shipped:132, completed:45, loaded:15, draft:3, pending:3, picking:20, awaiting_dispatch:10, received:527, delayed:5, awaiting_approval:3, in_transit:60
+    wholesaler_shipments delivered:92, in_transit:1
+
+==============================================================================
+4. HIERARCHY INTEGRITY (DASHBOARD-FACING DATA)
+==============================================================================
+  [PASS]  retailers under wholesaler (allowed parent)             168/168
+  [PASS]  wholesalers under distributor (allowed parent)          36/36
+  [PASS]  distributors under warehouse (allowed parent)           12/12
+  [PASS]  warehouses under manufacturer (allowed parent)          6/6
+  [PASS]  retailers under distributor (forbidden)                 0
+  [PASS]  retailers under warehouse (forbidden)                   0
+  [PASS]  retailers under manufacturer (forbidden)                0
+  [PASS]  wholesalers under warehouse (forbidden)                 0
+  [PASS]  wholesalers under manufacturer (forbidden)              0
+  [PASS]  distributors under manufacturer (forbidden)             0
+
+==============================================================================
+VALIDATION SUMMARY
+==============================================================================
+  [PASS]  Overall result                                          PASS
+

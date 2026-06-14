@@ -1,64 +1,59 @@
 # CHANGELOG
 
+## 2026-06-14 — Full E2E supply-chain certification (PASS)
+
+Comprehensive validation across all 5 tiers. **Certification report:
+`/app/test_reports/certification/CERTIFICATION_REPORT.md`**.
+
+### Audit findings + repairs
+- Inventory ownership: 2,220 rows · 0 orphans · 0 duplicates across all tiers
+  (1.76M units total). **PASS**.
+- Order flow: 0 tier-mismatched POs after repair. 108 wholesaler POs that
+  skipped the distributor tier were re-routed; 601 distributor orders with
+  missing `warehouse_id` were back-filled with the distributor's parent
+  warehouse.
+- Shipment flow: 50 illegal warehouse-skip shipments re-routed to
+  `warehouse → distributor`. Forbidden routes (warehouse→retailer,
+  warehouse→wholesaler, manufacturer→anything-but-warehouse) all return 0.
+- Hierarchy integrity: 168/168 retailers under wholesalers · 36/36
+  wholesalers under distributors · 12/12 distributors under warehouses ·
+  6/6 warehouses under manufacturers. **0 forbidden parent-child pairs**.
+
+### Hardening
+- `POST /api/wholesaler/{wid}/procurement/orders` now enforces strict-tier
+  rule at request-time: `supplier_type` must be `distributor` AND
+  `supplier_id` must equal the wholesaler's parent organization id.
+- `services/simulator_generators.py` now stamps `warehouse_id` on every
+  generated `distributor_orders` doc (eliminates the data leak that produced
+  the 592 broken orders).
+- `routes/wholesaler.py` transition-to-`delivered` no longer crashes on
+  legacy inventory rows missing the `id` field; falls back to composite key.
+
+### Live business simulation
+19/19 steps PASS across the strict-tier chain Unilever → Lagos Warehouse →
+Apex Distributors → Royal Trading 1 → Family Shop 1 (product: Omo Detergent
+1kg). PO-2026-00001 (retailer→wholesaler) and WPO-2026-0271 (wholesaler→
+distributor) both walked the full state machine from `draft` to `delivered`
+with inventory credited at the wholesaler tier.
+
+### New scripts
+- `/app/backend/scripts/audit_supply_chain.py` — full integrity audit
+- `/app/backend/scripts/repair_strict_tier_compliance.py` — one-shot repair
+- `/app/backend/scripts/simulate_e2e_transaction.py` — live 19-step E2E test
+
 ## 2026-06-14 — Manufacturer-side strict-tier navigation (P0 final)
+See previous block. Warehouse Network card replaces Distributor Intelligence
+on the manufacturer dashboard; /network is warehouse-first; Warehouse Detail
+page has a new Distributors tab. 5-hop drill validated end-to-end.
 
-The full 5-hop ladder is now enforced **on both sides** of the platform:
-```
-Manufacturer → Warehouse → Distributor → Wholesaler → Retailer
-```
-
-### Manufacturer Dashboard
-- Replaced the legacy **"Distributor Intelligence"** card with a new
-  **"Warehouse Network"** card (`data-testid="warehouse-network-card"`).
-  Lists the manufacturer's direct children (warehouses); each row drills
-  into `/manufacturer/warehouses/:id`. Sub-header rollup chips display
-  downstream counts (distributors / wholesalers / retailers) as visibility,
-  but click-through always goes to the warehouse next.
-
-### `/network` (Manufacturer)
-- New **Warehouse Hero** strip at the top of the page
-  (`data-testid="warehouse-hero"`) — 3 warehouse tiles in a card grid.
-- Breadcrumb updated: **NETWORK › WAREHOUSES › DISTRIBUTORS · VISIBILITY**.
-- New **`downstream-vis-banner`** alert explicitly directs the user
-  through the strict-tier path for navigation, while keeping the existing
-  Distributor Network Intelligence analytics as *downstream visibility*.
-
-### Warehouse Detail page (`/manufacturer/warehouses/:id`)
-- New **Distributors tab** between Overview and Fulfillment
-  (`data-testid="tab-distributors"`). Hosts the warehouse's direct
-  children (distributors) with KPIs and a clickable list pointing to
-  `/distributors/:did`. Powered by the new
-  `GET /api/warehouse/{id}/distributor-network` endpoint.
-
-### Backend
-- New endpoint `GET /api/manufacturer/{id}/warehouse-network` returning
-  per-warehouse cards with all 4 downstream tiers rolled up (distributors,
-  wholesalers, retailers, revenue_90d, inventory, low stock, pending orders).
-- New endpoint `GET /api/warehouse/{id}/distributor-network` returning the
-  warehouse's direct-child distributors with downstream rollups. 404 on a
-  warehouse-id that isn't actually a warehouse organization.
-
-### Tests
-- New `/app/backend/tests/test_warehouse_network_navigation.py` — 6 pytest
-  cases. All pass.
-- Regression `/app/backend/tests/test_wholesaler_drill_navigation.py` — 5/5
-  still pass.
-- `testing_agent_v3_fork` iteration_28 — 100% backend (11/11) · 100%
-  frontend (all data-testids, 5-hop drill, breadcrumb, banner, distributor
-  regression) · 0 console errors.
-
-## 2026-06-14 (earlier) — Strict-tier NAVIGATION (distributor side)
+## 2026-06-14 — Strict-tier NAVIGATION (distributor side)
 Distributor sidebar "Retailers" → "Wholesalers". `/network` rewritten as a
 Wholesaler Network. New `/distributor/:did/wholesaler/:wid` drill page.
-Manufacturer's distributor-detail page replaced inline RetailerIntel table
-with a WholesalerNetworkTable; Top/Attention retailer cards converted to
-visibility-only (no click-through). Retailer detail page now respects
-`?via=:wid` for tier-aware back navigation.
+Retailer detail tier-aware back navigation.
 
-## 2026-06-14 (earlier) — Strict 5-tier OWNERSHIP enforcement
-Re-parented 24 key-account retailers (Shoprite, Spar, Game, Hubmart,
-Justrite, MarketSquare) from distributors to region-matched wholesalers.
-Migration is idempotent and ships with a hierarchy validation report.
+## 2026-06-14 — Strict 5-tier OWNERSHIP enforcement
+Re-parented 24 key-account retailers from distributors to region-matched
+wholesalers. Idempotent migration + hierarchy validation report.
 
 ## Earlier history
 See PRD.md "Logistics Command Center Vision" section.

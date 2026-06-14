@@ -244,6 +244,7 @@ async def generate_distributor_order(distributor: dict, parts: List[dict], rng) 
         "manufacturer_id": tenant,
         "distributor_id": distributor["id"],
         "distributor_name": distributor.get("organization_name"),
+        "warehouse_id": distributor.get("parent_organization_id"),  # strict tier: distributor's parent warehouse
         "organization_id": distributor["id"],
         "items": items,
         "status": "approved",

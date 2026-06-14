@@ -1,0 +1,93 @@
+[PASS] Retailer login
+        {
+          "id": "24b7553f-496f-4444-3424-9095bede796f",
+          "email": "mfr-0001-rtl-0001@tradekonekt.io",
+          "role": "retailer",
+          "name": "Family Shop 1 Account",
+[PASS] Full ladder resolved (M→W→D→Wh→R)
+        {
+          "M": "b21c1dbe-1a6f-4c33-b036-f416579455d0",
+          "W": "d51de778-231e-7720-0703-3f58391da836",
+          "D": "f9dfaf08-4ee2-3c64-e96b-983c385625b2",
+          "Wh": "6458308e-3b90-283c-f156-1a385cc22dd1",
+[PASS] Found product to order
+        {
+          "sku": "UL-OMO-DETERGENT",
+          "name": "Omo Detergent 1kg"
+        }
+[PASS] Retailer creates PO against wholesaler
+        {
+          "status": 200,
+          "po": "PO-2026-00004"
+        }
+[PASS] Wholesaler login
+[PASS] PO workflow → approved via /approve
+        {
+          "status": 200,
+          "body": "{\"id\":\"e00a5ba1-8de5-4ba5-91b6-7cfaea76c454\",\"po_number\":\"PO-2026-00004\",\"retailer_id\":\"49e47d4f-914a-733f-3aa6-37f716dfe766\",\"distributor_i"
+        }
+[PASS] PO workflow → picking via /process
+        {
+          "status": 200,
+          "body": "{\"id\":\"e00a5ba1-8de5-4ba5-91b6-7cfaea76c454\",\"po_number\":\"PO-2026-00004\",\"retailer_id\":\"49e47d4f-914a-733f-3aa6-37f716dfe766\",\"distributor_i"
+        }
+[PASS] PO workflow → shipped via /ship
+        {
+          "status": 200,
+          "body": "{\"id\":\"e00a5ba1-8de5-4ba5-91b6-7cfaea76c454\",\"po_number\":\"PO-2026-00004\",\"retailer_id\":\"49e47d4f-914a-733f-3aa6-37f716dfe766\",\"distributor_i"
+        }
+[PASS] PO workflow → delivered via /deliver
+        {
+          "status": 200,
+          "body": "{\"id\":\"e00a5ba1-8de5-4ba5-91b6-7cfaea76c454\",\"po_number\":\"PO-2026-00004\",\"retailer_id\":\"49e47d4f-914a-733f-3aa6-37f716dfe766\",\"distributor_i"
+        }
+[PASS] Wholesaler creates PO against distributor
+        {
+          "status": 200,
+          "po": "WPO-2026-0273"
+        }
+[PASS] Wholesaler PO transition → submit
+        {
+          "status": 200,
+          "body": "{\"ok\":true,\"status\":\"submitted\"}"
+        }
+[PASS] Wholesaler PO transition → approve
+        {
+          "status": 200,
+          "body": "{\"ok\":true,\"status\":\"approved\"}"
+        }
+[PASS] Wholesaler PO transition → allocate
+        {
+          "status": 200,
+          "body": "{\"ok\":true,\"status\":\"allocated\"}"
+        }
+[PASS] Wholesaler PO transition → ship
+        {
+          "status": 200,
+          "body": "{\"ok\":true,\"status\":\"shipped\"}"
+        }
+[PASS] Wholesaler PO transition → deliver
+        {
+          "status": 200,
+          "body": "{\"ok\":true,\"status\":\"delivered\"}"
+        }
+[PASS] Inventory snapshot @ warehouse
+        {
+          "records": 10
+        }
+[PASS] Inventory snapshot @ distributor
+        {
+          "records": 10
+        }
+[PASS] Inventory snapshot @ wholesaler
+        {
+          "records": 10
+        }
+[PASS] Inventory snapshot @ retailer
+        {
+          "records": 10
+        }
+
+========================================================================
+OVERALL: PASS — 19/19 steps OK
+========================================================================

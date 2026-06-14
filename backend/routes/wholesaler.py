@@ -512,11 +512,19 @@ class POLineIn(BaseModel):
 
 
 class POCreatePayload(BaseModel):
-    supplier_id: str                                # manufacturer / warehouse / distributor
+    supplier_id: str
     supplier_type: Literal["manufacturer", "warehouse", "distributor"]
     items: List[POLineIn]
     note: Optional[str] = None
     expected_delivery: Optional[str] = None
+
+
+# Strict-tier ownership rule: a wholesaler may only procure from its parent
+# distributor. Manufacturer/warehouse supplier types are kept on the schema for
+# backwards compatibility but rejected at runtime so the chain
+#   Manufacturer → Warehouse → Distributor → Wholesaler → Retailer
+# can never be skipped on an outgoing PO.
+_ALLOWED_SUPPLIER_TYPES = {"distributor"}
 
 
 class POTransitionPayload(BaseModel):
@@ -574,6 +582,19 @@ async def list_purchase_orders(wholesaler_id: str,
 async def create_purchase_order(wholesaler_id: str, payload: POCreatePayload,
                                 _user: dict = Depends(_require_wholesaler_access)):
     wh = await _get_wholesaler(wholesaler_id)
+    # Strict-tier rule: wholesaler procurement may only target a distributor.
+    if payload.supplier_type not in _ALLOWED_SUPPLIER_TYPES:
+        raise HTTPException(
+            400,
+            "Strict-tier rule: a wholesaler may only procure from a distributor. "
+            f"Got supplier_type='{payload.supplier_type}'.",
+        )
+    # And it must be the wholesaler's actual parent distributor.
+    if payload.supplier_id != wh.get("parent_organization_id"):
+        raise HTTPException(
+            400,
+            "Strict-tier rule: supplier_id must equal this wholesaler's parent distributor.",
+        )
     # Validate supplier exists
     sup = await db.organizations.find_one(
         {"id": payload.supplier_id, "organization_type": payload.supplier_type},
@@ -670,8 +691,13 @@ async def transition_po(wholesaler_id: str, po_id: str,
                  "product_id": it["product_id"]}, {"_id": 0},
             )
             if existing:
+                # Some legacy inventory rows are missing the `id` field; match
+                # on the composite key in that case.
+                match = ({"id": existing["id"]} if existing.get("id")
+                         else {"owner_type": "wholesaler", "owner_id": wholesaler_id,
+                               "product_id": it["product_id"]})
                 await db.inventory.update_one(
-                    {"id": existing["id"]},
+                    match,
                     {"$inc": {"quantity": int(it.get("quantity") or 0)},
                      "$set": {"updated_at": now_iso(),
                               "last_movement_at": now_iso()}},
