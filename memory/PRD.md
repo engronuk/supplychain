@@ -128,6 +128,12 @@ visibility (Manufacturer → Warehouse → Distributor → Wholesaler → Retail
   Shipment Authorization Center moved from Planning & Ops to the top of the Shipments
   tab (collapsible). Planning & Ops trimmed to Transfers + Pipeline + Forecast + Alerts.
   Legacy `/manufacturer/allocation` redirects to `/procurement?tab=allocation`.
+- **Forecast Density (✅ SHIPPED 2026-06-14)** — backfilled 530K daily_sales
+  rows (12-month dense history), unified `quantity_sold` → `units` reads,
+  re-ran stock-exhaustion compute, surfaced per-urgency counts (critical/
+  high/medium/low) in the IntelligenceCenter forecasts card with
+  smart-default filter. Manufacturer 30d revenue now ₦546M (was ₦105M).
+  Regression: `tests/test_forecast_density.py` — 4/4 PASS.
 - **Supply-chain logic alignment (✅ SHIPPED 2026-02-13)** — procurement/order
   direction now matches the spec: Mfr → Warehouse → Distributor → Wholesaler → Retailer.
   Retailers order from wholesalers (primary) with distributor-direct as fallback

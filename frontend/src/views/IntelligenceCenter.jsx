@@ -235,11 +235,38 @@ function LiveFeedCard({ role, entityId }) {
 }
 
 function ForecastsCard({ role, entityId }) {
-  const [data, setData] = useState({ rows: [], region_rollup: [] });
+  const [data, setData] = useState({ rows: [], region_rollup: [], urgency_counts: {} });
   const [filter, setFilter] = useState("critical");
+  const autoFilterRef = useRef(false);
+
+  // First load: pull WITHOUT urgency filter so we can read counts and pick
+  // the highest-priority non-empty bucket as the default view. Avoids the
+  // dreaded "No critical stockouts predicted — good." empty-state when the
+  // network simply has more medium/high than critical alerts.
   useEffect(() => {
-    Api.intelForecasts(role, entityId, { urgency: filter, limit: 30 }).then(setData).catch(() => {});
+    let live = true;
+    Api.intelForecasts(role, entityId, { urgency: filter, limit: 30 })
+      .then((d) => {
+        if (!live) return;
+        setData(d);
+        // Only auto-switch once, on the very first response, and only if the
+        // user hasn't manually picked a filter yet.
+        if (!autoFilterRef.current) {
+          autoFilterRef.current = true;
+          const counts = d.urgency_counts || {};
+          const order = ["critical", "high", "medium", "low"];
+          const firstPopulated = order.find((u) => (counts[u] || 0) > 0);
+          if (firstPopulated && firstPopulated !== filter) {
+            setFilter(firstPopulated);
+          }
+        }
+      })
+      .catch(() => {});
+    return () => { live = false; };
   }, [role, entityId, filter]);
+
+  const counts = data.urgency_counts || {};
+  const totalAcrossAll = (counts.critical || 0) + (counts.high || 0) + (counts.medium || 0) + (counts.low || 0);
 
   return (
     <Card className="bg-slate-900/80 border-white/10 text-white">
@@ -248,20 +275,32 @@ function ForecastsCard({ role, entityId }) {
           <div className="inline-flex items-center gap-2">
             <Radar className="h-4 w-4 text-rose-400" />
             <div className="text-[11px] uppercase tracking-widest text-rose-300 font-semibold">Stock Exhaustion Forecasts</div>
+            {totalAcrossAll > 0 && (
+              <span className="text-[10px] text-slate-400 font-medium ml-1" data-testid="forecast-total-count">
+                · {totalAcrossAll} tracked
+              </span>
+            )}
           </div>
           <div className="inline-flex bg-white/5 rounded-lg p-0.5 border border-white/10">
-            {["critical", "high", "medium"].map((u) => (
-              <button
-                key={u}
-                onClick={() => setFilter(u)}
-                className={`text-[11px] font-medium px-2.5 py-1 rounded-md transition ${
-                  filter === u ? "bg-white/10 text-white" : "text-slate-400 hover:text-slate-200"
-                }`}
-                data-testid={`forecast-filter-${u}`}
-              >
-                {u}
-              </button>
-            ))}
+            {["critical", "high", "medium", "low"].map((u) => {
+              const c = counts[u] || 0;
+              const active = filter === u;
+              return (
+                <button
+                  key={u}
+                  onClick={() => { autoFilterRef.current = true; setFilter(u); }}
+                  className={`text-[11px] font-medium px-2.5 py-1 rounded-md transition inline-flex items-center gap-1.5 ${
+                    active ? "bg-white/10 text-white" : "text-slate-400 hover:text-slate-200"
+                  } ${c === 0 ? "opacity-50" : ""}`}
+                  data-testid={`forecast-filter-${u}`}
+                >
+                  <span>{u}</span>
+                  <span className={`text-[10px] tabular-nums px-1 rounded ${
+                    active ? "bg-white/20" : "bg-white/5"
+                  }`}>{c}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
         {data.region_rollup?.length > 0 && (
@@ -274,7 +313,16 @@ function ForecastsCard({ role, entityId }) {
           </div>
         )}
         <div className="space-y-1.5 max-h-[340px] overflow-y-auto pr-1">
-          {data.rows.length === 0 && <div className="text-sm text-slate-400">No {filter} stockouts predicted — good.</div>}
+          {data.rows.length === 0 && (
+            <div className="text-sm text-slate-400" data-testid="forecast-empty">
+              No <span className="text-slate-200 font-medium">{filter}</span> stockouts predicted.
+              {(counts.critical || counts.high || counts.medium || counts.low) ? (
+                <span className="block mt-1 text-xs text-slate-500">Try a different bucket above.</span>
+              ) : (
+                <span className="block mt-1 text-xs text-slate-500">Forecasts will appear after the next intel recompute.</span>
+              )}
+            </div>
+          )}
           {data.rows.map((r) => {
             const t = URGENCY_TONES[r.urgency] || URGENCY_TONES.medium;
             return (

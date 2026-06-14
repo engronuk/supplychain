@@ -83,17 +83,29 @@ async def intel_forecasts(
     limit: int = Query(100, ge=1, le=1000),
 ):
     tid = await _tenant_or_404(role, entity_id)
-    flt: Dict[str, Any] = {"tenant_id": tid}
+    base_flt: Dict[str, Any] = {"tenant_id": tid}
+    if region:
+        base_flt["region"] = region
+    if distributor_id:
+        base_flt["distributor_id"] = distributor_id
+    if role == "distributor":
+        base_flt["distributor_id"] = entity_id
+    elif role == "retailer":
+        base_flt["retailer_id"] = entity_id
+
+    # Per-urgency counts so the UI can surface populated buckets to the user.
+    urgency_counts: Dict[str, int] = {"critical": 0, "high": 0, "medium": 0, "low": 0}
+    async for row in db.intel_forecasts.aggregate([
+        {"$match": base_flt},
+        {"$group": {"_id": "$urgency", "c": {"$sum": 1}}},
+    ]):
+        u = row.get("_id") or "low"
+        if u in urgency_counts:
+            urgency_counts[u] = row["c"]
+
+    flt = dict(base_flt)
     if urgency:
         flt["urgency"] = urgency
-    if region:
-        flt["region"] = region
-    if distributor_id:
-        flt["distributor_id"] = distributor_id
-    if role == "distributor":
-        flt["distributor_id"] = entity_id
-    elif role == "retailer":
-        flt["retailer_id"] = entity_id
     rows = await db.intel_forecasts.find(flt, {"_id": 0}).sort("days_remaining", 1).limit(limit).to_list(limit)
     # Region rollup
     region_rollup: Dict[str, dict] = {}
@@ -108,6 +120,7 @@ async def intel_forecasts(
     return {
         "rows": rows,
         "region_rollup": sorted(region_rollup.values(), key=lambda x: -x["at_risk_shops"]),
+        "urgency_counts": urgency_counts,
         "total": len(rows),
     }
 

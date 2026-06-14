@@ -1,0 +1,25 @@
+{
+  "summary": "Verified P1 Forecast Data Sparsity Fix end-to-end. Backend regression suite (4/4) PASS plus 3 additional smoke tests PASS. Frontend dashboard now shows populated 12-month Revenue & Shipment Trend, 30 dense Demand Forecast bars, and NETWORK REVENUE ₦547.2M with +13.0% growth. Intelligence Center stockout forecasts card renders all 4 urgency filter buttons with count badges (critical 8 · high 12 · medium 193 · low 626 = 839 tracked), auto-defaults to the critical bucket (8 rows, no empty state), and filter switching to LOW correctly loads 30 rows. All success criteria met.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_forecast_density.py",
+    "/app/backend/tests/test_forecast_density_extra.py",
+    "/app/test_reports/pytest/forecast_density.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Backend tests verify both /manufacturer/{id}/overview (revenue_trend & demand_forecast.bars) and /intel/forecasts/stockout (urgency_counts) work as designed.",
+    "Regression sweep on product-intelligence sparkline_30d (units field fix) returns non-zero values for portfolio rows — no regression introduced by quantity_sold → units fallback.",
+    "Frontend dashboard chart correctly switches to 12M and displays 12 dense monthly buckets (Jul through Jun) with forecast overlay; all bars in the 30-day demand forecast are positive and properly sized.",
+    "IntelligenceCenter ForecastsCard smart-default logic working: lands on highest-priority non-empty bucket (critical) instead of the empty placeholder."
+  ],
+  "updated_files": ["/app/backend/tests/test_forecast_density_extra.py"],
+  "success_rate": {"backend": "100% (7/7)", "frontend": "100%"},
+  "test_credentials": "unilever@tradekonekt.io / TradeKonekt2026! (verified working)",
+  "seed_data_creation": "None — used the pre-existing backfill from main agent (530,509 historical daily_sales rows).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "P1 forecast sparsity fix is verified. Backend tests in /app/backend/tests/test_forecast_density.py (4 cases) and /app/backend/tests/test_forecast_density_extra.py (3 cases) cover the regression. Use mfr_id=b21c1dbe-1a6f-4c33-b036-f416579455d0 for Unilever. data-testids on IntelligenceCenter forecast card: forecast-filter-{critical|high|medium|low}, forecast-total-count, forecast-row, forecast-empty.",
+  "rca of the issue": "Sparse forecast data was caused by (a) only ~90 days of daily_sales rows existing in db, (b) routes querying legacy `quantity_sold` field instead of canonical `units`, (c) IntelligenceCenter ForecastsCard defaulting to 'critical' filter even when bucket was empty. Fix: backfilled 12 months of daily_sales (530k rows), added `units` fallback across manufacturer/distributor/product_intelligence routes, exposed urgency_counts in /api/intel/forecasts/stockout, and added smart-default to highest-priority non-empty bucket in ForecastsCard."
+}

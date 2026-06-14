@@ -88,7 +88,7 @@ async def _build_manufacturer_overview(manufacturer_id: str):
     start_12m = (today - timedelta(days=365)).isoformat()
     daily_sales: List[dict] = await db.daily_sales.find(
         {"retailer_id": {"$in": retailer_ids}, "date": {"$gte": start_12m}},
-        {"_id": 0, "date": 1, "revenue": 1, "quantity_sold": 1,
+        {"_id": 0, "date": 1, "revenue": 1, "quantity_sold": 1, "units": 1,
          "product_id": 1, "retailer_id": 1},
     ).to_list(2_000_000)
 
@@ -127,7 +127,7 @@ async def _build_manufacturer_overview(manufacturer_id: str):
 
     for s in daily_sales:
         rev = float(s.get("revenue", 0))
-        units = int(s.get("quantity_sold", 0))
+        units = int(s.get("units", s.get("quantity_sold", 0)))
         d = s["date"]
         month = d[:7]
         month_revenue[month] = month_revenue.get(month, 0) + rev
@@ -709,15 +709,16 @@ async def manufacturer_products(manufacturer_id: str):
     async for s in db.daily_sales.find(
         {"product_id": {"$in": product_ids}, "retailer_id": {"$in": retailer_ids},
          "date": {"$gte": start_90}},
-        {"_id": 0, "product_id": 1, "revenue": 1, "quantity_sold": 1, "date": 1},
+        {"_id": 0, "product_id": 1, "revenue": 1, "quantity_sold": 1, "units": 1, "date": 1},
     ):
         pid = s["product_id"]
         if pid in rev_by_product:
             rev_by_product[pid]["revenue"] += float(s.get("revenue", 0))
-            rev_by_product[pid]["units"] += int(s.get("quantity_sold", 0))
+            u = int(s.get("units", s.get("quantity_sold", 0)))
+            rev_by_product[pid]["units"] += u
             if s["date"] >= start_30:
                 spark_by_product[pid][s["date"]] = (
-                    spark_by_product[pid].get(s["date"], 0) + int(s.get("quantity_sold", 0))
+                    spark_by_product[pid].get(s["date"], 0) + u
                 )
 
     out: List[dict] = []
@@ -867,10 +868,10 @@ async def manufacturer_product_detail(manufacturer_id: str, product_id: str):
     async for s in db.daily_sales.find(
         {"product_id": product_id, "retailer_id": {"$in": retailer_ids},
          "date": {"$gte": start_90}},
-        {"_id": 0, "retailer_id": 1, "revenue": 1, "quantity_sold": 1, "date": 1},
+        {"_id": 0, "retailer_id": 1, "revenue": 1, "quantity_sold": 1, "units": 1, "date": 1},
     ):
         rev = float(s.get("revenue", 0))
-        units = int(s.get("quantity_sold", 0))
+        units = int(s.get("units", s.get("quantity_sold", 0)))
         total_revenue += rev
         total_units += units
         if s["date"] >= last_30_start:
@@ -1069,10 +1070,10 @@ async def manufacturer_distributor_detail(manufacturer_id: str, distributor_id: 
     downstream_units = 0
     async for s in db.daily_sales.find(
         {"retailer_id": {"$in": retailer_ids}, "date": {"$gte": start_90}},
-        {"_id": 0, "revenue": 1, "quantity_sold": 1},
+        {"_id": 0, "revenue": 1, "quantity_sold": 1, "units": 1},
     ):
         downstream_revenue += float(s.get("revenue", 0))
-        downstream_units += int(s.get("quantity_sold", 0))
+        downstream_units += int(s.get("units", s.get("quantity_sold", 0)))
 
     avg_order_freq_days = None
     if total_orders > 1 and last_order_at:

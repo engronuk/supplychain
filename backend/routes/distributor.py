@@ -193,13 +193,13 @@ async def distributor_retailer_detail(distributor_id: str, retailer_id: str):
     trend_start = (today - timedelta(days=29)).isoformat()
     daily = await db.daily_sales.find(
         {"retailer_id": retailer_id, "date": {"$gte": trend_start}},
-        {"_id": 0, "date": 1, "revenue": 1, "quantity_sold": 1, "product_id": 1},
+        {"_id": 0, "date": 1, "revenue": 1, "quantity_sold": 1, "units": 1, "product_id": 1},
     ).to_list(2000)
     by_day: Dict[str, dict] = {}
     for s in daily:
         agg = by_day.setdefault(s["date"], {"revenue": 0.0, "units": 0})
         agg["revenue"] += float(s.get("revenue", 0))
-        agg["units"] += int(s.get("quantity_sold", 0))
+        agg["units"] += int(s.get("units", s.get("quantity_sold", 0)))
     trend = []
     for i in range(30):
         day = (today - timedelta(days=29 - i)).isoformat()
@@ -417,7 +417,7 @@ async def distributor_product_detail(distributor_id: str, product_id: str):
     last_30_start = (today - timedelta(days=29)).isoformat()
     for s in daily:
         rev = float(s.get("revenue", 0))
-        units = int(s.get("quantity_sold", 0))
+        units = int(s.get("units", s.get("quantity_sold", 0)))
         total_revenue += rev
         total_units += units
         if s["date"] >= last_30_start:
@@ -602,7 +602,7 @@ async def distributor_executive_analytics(distributor_id: str):
 
     for s in daily:
         rev = float(s.get("revenue", 0))
-        units = int(s.get("quantity_sold", 0))
+        units = int(s.get("units", s.get("quantity_sold", 0)))
         date = s["date"]
         p = products.get(s.get("product_id"))
         r = retailer_by_id.get(s.get("retailer_id"))

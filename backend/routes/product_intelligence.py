@@ -203,7 +203,7 @@ async def _build_product_intelligence(manufacturer_id: str):
         {"product_id": {"$in": product_ids}, "retailer_id": {"$in": retailer_ids},
          "date": {"$gte": start_180}},
         {"_id": 0, "product_id": 1, "retailer_id": 1, "revenue": 1,
-         "quantity_sold": 1, "date": 1},
+         "quantity_sold": 1, "units": 1, "date": 1},
     ):
         pid = s["product_id"]
         d = s["date"]
@@ -212,7 +212,7 @@ async def _build_product_intelligence(manufacturer_id: str):
             revenue_now[pid] += rev
             # 30-day sparkline (units sold)
             if d >= start_30:
-                spark_by_product[pid][d] += int(s.get("quantity_sold", 0))
+                spark_by_product[pid][d] += int(s.get("units", s.get("quantity_sold", 0)))
             # geographic revenue
             r = retailer_by_id.get(s["retailer_id"])
             state = (r or {}).get("region") or "—"
