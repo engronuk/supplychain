@@ -685,7 +685,8 @@ async def remap_users(db, trees: list[dict]) -> dict:
             "email": email, "password_hash": pwd,
             "role": role, "name": name,
             "entity_id": entity_id, "tenant_id": tenant_id,
-            "status": "active", "created_at": now_iso(),
+            "status": "active", "is_demo": True,
+            "created_at": now_iso(),
             "last_login": None, "failed_login_attempts": 0,
         }
 

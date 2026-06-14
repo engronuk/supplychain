@@ -2,6 +2,14 @@
 
 Dated record of what has been implemented. Newest entries at the bottom.
 
+## Updates (2026-02-14b) — Demo Portal fix
+- Demo Portal endpoint `/api/auth/demo-accounts` filtered by `is_demo: true` — neither the rebuild nor `map_users` script set that flag, so the 3-step demo wizard appeared empty after the canonical reseed.
+- Flagged all **235** seeded users with `is_demo=true`; updated both `scripts/rebuild.py` (`base_user` helper) and `scripts/map_users.py` so future re-seeds keep them visible.
+- Bumped read limits on `/auth/demo-accounts` (50 → 500) and `/auth/demo-tenants` (200 → 5000) so the full 84-retailer roster surfaces.
+- Verified: Demo Portal now shows both tenants, role counts (Super Admin 1 · Mfg 1 · Warehouse 3 · Distributor 6 · Wholesaler 18 · Retailer 84), and the 84-deep retailer list with one-click sign-in.
+
+
+
 ## Updates (2026-02-14) — Activity Pulse widget on manufacturer dashboard
 - **New API**: `GET /api/manufacturer/{id}/activity-pulse?window_minutes=60` returns rolling counters + sparkline for orders placed, shipments moving, POs approved and sales logged, scoped to the manufacturer's tree.
 - **New widget**: `ActivityPulse.jsx` — 4-card live throughput strip, 60s auto-refresh, micro-sparkline per metric, animated bump on increment, "updated Ns ago" footer. Wired in between the KPI strip and Revenue Trend on `ManufacturerDashboard`.

@@ -398,7 +398,7 @@ async def list_demo_accounts():
     rows = await db.users.find(
         {"is_demo": True, "status": "active"},
         {"_id": 0, "email": 1, "role": 1, "name": 1, "entity_id": 1, "manufacturer_id": 1},
-    ).to_list(50)
+    ).to_list(500)
     # Hydrate entity name for each so the UI can show "Lagos Distributor · Region"
     out = []
     for r in rows:
@@ -504,7 +504,7 @@ async def list_demo_tenants():
     demo_users = await db.users.find(
         {"is_demo": True, "status": "active"},
         {"_id": 0, "manufacturer_id": 1, "role": 1},
-    ).to_list(200)
+    ).to_list(5000)
     user_counts: Dict[tuple, int] = {}
     super_admin_count = 0
     for u in demo_users:

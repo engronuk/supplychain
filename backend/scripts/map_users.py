@@ -110,6 +110,7 @@ async def main() -> None:
             "entity_id": org["id"],
             "tenant_id": refs.get("manufacturer_id", ""),
             "status": "active",
+            "is_demo": True,
             "failed_login_attempts": 0,
             "last_login": None,
             **refs,
