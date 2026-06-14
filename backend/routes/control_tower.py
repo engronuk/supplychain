@@ -79,9 +79,19 @@ async def control_tower(manufacturer_id: Optional[str] = None,
     ids = await _tenant_ids(mfr)
 
     # ---- Fleet -------------------------------------------------------------
+    # Pull active vehicles directly (no arbitrary 100-doc cap) so the map and
+    # the "Fleet X/Y active" counter always agree. `arrived` is the
+    # post-delivery linger state — trucks stay on the canvas for a few minutes
+    # so an operator can see the completed delivery before the marker fades.
+    active_statuses = ["in_transit", "stopped", "breakdown", "arrived"]
     vehicles = await db.vehicles.find(
-        {"manufacturer_id": mfr}, {"_id": 0}).to_list(100)
-    active = [v for v in vehicles if v.get("status") in ("in_transit", "stopped", "breakdown")]
+        {"manufacturer_id": mfr,
+         "status": {"$in": active_statuses}},
+        {"_id": 0},
+    ).to_list(2000)
+    # `fleet_total` reflects the manufacturer's full provisioned fleet.
+    fleet_total = await db.vehicles.count_documents({"manufacturer_id": mfr})
+    active = [v for v in vehicles if v.get("status") in ("in_transit", "stopped", "breakdown", "arrived")]
     deviations_active = sum(1 for v in active if (v.get("deviation") or {}).get("active"))
     breakdowns_active = sum(1 for v in active if v.get("status") == "breakdown")
     stops_active = sum(1 for v in active if v.get("status") == "stopped")
@@ -311,7 +321,7 @@ async def control_tower(manufacturer_id: Optional[str] = None,
             "on_time_pct": round(on_time / total_recv * 100, 1) if total_recv else None,
             "unacked_critical": unacked_critical,
             "fleet_active": len(active),
-            "fleet_total": len(vehicles),
+            "fleet_total": fleet_total,
         },
         "fleet": vehicles,
         "shipments": shipments_live,

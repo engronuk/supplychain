@@ -35,14 +35,15 @@ TICK_MINUTES = 2.0
 DEMO_SPEEDUP = 10            # 1 wall-clock minute == 10 trip minutes
 MAX_ACTIVE_VEHICLES = 80     # across all tenants — every live shipment
                              # should have a trackable truck
-SPAWN_PER_TICK = 10          # spread Google route calls across ticks
+SPAWN_PER_TICK = 18          # spread Google route calls across ticks
 GEOFENCE_RADIUS_M = 500
 
-# Network-leg generators: keep every tier of the chain moving.
-FACTORY_MAX_ACTIVE = 2       # factory→warehouse legs in transit per tenant
-P_FACTORY_DISPATCH = 0.35    # per-tick chance when below the cap
-WS_MAX_ACTIVE = 3            # wholesaler→distributor legs in transit (global)
-P_WS_DISPATCH = 0.30
+# Network-leg generators: keep every tier of the chain moving so the cockpit
+# always has a healthy fleet of trucks on the map (target ~40-70 active).
+FACTORY_MAX_ACTIVE = 8       # factory→warehouse legs in transit per tenant
+P_FACTORY_DISPATCH = 0.85    # per-tick chance when below the cap
+WS_MAX_ACTIVE = 18           # wholesaler→distributor legs in transit (global)
+P_WS_DISPATCH = 0.85
 WS_STALE_HOURS = 36          # seeded in-transit wholesaler shipments older
                              # than this are closed quietly (no truck)
 
@@ -488,12 +489,10 @@ async def _complete_delivery(v: Dict[str, Any]) -> None:
                lat=v.get("dest_lat"), lng=v.get("dest_lng"),
                location_name=v.get("dest_name"))
     await db.vehicles.update_one({"id": v["id"]}, {"$set": {
-        "status": "idle", "progress": None, "route_progress": None,
+        "status": "arrived", "arrived_at": now_iso(),
+        "progress": 1.0, "route_progress": 1.0,
         "eta_minutes": 0, "speed_kmh": 0,
-        "origin_lat": v.get("dest_lat"), "origin_lng": v.get("dest_lng"),
-        "origin_name": v.get("dest_name"),
         "lat": v.get("dest_lat"), "lng": v.get("dest_lng"),
-        "dest_name": None, "dest_lat": None, "dest_lng": None,
         "deviation": None, "stopped_since": None, "breakdown_since": None,
         "delivered_at": now_iso(), "updated_at": now_iso(),
     }})
@@ -546,12 +545,10 @@ async def _complete_route(v: Dict[str, Any]) -> None:
                location_name=v.get("dest_name"),
                meta={"route_id": v.get("ref_id")})
     await db.vehicles.update_one({"id": v["id"]}, {"$set": {
-        "status": "idle", "progress": None, "route_progress": None,
+        "status": "arrived", "arrived_at": now_iso(),
+        "progress": 1.0, "route_progress": 1.0,
         "eta_minutes": 0, "speed_kmh": 0,
-        "origin_lat": v.get("dest_lat"), "origin_lng": v.get("dest_lng"),
-        "origin_name": v.get("dest_name"),
         "lat": v.get("dest_lat"), "lng": v.get("dest_lng"),
-        "dest_name": None, "dest_lat": None, "dest_lng": None,
         "deviation": None, "stopped_since": None, "breakdown_since": None,
         "stops": [], "ref_type": None, "ref_id": None,
         "delivered_at": now_iso(), "updated_at": now_iso(),

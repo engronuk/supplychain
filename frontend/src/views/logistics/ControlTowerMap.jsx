@@ -27,9 +27,11 @@ const COLORS = {
   delayed: "#F59E0B",
   exception: "#F97316",
   breakdown: "#EF4444",
+  arrived: "#06B6D4",   // cyan — visually distinct "just delivered" linger
 };
 
 export const vehicleColor = (v) => {
+  if (v.status === "arrived") return COLORS.arrived;
   if (v.status === "breakdown") return COLORS.breakdown;
   if (v.status === "stopped" || (v.deviation && v.deviation.active)) return COLORS.exception;
   if ((Number(v.speed_kmh) || 55) < 40) return COLORS.delayed;
@@ -47,7 +49,7 @@ const truckIcon = (color, selected) =>
     `<circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></g></svg>`
   )}`;
 
-const ACTIVE_STATUSES = ["in_transit", "stopped", "breakdown"];
+const ACTIVE_STATUSES = ["in_transit", "stopped", "breakdown", "arrived"];
 const num = (n) => (Number(n) || 0).toLocaleString();
 
 // ---- Hover tooltip (live shipment details on the truck marker) -------------
@@ -56,6 +58,7 @@ const escHtml = (s) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 const statusLabel = (v) => {
+  if (v.status === "arrived") return "DELIVERED";
   if (v.status === "breakdown") return "BREAKDOWN";
   if (v.status === "stopped") return "UNSCHEDULED STOP";
   if (v.deviation?.active) return "OFF ROUTE";
@@ -339,6 +342,7 @@ export const ControlTowerMap = ({
   }, [mapsReady, selectedVehicleId]);
 
   const moving = (fleet || []).filter((v) => v.status === "in_transit").length;
+  const arrived = (fleet || []).filter((v) => v.status === "arrived").length;
   const exceptions = (fleet || []).filter((v) =>
     v.status === "breakdown" || v.status === "stopped" || (v.deviation && v.deviation.active)).length;
 
@@ -396,10 +400,11 @@ export const ControlTowerMap = ({
           <Dot color={COLORS.delayed} label="Delayed" />
           <Dot color={COLORS.exception} label="Route exception" />
           <Dot color={COLORS.breakdown} label="Breakdown" />
+          <Dot color={COLORS.arrived} label="Delivered" />
           <Dot color="#22D3EE" label="Geofence" />
         </div>
         <span className="inline-flex items-center gap-1.5">
-          {moving} moving · {exceptions} exception{exceptions === 1 ? "" : "s"}
+          {moving} moving · {arrived} delivered · {exceptions} exception{exceptions === 1 ? "" : "s"}
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
         </span>
       </div>

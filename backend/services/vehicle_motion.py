@@ -16,6 +16,7 @@ from core import db, logger, now_iso
 
 DEMO_SPEEDUP = 10          # 1 real minute == 10 trip-minutes
 DEFAULT_TRIP_MINUTES = 480  # 8h end-to-end when nothing better is known
+ARRIVED_LINGER_SECONDS = 180  # how long a delivered truck stays on the map
 
 
 def _derive_progress(v: Dict[str, Any]) -> float:
@@ -36,8 +37,25 @@ def _derive_progress(v: Dict[str, Any]) -> float:
 
 
 async def advance_vehicles(tick_minutes: float = 2.0) -> int:
-    """Move all in-transit trucks forward. Returns how many were updated."""
+    """Move all in-transit trucks forward + retire `arrived` trucks whose
+    linger window has expired. Returns how many docs were updated."""
     moved = 0
+    # 1. Retire any `arrived` vehicles whose ARRIVED_LINGER_SECONDS has expired.
+    from datetime import datetime, timezone, timedelta
+    cutoff = (datetime.now(timezone.utc) - timedelta(seconds=ARRIVED_LINGER_SECONDS)).isoformat()
+    retire_n = await db.vehicles.update_many(
+        {"status": "arrived", "arrived_at": {"$lt": cutoff}},
+        {"$set": {
+            "status": "idle",
+            "dest_name": None, "dest_lat": None, "dest_lng": None,
+            "progress": None, "total_minutes": None,
+            "eta_minutes": None, "speed_kmh": 0,
+            "arrived_at": None,
+            "updated_at": now_iso(),
+        }},
+    )
+    moved += retire_n.modified_count
+
     async for v in db.vehicles.find(
         {"status": "in_transit", "dest_lat": {"$ne": None}}, {"_id": 0},
     ):
@@ -68,11 +86,14 @@ async def advance_vehicles(tick_minutes: float = 2.0) -> int:
                     # (delivery credits destination stock and parks the truck).
                     pass
                 else:
-                    update.update({"status": "idle", "dest_name": None,
-                                   "dest_lat": None, "dest_lng": None,
-                                   "origin_lat": d_lat, "origin_lng": d_lng,
-                                   "progress": None, "total_minutes": None,
-                                   "speed_kmh": 0})
+                    # ARRIVED — keep the truck on the map for a short linger
+                    # window so the delivery is visible in the cockpit. The
+                    # idle transition happens at the top of advance_vehicles().
+                    update.update({"status": "arrived",
+                                   "arrived_at": now_iso(),
+                                   "speed_kmh": 0,
+                                   "progress": 1.0,
+                                   "route_progress": 1.0})
             await db.vehicles.update_one({"id": v["id"]}, {"$set": update})
             moved += 1
         except Exception:
