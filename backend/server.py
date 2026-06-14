@@ -10,6 +10,8 @@ from starlette.staticfiles import StaticFiles
 
 from core import client, db, logger
 from routes import (
+    admin_simulator,
+    admin_sync,
     analytics,
     assistant,
     auth,
@@ -49,7 +51,6 @@ from routes import (
     wholesaler_analytics,
     wholesaler_orders,
     wms,
-    admin_simulator,
 )
 from services.intel.scheduler import start_scheduler, stop_scheduler
 from services.simulator import get_runtime as get_simulator_runtime
@@ -107,6 +108,7 @@ for r in (
     wholesaler_orders.router,
     wms.router,
     admin_simulator.router,
+    admin_sync.router,
 ):
     api_router.include_router(r)
 

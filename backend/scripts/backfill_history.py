@@ -72,11 +72,15 @@ def salary_mult(d: datetime) -> float:
     return 1.12 if d.day >= 25 else 1.0
 
 
-async def backfill():
-    mongo_url = os.environ["MONGO_URL"]
-    db_name = os.environ["DB_NAME"]
-    client = AsyncIOMotorClient(mongo_url)
-    db = client[db_name]
+async def backfill(db=None) -> dict:
+    if db is None:
+        mongo_url = os.environ["MONGO_URL"]
+        db_name = os.environ["DB_NAME"]
+        client = AsyncIOMotorClient(mongo_url)
+        db = client[db_name]
+        owns_client = client
+    else:
+        owns_client = None
 
     today = datetime.now(timezone.utc).date()
     recent_cutoff = (today - timedelta(days=SKIP_RECENT_DAYS)).isoformat()
@@ -207,7 +211,9 @@ async def backfill():
         upsert=True,
     )
     print(f"\n✓ backfill complete · inserted {total_inserted} rows")
-    client.close()
+    if owns_client is not None:
+        owns_client.close()
+    return {"inserted": total_inserted}
 
 
 if __name__ == "__main__":

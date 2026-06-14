@@ -825,38 +825,40 @@ async def audit(db) -> dict:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
-async def main() -> None:
-    c = AsyncIOMotorClient(os.environ["MONGO_URL"])
-    db = c[os.environ["DB_NAME"]]
+async def run_rebuild(db, *, log=print) -> dict:
+    """Idempotent in-process rebuild — used by both the CLI and the admin
+    sync endpoint. ``db`` is a motor AsyncIOMotorDatabase instance.
 
-    print("[1/6] Wiping data…")
+    Returns the audit ``report`` for the caller to surface.
+    """
+    log("[1/6] Wiping data…")
     wiped = await wipe(db)
-    print(f"      Wiped {sum(wiped.values()):,} docs across {len(wiped)} collections")
+    log(f"      Wiped {sum(wiped.values()):,} docs across {len(wiped)} collections")
 
-    print("[2/6] Building entity hierarchy…")
+    log("[2/6] Building entity hierarchy…")
     trees = []
     for cfg in TENANT_CFG:
         tree = await build_tenant(db, cfg)
         trees.append(tree)
-        print(f"      {cfg['name']}: {len(tree['warehouses'])} WH · "
-              f"{len(tree['distributors'])} DST · {len(tree['wholesalers'])} WHO · "
-              f"{len(tree['retailers'])} RTL · {len(tree['products'])} SKU")
+        log(f"      {cfg['name']}: {len(tree['warehouses'])} WH · "
+            f"{len(tree['distributors'])} DST · {len(tree['wholesalers'])} WHO · "
+            f"{len(tree['retailers'])} RTL · {len(tree['products'])} SKU")
 
-    print("[3/6] Seeding inventory…")
+    log("[3/6] Seeding inventory…")
     for tree in trees:
         res = await seed_inventory(db, tree)
-        print(f"      {tree['mfg']['organization_name']}: {res['inventory_rows']:,} rows")
+        log(f"      {tree['mfg']['organization_name']}: {res['inventory_rows']:,} rows")
 
-    print("[4/6] Seeding 90-day transactional data…")
+    log("[4/6] Seeding 90-day transactional data…")
     for tree in trees:
         res = await seed_transactions(db, tree)
-        print(f"      {tree['mfg']['organization_name']}: {res}")
+        log(f"      {tree['mfg']['organization_name']}: {res}")
 
-    print("[5/6] Remapping demo users…")
+    log("[5/6] Remapping demo users…")
     res = await remap_users(db, trees)
-    print(f"      Created {len(res['users_created'])} users")
+    log(f"      Created {len(res['users_created'])} users")
 
-    print("[6/6] Hierarchy audit…")
+    log("[6/6] Hierarchy audit…")
     report = await audit(db)
 
     # Map a login user onto every entity in the tree (224 accounts) on top of
@@ -878,6 +880,14 @@ async def main() -> None:
                   "report": report}},
         upsert=True,
     )
+    report["wiped"] = wiped
+    return report
+
+
+async def main() -> None:
+    c = AsyncIOMotorClient(os.environ["MONGO_URL"])
+    db = c[os.environ["DB_NAME"]]
+    report = await run_rebuild(db, log=print)
     out_path = Path("/app/backups/rebuild_audit_report.json")
     out_path.parent.mkdir(exist_ok=True)
     out_path.write_text(json.dumps(report, indent=2))
