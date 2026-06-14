@@ -1,0 +1,39 @@
+{
+  "iteration": 28,
+  "date": "2026-01",
+  "scope": "Strict-tier navigation enforcement for the manufacturer side: (a) Manufacturer Dashboard 'Warehouse Network' card replacing 'Distributor Intelligence', (b) /network Warehouse Hero + downstream-vis-banner + breadcrumb update, (c) Warehouse Detail page new Distributors tab, (d) end-to-end 5-hop drill Manufacturer → Warehouse → Distributor → Wholesaler → Retailer, (e) regression of iteration_27 distributor-side flows.",
+  "summary": "ALL PASS. Backend: 6/6 new pytest cases against /api/manufacturer/{id}/warehouse-network and /api/warehouse/{id}/distributor-network pass (KPIs total_warehouses=3, total_distributors=6, total_wholesalers=18, total_retailers=84 for Unilever; Unilever North Warehouse has 2 distributors Pinnacle + Bluewave). Regression: iteration_27 test_wholesaler_drill_navigation 5/5 still pass. Frontend (manufacturer unilever@tradekonekt.io): dashboard renders data-testid='warehouse-network-card' (legacy distributor-table-card absent), 3 warehouse-row-{id} rows visible (Lagos/North/South-South), header text 'DIRECT DOWNSTREAM · OWNERSHIP' + subtitle contains full ladder 'Manufacturer → Warehouse → Distributor → Wholesaler → Retailer', rollup chips show 3 warehouses · 6 distributors · 18 wholesalers · 84 retailers. /network page renders warehouse-hero with 3 warehouse-hero-card-{id} tiles, breadcrumb = 'NETWORK › WAREHOUSES › DISTRIBUTORS · VISIBILITY', downstream-vis-banner present and contains 'strict-tier navigation'. Warehouse detail page exposes tab-distributors between Overview and Fulfillment, warehouse-distributors-tab renders 2 warehouse-dist-row-{did} rows (Pinnacle Trade Co. + Bluewave Logistics). Full 5-hop drill verified: Dashboard → warehouse row click → /manufacturer/warehouses/{id} → Distributors tab → Pinnacle row click → /distributors/{did} (wholesaler-network-table with 3 wholesaler-net-row-{wid}) → wholesaler click → /distributor/{did}/wholesaler/{wid} (ws-detail-page + retailers-under-wholesaler-table with 6 retailer-row rows). 0 console errors throughout. Distributor regression (unilever.distributor@tradekonekt.io → /network) still renders DistributorWholesalerNetwork with 3 wholesaler-row, ownership-note text intact, drill into Royal Trading 1 still works.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": { "ui_bugs": [], "integration_issues": [], "design_issues": [] },
+  "verified_flows": [
+    "GET /api/manufacturer/b21c1dbe-1a6f-4c33-b036-f416579455d0/warehouse-network → 200; kpis={total_warehouses:3, total_distributors:6, total_wholesalers:18, total_retailers:84, revenue_90d, low_stock_skus, pending_orders}; warehouses[3] each containing id/name/code/region/city/distributors/wholesalers/retailers/active_retailers_30d/revenue_90d/inventory_units/low_stock_skus/pending_orders/status.",
+    "GET /api/warehouse/36a2c08a-af09-844c-7f68-e6f2a68aadec/distributor-network → 200; warehouse, kpis, distributors[2] containing Pinnacle Trade Co. + Bluewave Logistics, each with id/name/code/region/city/wholesalers/retailers/active_retailers_30d/revenue_90d/status. Unknown warehouse-id returns 404.",
+    "Dashboard (manufacturer Unilever): warehouse-network-card=1, distributor-table-card=0, warehouse-row-* = 3 (Unilever Lagos / North / South-South). Subtitle includes full ladder string. Rollup chips show 3 warehouses · 6 distributors · 18 wholesalers · 84 retailers downstream.",
+    "Click warehouse-row-36a2c08a... → URL becomes /manufacturer/warehouses/36a2c08a-af09-844c-7f68-e6f2a68aadec.",
+    "Warehouse detail: tab-distributors visible. Click → warehouse-distributors-tab=1, warehouse-dist-row-* = 2 (Pinnacle Trade Co. + Bluewave Logistics). warehouse-dist-link-{did} navigates to /distributors/{did}.",
+    "/network: warehouse-hero=1, warehouse-hero-card-* = 3, breadcrumb=NETWORK›WAREHOUSES›DISTRIBUTORS·VISIBILITY, downstream-vis-banner present containing case-insensitive 'strict-tier navigation'.",
+    "End-to-end 5-hop drill (Manufacturer→Warehouse→Distributor→Wholesaler→Retailer): no 404, all URLs match spec, 0 console errors. Final stop at /distributor/{did}/wholesaler/{wid} renders ws-detail-page + retailers-under-wholesaler-table with 6 retailer rows.",
+    "Distributor regression (unilever.distributor@tradekonekt.io → /network): distributor-wholesaler-network=1, wholesalers-table=1, wholesaler-row-* = 3, ownership-note text = 'Strict ownership: Distributor → Wholesaler → Retailer …'. Click wholesaler → /distributor/{did}/wholesaler/{wid} loads ws-detail-page successfully."
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_warehouse_network_navigation.py",
+    "/app/test_reports/pytest/iteration_28.xml",
+    "/app/backend/tests/test_wholesaler_drill_navigation.py"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "ManufacturerDashboard.jsx correctly replaces DistributorIntelligenceCard with WarehouseNetworkCard; data-testid scheme is consistent (warehouse-network-card / warehouse-row-{id}).",
+    "ManufacturerWarehouses.jsx adds tab-distributors between overview and fulfillment as designed; DistributorsTab consumes the new endpoint cleanly with proper loading/empty states (verified rows render).",
+    "ManufacturerNetworkIntelligence.jsx WarehouseHero + downstream-vis-banner render before the KPI strip; breadcrumb updated. The banner copy clearly directs users through the strict tier chain — good UX guard against legacy direct distributor drill.",
+    "/api/manufacturer/{id}/warehouse-network and /api/warehouse/{id}/distributor-network return clean shapes matching frontend expectations; 404 on unknown warehouse id is correct."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_warehouse_network_navigation.py (NEW — 6 pytest cases, all passing)"
+  ],
+  "success_rate": { "backend": "100% (6/6 new + 5/5 regression)", "frontend": "100% (all required testids, URLs, breadcrumb, banner text, 5-hop drill, distributor regression)" },
+  "test_credentials": "unilever@tradekonekt.io / TradeKonekt2026!  ·  unilever.distributor@tradekonekt.io / TradeKonekt2026!",
+  "seed_data_creation": "None — used existing canonical seed data.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Strict-tier navigation now fully enforced on both manufacturer + distributor sides. Manufacturer entity_id = b21c1dbe-1a6f-4c33-b036-f416579455d0; Unilever North Warehouse id = 36a2c08a-af09-844c-7f68-e6f2a68aadec; Pinnacle distributor id = c10c332c-c94f-7caa-5b17-484b32ad1bd8. Reusable backend regression: /app/backend/tests/test_warehouse_network_navigation.py (6 tests) + /app/backend/tests/test_wholesaler_drill_navigation.py (5 tests). When clearing distributor regression session, clear cookies+localStorage+sessionStorage before logging in to avoid the prior manufacturer session leaking into the distributor view."
+}

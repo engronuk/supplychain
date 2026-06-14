@@ -302,6 +302,14 @@ export const Api = {
   distributorWholesalerDetail: (distributor_id, wholesaler_id) =>
     api.get(`/distributor/${distributor_id}/wholesaler/${wholesaler_id}/detail`).then((r) => r.data),
 
+  // Strict-tier navigation: warehouse network (manufacturer) + distributor
+  // network (warehouse). Each call returns ONLY direct children so the UI
+  // cannot skip a tier on click-through.
+  manufacturerWarehouseNetwork: (manufacturer_id) =>
+    api.get(`/manufacturer/${manufacturer_id}/warehouse-network`).then((r) => r.data),
+  warehouseDistributorNetwork: (warehouse_id) =>
+    api.get(`/warehouse/${warehouse_id}/distributor-network`).then((r) => r.data),
+
   // Procurement (Cart · POs · Quotes · AI)
   manufacturerActivityPulse: (mid, window_minutes = 60) =>
     api.get(`/manufacturer/${mid}/activity-pulse`, { params: { window_minutes } }).then((r) => r.data),

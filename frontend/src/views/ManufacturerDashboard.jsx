@@ -125,9 +125,12 @@ export default function ManufacturerDashboard() {
           <DemandForecastCard forecast={data.demand_forecast} />
         </div>
 
-        {/* 6 — DISTRIBUTOR INTELLIGENCE + Stockout Risk */}
+        {/* 6 — WAREHOUSE NETWORK (direct downstream) + Stockout Risk
+            Per strict ownership: the manufacturer's direct children are
+            warehouses. Distributors live two tiers below and are only
+            reachable by drilling into a warehouse first. */}
         <div className="grid grid-cols-12 gap-6">
-          <DistributorIntelligenceCard rows={data.distributor_table} />
+          <WarehouseNetworkCard manufacturerId={data.manufacturer?.id} />
           <StockoutRiskCard items={data.stockout_risk} />
         </div>
 
@@ -1132,6 +1135,140 @@ function DemandForecastCard({ forecast }) {
 // ============================================================================
 // DISTRIBUTOR INTELLIGENCE — rich table with health badges + mini trend
 // ============================================================================
+// ============================================================================
+// WAREHOUSE NETWORK CARD — direct downstream tier (strict ownership)
+//
+// Replaces the legacy "Distributor Intelligence" card. Manufacturers own
+// warehouses; distributors live one tier below the warehouse. Clicking a
+// warehouse drills to /manufacturer/warehouses/:id where the distributor
+// list lives — preserving the navigation ladder.
+// ============================================================================
+function WarehouseNetworkCard({ manufacturerId }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!manufacturerId) return;
+    let live = true;
+    setLoading(true);
+    Api.manufacturerWarehouseNetwork(manufacturerId)
+      .then((d) => { if (live) setData(d); })
+      .catch(() => { if (live) setData(null); })
+      .finally(() => { if (live) setLoading(false); });
+    return () => { live = false; };
+  }, [manufacturerId]);
+
+  const warehouses = data?.warehouses || [];
+  const kpis = data?.kpis || {};
+
+  return (
+    <div className="col-span-12 lg:col-span-8 bg-white rounded-[22px] p-6 shadow-[0_2px_8px_rgba(15,23,42,0.04)] border border-slate-100/70"
+         data-testid="warehouse-network-card">
+      <div className="flex items-start justify-between mb-1 gap-3">
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.18em] text-slate-400 font-semibold">
+            Direct downstream · ownership
+          </div>
+          <h3 className="text-[17px] font-semibold text-slate-900 mt-0.5">Warehouse Network</h3>
+          <p className="text-[11.5px] text-slate-500 mt-1">
+            Strict chain · <span className="font-semibold text-slate-700">Manufacturer → Warehouse → Distributor → Wholesaler → Retailer</span>.
+            Drill into a warehouse to see its distributors.
+          </p>
+        </div>
+        <Link to="/network" className="text-xs text-violet-600 hover:underline font-semibold flex items-center gap-1 whitespace-nowrap">
+          View network <ArrowRight className="h-3 w-3" />
+        </Link>
+      </div>
+
+      {/* Visibility rollup chips */}
+      <div className="flex flex-wrap gap-2 mt-3 mb-4 text-[11px]">
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-100 font-semibold">
+          {kpis.total_warehouses ?? 0} warehouses
+        </span>
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-50 text-slate-600 border border-slate-100">
+          {kpis.total_distributors ?? 0} distributors · downstream
+        </span>
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-50 text-slate-600 border border-slate-100">
+          {kpis.total_wholesalers ?? 0} wholesalers · downstream
+        </span>
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-50 text-slate-600 border border-slate-100">
+          {kpis.total_retailers ?? 0} retailers · downstream
+        </span>
+      </div>
+
+      <div className="grid grid-cols-12 px-3 pb-3 text-[10px] uppercase tracking-wider font-semibold text-slate-400 border-b border-slate-100">
+        <div className="col-span-4">Warehouse</div>
+        <div className="col-span-1 text-right">Dist.</div>
+        <div className="col-span-1 text-right">Whol.</div>
+        <div className="col-span-1 text-right">Retail</div>
+        <div className="col-span-2 text-right">Revenue (90d)</div>
+        <div className="col-span-2">Stock</div>
+        <div className="col-span-1 text-right">Action</div>
+      </div>
+
+      <div className="divide-y divide-slate-100">
+        {loading && (
+          <div className="py-8 text-center text-sm text-slate-400" data-testid="warehouse-network-loading">
+            <Loader2 className="h-4 w-4 animate-spin inline mr-2" /> Loading warehouses…
+          </div>
+        )}
+        {!loading && warehouses.length === 0 && (
+          <div className="py-8 text-center text-sm text-slate-400">No warehouses yet.</div>
+        )}
+        {!loading && warehouses.map((w) => <WarehouseRow key={w.id} w={w} />)}
+      </div>
+    </div>
+  );
+}
+
+function WarehouseRow({ w }) {
+  const STATUS = {
+    healthy:  { dot: "#10B981", chip: "bg-emerald-50 text-emerald-700", label: "Healthy" },
+    warning:  { dot: "#F59E0B", chip: "bg-amber-50 text-amber-700",     label: "Watch"   },
+    critical: { dot: "#EF4444", chip: "bg-rose-50 text-rose-700",       label: "At Risk" },
+  };
+  const tone = STATUS[w.status] || STATUS.healthy;
+  const stockTone =
+    w.low_stock_skus === 0 ? "text-emerald-700" :
+    w.low_stock_skus <= 3 ? "text-amber-700" : "text-rose-700";
+  return (
+    <Link to={`/manufacturer/warehouses/${w.id}`}
+          className="grid grid-cols-12 items-center px-3 py-3.5 hover:bg-slate-50 rounded-xl group transition-colors"
+          data-testid={`warehouse-row-${w.id}`}>
+      <div className="col-span-4 flex items-center gap-3 min-w-0">
+        <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-violet-100 to-indigo-100 text-violet-700 flex items-center justify-center flex-shrink-0">
+          <Warehouse className="h-4 w-4" />
+        </div>
+        <div className="min-w-0">
+          <div className="text-sm font-semibold text-slate-900 truncate group-hover:text-violet-700">{w.name}</div>
+          <div className="text-[10.5px] text-slate-500 flex items-center gap-1.5">
+            <span className="font-mono">{w.code}</span> · {w.city || "—"}, {w.region || "—"}
+          </div>
+        </div>
+      </div>
+      <div className="col-span-1 text-right text-sm font-semibold text-slate-900 tabular-nums">{w.distributors}</div>
+      <div className="col-span-1 text-right text-sm text-slate-700 tabular-nums">{w.wholesalers}</div>
+      <div className="col-span-1 text-right text-sm text-slate-700 tabular-nums">{w.retailers}</div>
+      <div className="col-span-2 text-right">
+        <div className="text-sm font-bold text-slate-900 tabular-nums">{fmtMoney(w.revenue_90d)}</div>
+        <div className="text-[10px] text-slate-400 mt-0.5">{w.active_retailers_30d} active 30d</div>
+      </div>
+      <div className="col-span-2 flex items-center gap-2">
+        <div className={`text-xs font-semibold tabular-nums ${stockTone}`}>
+          {w.low_stock_skus === 0 ? "All stocked" : `${w.low_stock_skus} low`}
+        </div>
+        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${tone.chip}`}>
+          <span className="h-1 w-1 rounded-full inline-block mr-1" style={{ background: tone.dot }} />
+          {tone.label}
+        </span>
+      </div>
+      <div className="col-span-1 flex items-center justify-end">
+        <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-slate-700 group-hover:translate-x-0.5 transition-all" />
+      </div>
+    </Link>
+  );
+}
+
 function DistributorIntelligenceCard({ rows }) {
   return (
     <div className="col-span-12 lg:col-span-8 bg-white rounded-[22px] p-6 shadow-[0_2px_8px_rgba(15,23,42,0.04)] border border-slate-100/70" data-testid="distributor-table-card">

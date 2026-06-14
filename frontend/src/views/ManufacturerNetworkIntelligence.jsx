@@ -23,7 +23,7 @@ import {
   Search, Filter, Download, ChevronRight, ChevronLeft, ArrowRight,
   Building2, Users, Coins, Package, Gauge, AlertTriangle,
   Sparkles, TrendingUp, TrendingDown, ExternalLink,
-  Loader2, Info,
+  Loader2, Info, Warehouse,
 } from "lucide-react";
 import { STATE_PATHS } from "@/lib/nigeriaStates";
 
@@ -102,6 +102,21 @@ export default function ManufacturerNetworkIntelligence() {
           onRefresh={onRefresh}
           refreshing={refreshing}
         />
+
+        {/* Strict-tier hero — manufacturer's only ownership tier. */}
+        <WarehouseHero manufacturerId={entityId} />
+
+        {/* Everything below is downstream visibility (2 tiers skipped). */}
+        <div className="rounded-2xl bg-amber-50/60 border border-amber-200/80 px-4 py-3 flex items-start gap-3" data-testid="downstream-vis-banner">
+          <Info className="h-4 w-4 text-amber-700 mt-0.5 shrink-0" />
+          <div className="text-[12px] text-amber-900">
+            <span className="font-semibold">Downstream visibility · 2 tiers below.</span> The distributor analytics
+            on this screen aggregate across your full network for visibility. For <span className="font-semibold">strict-tier
+            navigation</span>, open a warehouse above → its Distributors tab → a distributor → its Wholesaler Network → a
+            wholesaler → its retailers.
+          </div>
+        </div>
+
         <KPIStrip kpis={data.kpis} />
 
         <div className="grid grid-cols-12 gap-6">
@@ -140,10 +155,120 @@ export default function ManufacturerNetworkIntelligence() {
 function Breadcrumb() {
   return (
     <div className="flex items-center gap-2 text-[11.5px] text-slate-500 font-semibold tracking-wider uppercase" data-testid="network-breadcrumb">
-      <span>Distributors</span>
+      <span>Network</span>
       <ChevronRight className="h-3 w-3 text-slate-300" />
-      <span className="text-slate-700">Network Intelligence</span>
+      <span>Warehouses</span>
+      <ChevronRight className="h-3 w-3 text-slate-300" />
+      <span className="text-slate-700">Distributors · visibility</span>
     </div>
+  );
+}
+
+// ============================================================================
+// WAREHOUSE HERO — strict-tier ownership view at the top of /network.
+// Renders the manufacturer's direct children (warehouses) with click-through
+// to /manufacturer/warehouses/:id so the ladder is preserved.
+// ============================================================================
+function WarehouseHero({ manufacturerId }) {
+  const navigate = useNavigate();
+  const [data, setData] = useState(null);
+
+  useEffect(() => {
+    if (!manufacturerId) return;
+    let live = true;
+    Api.manufacturerWarehouseNetwork(manufacturerId)
+      .then((d) => { if (live) setData(d); })
+      .catch(() => { if (live) setData(null); });
+    return () => { live = false; };
+  }, [manufacturerId]);
+
+  if (!data) return null;
+  const warehouses = data.warehouses || [];
+  const kpis = data.kpis || {};
+
+  const fmtNgn = (v) => {
+    const n = Number(v || 0);
+    if (n >= 1_000_000_000) return `₦${(n / 1_000_000_000).toFixed(2)}B`;
+    if (n >= 1_000_000) return `₦${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000) return `₦${(n / 1_000).toFixed(0)}K`;
+    return `₦${n.toLocaleString()}`;
+  };
+
+  return (
+    <section className="rounded-2xl bg-gradient-to-br from-violet-50 via-white to-indigo-50/30 border border-violet-100/80 p-6"
+             data-testid="warehouse-hero">
+      <div className="flex items-start justify-between gap-4 mb-4 flex-wrap">
+        <div>
+          <div className="text-[10.5px] uppercase tracking-[0.18em] text-violet-700 font-semibold inline-flex items-center gap-1.5">
+            <Warehouse className="h-3.5 w-3.5" /> Direct ownership · click-through enforces tier path
+          </div>
+          <h2 className="text-lg font-semibold text-slate-900 mt-1">Warehouse Network</h2>
+          <p className="text-[12px] text-slate-500 mt-1">
+            Manufacturer → <span className="font-semibold text-violet-700">Warehouse</span> → Distributor → Wholesaler → Retailer
+          </p>
+        </div>
+        <div className="text-right">
+          <div className="text-[10.5px] uppercase tracking-wider text-slate-400 font-semibold">Aggregated downstream</div>
+          <div className="text-sm text-slate-700 font-semibold mt-0.5">
+            {kpis.total_warehouses ?? 0} warehouses · {kpis.total_distributors ?? 0} distributors · {kpis.total_wholesalers ?? 0} wholesalers · {kpis.total_retailers ?? 0} retailers
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3" data-testid="warehouse-hero-grid">
+        {warehouses.map((w) => {
+          const tone =
+            w.status === "healthy" ? "border-emerald-200" :
+            w.status === "warning" ? "border-amber-200" : "border-rose-200";
+          return (
+            <button key={w.id}
+                    onClick={() => navigate(`/manufacturer/warehouses/${w.id}`)}
+                    className={`group text-left rounded-2xl border ${tone} bg-white p-4 hover:shadow-md hover:-translate-y-0.5 transition-all`}
+                    data-testid={`warehouse-hero-card-${w.id}`}>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="text-[10.5px] uppercase tracking-wider text-slate-400 font-semibold">{w.code}</div>
+                  <div className="text-[14.5px] font-semibold text-slate-900 mt-0.5 group-hover:text-violet-700 transition-colors">
+                    {w.name}
+                  </div>
+                  <div className="text-[11px] text-slate-500 mt-0.5">{w.city || "—"}, {w.region || "—"}</div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-violet-600 transition-colors shrink-0" />
+              </div>
+              <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+                <div>
+                  <div className="text-[10px] text-slate-400 uppercase tracking-wider">Distributors</div>
+                  <div className="text-[15px] font-bold text-slate-900 tabular-nums">{w.distributors}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-slate-400 uppercase tracking-wider">Wholesalers</div>
+                  <div className="text-[15px] font-bold text-slate-700 tabular-nums">{w.wholesalers}</div>
+                </div>
+                <div>
+                  <div className="text-[10px] text-slate-400 uppercase tracking-wider">Retailers</div>
+                  <div className="text-[15px] font-bold text-slate-700 tabular-nums">{w.retailers}</div>
+                </div>
+              </div>
+              <div className="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
+                <div>
+                  <div className="text-[10px] text-slate-400 uppercase tracking-wider">Revenue · 90d</div>
+                  <div className="text-[13px] font-bold text-slate-900 tabular-nums">{fmtNgn(w.revenue_90d)}</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-[10px] text-slate-400 uppercase tracking-wider">Status</div>
+                  <div className={`text-[11px] font-semibold ${
+                    w.status === "healthy" ? "text-emerald-600" :
+                    w.status === "warning" ? "text-amber-600" : "text-rose-600"
+                  }`}>
+                    {w.status === "healthy" ? "Healthy" : w.status === "warning" ? "Watch" : "At Risk"}
+                  </div>
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 

@@ -1358,3 +1358,291 @@ async def adjust_inventory(payload: dict):
         {"_id": 0},
     )
     return fresh
+
+
+
+# ============================================================================
+# STRICT-TIER NAVIGATION
+#   Manufacturer → Warehouse → Distributor → Wholesaler → Retailer
+# These endpoints enforce the navigation ladder. Visibility may roll up
+# downstream metrics, but each drill page is *limited to its direct
+# children* so the UI can never skip a tier.
+# ============================================================================
+@router.get("/manufacturer/{manufacturer_id}/warehouse-network")
+async def manufacturer_warehouse_network(manufacturer_id: str):
+    """List warehouses (direct children) with rolled-up downstream metrics.
+
+    Powers:
+      - the "Warehouse Network" card on the manufacturer dashboard
+      - the manufacturer's /network warehouse-first hero
+    """
+    mfg = await db.manufacturers.find_one({"id": manufacturer_id}, {"_id": 0})
+    if not mfg:
+        raise HTTPException(404, "Manufacturer not found")
+
+    warehouses = await db.organizations.find(
+        {"organization_type": "warehouse",
+         "parent_organization_id": manufacturer_id},
+        {"_id": 0, "id": 1, "organization_name": 1, "organization_code": 1,
+         "region": 1, "city": 1, "state": 1, "status": 1},
+    ).to_list(500)
+    if not warehouses:
+        return {"manufacturer": {"id": manufacturer_id, "name": mfg.get("name")},
+                "kpis": _empty_warehouse_kpis(), "warehouses": []}
+
+    wh_ids = [w["id"] for w in warehouses]
+
+    # Pull distributors under each warehouse (direct children).
+    distributors = await db.organizations.find(
+        {"organization_type": "distributor",
+         "parent_organization_id": {"$in": wh_ids}},
+        {"_id": 0, "id": 1, "organization_name": 1, "parent_organization_id": 1,
+         "region": 1, "city": 1},
+    ).to_list(2000)
+    dist_by_wh: Dict[str, List[dict]] = {wid: [] for wid in wh_ids}
+    for d in distributors:
+        dist_by_wh.setdefault(d["parent_organization_id"], []).append(d)
+    dist_ids = [d["id"] for d in distributors]
+    dist_wh_lookup = {d["id"]: d["parent_organization_id"] for d in distributors}
+
+    # Wholesalers under those distributors.
+    wholesalers = await db.organizations.find(
+        {"organization_type": "wholesaler",
+         "parent_organization_id": {"$in": dist_ids}},
+        {"_id": 0, "id": 1, "parent_organization_id": 1},
+    ).to_list(5000) if dist_ids else []
+    ws_dist_lookup = {w["id"]: w["parent_organization_id"] for w in wholesalers}
+    ws_ids = [w["id"] for w in wholesalers]
+
+    # Retailers under those wholesalers.
+    retailers = await db.organizations.find(
+        {"organization_type": "retailer",
+         "parent_organization_id": {"$in": ws_ids}},
+        {"_id": 0, "id": 1, "parent_organization_id": 1},
+    ).to_list(50000) if ws_ids else []
+    rt_ws_lookup = {r["id"]: r["parent_organization_id"] for r in retailers}
+    retailer_ids = [r["id"] for r in retailers]
+
+    # 90-day revenue by retailer → bubble up to warehouse.
+    today = datetime.now(timezone.utc).date()
+    start_90 = (today - timedelta(days=90)).isoformat()
+    start_30 = (today - timedelta(days=30)).isoformat()
+
+    rev_by_wh: Dict[str, float] = {wid: 0.0 for wid in wh_ids}
+    active_retailers_by_wh: Dict[str, set] = {wid: set() for wid in wh_ids}
+
+    if retailer_ids:
+        async for s in db.daily_sales.find(
+            {"retailer_id": {"$in": retailer_ids}, "date": {"$gte": start_90}},
+            {"_id": 0, "retailer_id": 1, "revenue": 1, "date": 1},
+        ):
+            ws_id = rt_ws_lookup.get(s["retailer_id"])
+            dist_id = ws_dist_lookup.get(ws_id) if ws_id else None
+            wh_id = dist_wh_lookup.get(dist_id) if dist_id else None
+            if not wh_id:
+                continue
+            rev_by_wh[wh_id] = rev_by_wh.get(wh_id, 0) + float(s.get("revenue", 0))
+            if s["date"] >= start_30:
+                active_retailers_by_wh.setdefault(wh_id, set()).add(s["retailer_id"])
+
+    # Inventory + low-stock count by warehouse.
+    inv_units_by_wh: Dict[str, int] = {wid: 0 for wid in wh_ids}
+    low_stock_by_wh: Dict[str, int] = {wid: 0 for wid in wh_ids}
+    async for inv in db.inventory.find(
+        {"owner_type": "warehouse", "owner_id": {"$in": wh_ids}},
+        {"_id": 0, "owner_id": 1, "quantity": 1, "reorder_level": 1},
+    ):
+        q = int(inv.get("quantity", 0))
+        ro = int(inv.get("reorder_level", 0))
+        inv_units_by_wh[inv["owner_id"]] = inv_units_by_wh.get(inv["owner_id"], 0) + q
+        if q <= ro:
+            low_stock_by_wh[inv["owner_id"]] = low_stock_by_wh.get(inv["owner_id"], 0) + 1
+
+    # Pending procurement orders aimed at each warehouse (distributor → mfg through wh).
+    pending_by_wh: Dict[str, int] = {wid: 0 for wid in wh_ids}
+    async for po in db.purchase_orders.find(
+        {"manufacturer_id": manufacturer_id,
+         "warehouse_id": {"$in": wh_ids},
+         "status": {"$in": ["submitted", "approved", "processing"]}},
+        {"_id": 0, "warehouse_id": 1},
+    ):
+        wid = po.get("warehouse_id")
+        if wid:
+            pending_by_wh[wid] = pending_by_wh.get(wid, 0) + 1
+
+    # Build per-warehouse cards.
+    cards = []
+    for w in warehouses:
+        wid = w["id"]
+        distributors_n = len(dist_by_wh.get(wid, []))
+        wholesalers_n = sum(1 for d in dist_by_wh.get(wid, [])
+                            for _w in wholesalers if _w["parent_organization_id"] == d["id"])
+        # Downstream retailer count via wholesalers under each distributor.
+        retailers_n = 0
+        ws_under_wh = [w_doc["id"] for w_doc in wholesalers
+                       if w_doc["parent_organization_id"] in {d["id"] for d in dist_by_wh.get(wid, [])}]
+        retailers_n = sum(1 for r in retailers if r["parent_organization_id"] in set(ws_under_wh))
+
+        revenue_90d = round(rev_by_wh.get(wid, 0.0), 2)
+        active_retailers_30d = len(active_retailers_by_wh.get(wid, set()))
+        low = low_stock_by_wh.get(wid, 0)
+        status = ("healthy" if low == 0 and revenue_90d > 0
+                  else "warning" if low <= 5 or revenue_90d > 0
+                  else "critical")
+
+        cards.append({
+            "id": wid,
+            "name": w.get("organization_name"),
+            "code": w.get("organization_code"),
+            "region": w.get("region"),
+            "city": w.get("city"),
+            "state": w.get("state"),
+            "is_active": (w.get("status") or "active") == "active",
+            "distributors": distributors_n,
+            "wholesalers": wholesalers_n,
+            "retailers": retailers_n,
+            "active_retailers_30d": active_retailers_30d,
+            "revenue_90d": revenue_90d,
+            "inventory_units": inv_units_by_wh.get(wid, 0),
+            "low_stock_skus": low,
+            "pending_orders": pending_by_wh.get(wid, 0),
+            "status": status,
+        })
+
+    cards.sort(key=lambda c: c["revenue_90d"], reverse=True)
+
+    kpis = {
+        "total_warehouses": len(warehouses),
+        "active_warehouses": sum(1 for c in cards if c["is_active"]),
+        "total_distributors": len(distributors),
+        "total_wholesalers": len(wholesalers),
+        "total_retailers": len(retailers),
+        "revenue_90d": round(sum(rev_by_wh.values()), 2),
+        "low_stock_skus": sum(low_stock_by_wh.values()),
+        "pending_orders": sum(pending_by_wh.values()),
+    }
+
+    return {
+        "manufacturer": {"id": manufacturer_id, "name": mfg.get("name")},
+        "kpis": kpis,
+        "warehouses": cards,
+    }
+
+
+def _empty_warehouse_kpis():
+    return {"total_warehouses": 0, "active_warehouses": 0, "total_distributors": 0,
+            "total_wholesalers": 0, "total_retailers": 0, "revenue_90d": 0,
+            "low_stock_skus": 0, "pending_orders": 0}
+
+
+@router.get("/warehouse/{warehouse_id}/distributor-network")
+async def warehouse_distributor_network(warehouse_id: str):
+    """Distributors directly owned by this warehouse (the next strict tier).
+
+    Powers the drill page at /manufacturer/warehouses/:id (distributor list
+    section), so manufacturers click a warehouse, then a distributor — never
+    skipping the warehouse tier.
+    """
+    warehouse = await db.organizations.find_one(
+        {"id": warehouse_id, "organization_type": "warehouse"},
+        {"_id": 0, "id": 1, "organization_name": 1, "organization_code": 1,
+         "region": 1, "city": 1, "state": 1, "parent_organization_id": 1},
+    )
+    if not warehouse:
+        raise HTTPException(404, "Warehouse not found")
+
+    distributors = await db.organizations.find(
+        {"organization_type": "distributor",
+         "parent_organization_id": warehouse_id},
+        {"_id": 0, "id": 1, "organization_name": 1, "organization_code": 1,
+         "region": 1, "city": 1, "metadata": 1},
+    ).to_list(500)
+    if not distributors:
+        return {"warehouse": warehouse, "kpis": _empty_distributor_kpis(),
+                "distributors": []}
+
+    dist_ids = [d["id"] for d in distributors]
+    # Wholesalers under each distributor.
+    wholesalers = await db.organizations.find(
+        {"organization_type": "wholesaler",
+         "parent_organization_id": {"$in": dist_ids}},
+        {"_id": 0, "id": 1, "parent_organization_id": 1},
+    ).to_list(5000)
+    ws_count_by_dist: Dict[str, int] = {did: 0 for did in dist_ids}
+    ws_by_dist: Dict[str, List[str]] = {did: [] for did in dist_ids}
+    for w in wholesalers:
+        d = w["parent_organization_id"]
+        ws_count_by_dist[d] = ws_count_by_dist.get(d, 0) + 1
+        ws_by_dist.setdefault(d, []).append(w["id"])
+
+    # Retailers under those wholesalers.
+    ws_ids = [w["id"] for w in wholesalers]
+    retailers = await db.organizations.find(
+        {"organization_type": "retailer",
+         "parent_organization_id": {"$in": ws_ids}},
+        {"_id": 0, "id": 1, "parent_organization_id": 1},
+    ).to_list(20000) if ws_ids else []
+    rt_count_by_dist: Dict[str, int] = {did: 0 for did in dist_ids}
+    ws_to_dist = {wid: d for d, wlist in ws_by_dist.items() for wid in wlist}
+    rt_to_dist: Dict[str, str] = {}
+    for r in retailers:
+        d = ws_to_dist.get(r["parent_organization_id"])
+        if d:
+            rt_count_by_dist[d] = rt_count_by_dist.get(d, 0) + 1
+            rt_to_dist[r["id"]] = d
+
+    # 90-day revenue per distributor.
+    today = datetime.now(timezone.utc).date()
+    start_90 = (today - timedelta(days=90)).isoformat()
+    start_30 = (today - timedelta(days=30)).isoformat()
+    rev_by_dist: Dict[str, float] = {did: 0.0 for did in dist_ids}
+    active_30d_by_dist: Dict[str, set] = {did: set() for did in dist_ids}
+    if rt_to_dist:
+        async for s in db.daily_sales.find(
+            {"retailer_id": {"$in": list(rt_to_dist.keys())},
+             "date": {"$gte": start_90}},
+            {"_id": 0, "retailer_id": 1, "revenue": 1, "date": 1},
+        ):
+            d = rt_to_dist.get(s["retailer_id"])
+            if not d:
+                continue
+            rev_by_dist[d] = rev_by_dist.get(d, 0) + float(s.get("revenue", 0))
+            if s["date"] >= start_30:
+                active_30d_by_dist.setdefault(d, set()).add(s["retailer_id"])
+
+    cards = []
+    for d in distributors:
+        did = d["id"]
+        revenue_90d = round(rev_by_dist.get(did, 0.0), 2)
+        wh_n = ws_count_by_dist.get(did, 0)
+        rt_n = rt_count_by_dist.get(did, 0)
+        active = len(active_30d_by_dist.get(did, set()))
+        status = "healthy" if revenue_90d > 0 and wh_n > 0 else "warning" if wh_n > 0 else "critical"
+        cards.append({
+            "id": did,
+            "name": d.get("organization_name"),
+            "code": d.get("organization_code"),
+            "region": d.get("region"),
+            "city": d.get("city"),
+            "wholesalers": wh_n,
+            "retailers": rt_n,
+            "active_retailers_30d": active,
+            "revenue_90d": revenue_90d,
+            "status": status,
+        })
+    cards.sort(key=lambda c: c["revenue_90d"], reverse=True)
+
+    kpis = {
+        "total_distributors": len(distributors),
+        "total_wholesalers": len(wholesalers),
+        "total_retailers": len(retailers),
+        "revenue_90d": round(sum(rev_by_dist.values()), 2),
+        "active_retailers_30d": sum(len(s) for s in active_30d_by_dist.values()),
+    }
+
+    return {"warehouse": warehouse, "kpis": kpis, "distributors": cards}
+
+
+def _empty_distributor_kpis():
+    return {"total_distributors": 0, "total_wholesalers": 0, "total_retailers": 0,
+            "revenue_90d": 0, "active_retailers_30d": 0}

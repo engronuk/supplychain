@@ -305,6 +305,7 @@ function WarehouseDialog({ existing, onClose }) {
 // ---------------------------------------------------------------------------
 const TABS = [
   { id: "overview",   label: "Overview" },
+  { id: "distributors", label: "Distributors" },
   { id: "fulfillment", label: "Fulfillment" },
   { id: "inventory",  label: "Inventory" },
   { id: "users",      label: "Users" },
@@ -443,6 +444,7 @@ export function ManufacturerWarehouseDetail() {
       )}
 
       {tab === "fulfillment" && <FulfillmentTab warehouseId={w.id} />}
+      {tab === "distributors" && <DistributorsTab warehouseId={w.id} />}
 
       {tab === "inventory" && <InventoryTab inventory={inventory} byPid={byPid} onAction={(action, row) => handleInventoryAction(action, row, w, navigate)} />}
       {tab === "users" && <UsersTab w={w} users={whUsers} />}
@@ -1510,6 +1512,159 @@ const FULFILLMENT_NEXT = {
   dispatched: "delivered",
   delivered: "closed",
 };
+
+// ===========================================================================
+// DISTRIBUTORS TAB — direct downstream tier of a warehouse.
+//
+// The only manufacturer-side path to an individual distributor goes through
+// this tab, preserving the strict navigation chain
+//   Manufacturer → Warehouse → Distributor → Wholesaler → Retailer.
+// ===========================================================================
+function DistributorsTab({ warehouseId }) {
+  const navigate = useNavigate();
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    if (!warehouseId) return;
+    let live = true;
+    setLoading(true);
+    Api.warehouseDistributorNetwork(warehouseId)
+      .then((d) => { if (live) setData(d); })
+      .catch(() => { if (live) setData(null); })
+      .finally(() => { if (live) setLoading(false); });
+    return () => { live = false; };
+  }, [warehouseId]);
+
+  const distributors = data?.distributors || [];
+  const kpis = data?.kpis || {};
+  const q = query.trim().toLowerCase();
+  const filtered = q
+    ? distributors.filter((d) =>
+        (d.name || "").toLowerCase().includes(q)
+        || (d.code || "").toLowerCase().includes(q)
+        || (d.city || "").toLowerCase().includes(q))
+    : distributors;
+
+  const fmtNgn = (v) => {
+    const n = Number(v || 0);
+    if (n >= 1_000_000) return `₦${(n / 1_000_000).toFixed(1)}M`;
+    if (n >= 1_000) return `₦${(n / 1_000).toFixed(0)}K`;
+    return `₦${n.toLocaleString()}`;
+  };
+
+  return (
+    <div className="space-y-5" data-testid="warehouse-distributors-tab">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <KpiTile2 label="Distributors · direct" value={kpis.total_distributors ?? 0}
+                  sub="next tier (ownership)" tone="violet" />
+        <KpiTile2 label="Wholesalers · downstream" value={kpis.total_wholesalers ?? 0}
+                  sub="2 tiers below" tone="indigo" />
+        <KpiTile2 label="Retailers · downstream" value={kpis.total_retailers ?? 0}
+                  sub="3 tiers below · visibility" tone="emerald" />
+        <KpiTile2 label="Active retailers · 30d" value={kpis.active_retailers_30d ?? 0}
+                  sub="rolled up via wholesalers" tone="amber" />
+        <KpiTile2 label="Revenue · 90d" value={fmtNgn(kpis.revenue_90d)}
+                  sub="aggregated through chain" tone="rose" />
+      </div>
+
+      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+        <div className="flex items-start justify-between gap-3 mb-3 flex-wrap">
+          <div>
+            <div className="text-[10.5px] uppercase tracking-[0.18em] text-slate-400 font-semibold">Direct downstream · ownership</div>
+            <h3 className="text-base font-semibold text-slate-900 mt-0.5">Distributors managed by this warehouse</h3>
+            <p className="text-[12px] text-slate-500 mt-1">Click a distributor to open its workspace and continue down to wholesalers.</p>
+          </div>
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            type="text"
+            placeholder="Search distributor…"
+            className="h-9 px-3 w-[240px] rounded-xl border border-slate-200 bg-slate-50 text-[12.5px] text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-violet-200 focus:border-violet-300 transition-all"
+            data-testid="warehouse-distributors-search"
+          />
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-[12.5px]">
+            <thead>
+              <tr className="text-[10.5px] uppercase tracking-wider text-slate-400 font-semibold border-b border-slate-100">
+                <th className="text-left pb-3 pl-2">Distributor</th>
+                <th className="text-left pb-3">Location</th>
+                <th className="text-right pb-3">Wholesalers</th>
+                <th className="text-right pb-3">Retailers (visibility)</th>
+                <th className="text-right pb-3">Active 30d</th>
+                <th className="text-right pb-3">Revenue (90d)</th>
+                <th className="text-left pb-3">Status</th>
+                <th className="text-right pb-3 pr-2">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {loading && <tr><td colSpan={8} className="text-center py-10 text-slate-500">Loading distributors…</td></tr>}
+              {!loading && filtered.length === 0 && (
+                <tr><td colSpan={8} className="text-center py-10 text-slate-500">
+                  {distributors.length === 0 ? "No distributors under this warehouse yet." : "No distributors match your search."}
+                </td></tr>
+              )}
+              {!loading && filtered.map((d) => {
+                const tone =
+                  d.status === "healthy" ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                  d.status === "warning" ? "bg-amber-50 text-amber-700 border-amber-200" :
+                  "bg-rose-50 text-rose-700 border-rose-200";
+                return (
+                  <tr key={d.id} data-testid={`warehouse-dist-row-${d.id}`} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="py-3 pl-2">
+                      <button onClick={() => navigate(`/distributors/${d.id}`)}
+                              className="text-left group" data-testid={`warehouse-dist-link-${d.id}`}>
+                        <div className="font-medium text-slate-900 group-hover:text-violet-600 transition-colors">{d.name}</div>
+                        <div className="text-[11px] text-slate-500 mt-0.5 font-mono">{d.code}</div>
+                      </button>
+                    </td>
+                    <td className="text-slate-600">{d.city || "—"}, {d.region || "—"}</td>
+                    <td className="text-right tabular-nums font-semibold text-slate-900">{d.wholesalers}</td>
+                    <td className="text-right tabular-nums text-slate-700">{d.retailers}</td>
+                    <td className="text-right tabular-nums text-emerald-700">{d.active_retailers_30d}</td>
+                    <td className="text-right tabular-nums font-semibold">{fmtNgn(d.revenue_90d)}</td>
+                    <td>
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] uppercase tracking-wider font-semibold ${tone}`}>
+                        {d.status}
+                      </span>
+                    </td>
+                    <td className="text-right pr-2">
+                      <button onClick={() => navigate(`/distributors/${d.id}`)}
+                              className="text-violet-700 hover:text-violet-900 font-semibold text-xs"
+                              data-testid={`warehouse-dist-open-${d.id}`}>
+                        Open →
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function KpiTile2({ label, value, sub, tone }) {
+  const tones = {
+    violet:  "from-violet-50 to-white text-violet-700",
+    indigo:  "from-indigo-50 to-white text-indigo-700",
+    emerald: "from-emerald-50 to-white text-emerald-700",
+    amber:   "from-amber-50 to-white text-amber-700",
+    rose:    "from-rose-50 to-white text-rose-700",
+  };
+  return (
+    <div className={`rounded-2xl border border-slate-200/80 bg-gradient-to-br ${tones[tone]} p-4`}>
+      <div className="text-[10.5px] uppercase tracking-[0.16em] font-semibold opacity-80 mb-1">{label}</div>
+      <div className="text-[20px] font-bold text-slate-900 tabular-nums">{value}</div>
+      {sub && <div className="text-[11px] text-slate-500 mt-0.5">{sub}</div>}
+    </div>
+  );
+}
+
 
 function FulfillmentTab({ warehouseId }) {
   const [bucket, setBucket] = useState("all");
