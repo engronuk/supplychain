@@ -102,6 +102,12 @@ export default function DistributorDashboard() {
 
         <KPIStrip kpis={data.kpis} />
 
+        {/* Wholesaler network — the distributor's direct downstream customers.
+            Per the canonical chain (Distributor → Wholesaler → Retailer) this
+            is the primary surface; the legacy retailer-direct cards below
+            still show key-account exceptions only. */}
+        <WholesalerNetworkSection distributorId={entityId} />
+
         <div className="grid grid-cols-12 gap-6">
           <RevenueTrendCard trend={data.revenue_trend} />
           <InventoryHealthCard health={data.inventory_health} />
@@ -598,15 +604,16 @@ function CategoryPerformanceCard({ categories }) {
   );
 }
 
-/* ---------- Top retailers / attention retailers ---------- */
+/* ---------- Top retailers / attention retailers (KEY-ACCOUNT DIRECT ONLY) ---------- */
 function TopRetailersCard({ retailers }) {
   return (
     <div className="col-span-12 lg:col-span-6 rounded-2xl bg-white border border-slate-200 shadow-sm p-6"
          data-testid="dist-top-retailers">
       <div className="flex items-start justify-between mb-3">
         <div>
-          <div className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">Top Retailers</div>
-          <h3 className="text-base font-semibold text-slate-900 mt-0.5">Best performers · last 90 days</h3>
+          <div className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">Key-Account Direct · Top</div>
+          <h3 className="text-base font-semibold text-slate-900 mt-0.5">Best key-accounts · last 90 days</h3>
+          <p className="text-[11px] text-slate-400 mt-1">Retailers (e.g. Shoprite, Spar) served directly. Regular retailers live under wholesalers.</p>
         </div>
         <Link to="/network" className="text-xs text-violet-700 font-semibold hover:underline">View all</Link>
       </div>
@@ -621,8 +628,8 @@ function AttentionRetailersCard({ retailers }) {
          data-testid="dist-attention-retailers">
       <div className="flex items-start justify-between mb-3">
         <div>
-          <div className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">Needs Attention</div>
-          <h3 className="text-base font-semibold text-slate-900 mt-0.5">Retailers requiring intervention</h3>
+          <div className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">Key-Account Direct · Needs Attention</div>
+          <h3 className="text-base font-semibold text-slate-900 mt-0.5">Key-accounts requiring intervention</h3>
         </div>
         <AlertTriangle className="h-4 w-4 text-rose-500" />
       </div>

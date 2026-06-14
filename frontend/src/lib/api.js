@@ -297,6 +297,10 @@ export const Api = {
     api.get(`/distributor/${distributor_id}/operations-intelligence`).then((r) => r.data),
   refreshDistributorOps: (distributor_id) =>
     api.post(`/distributor/${distributor_id}/operations-intelligence/refresh`).then((r) => r.data),
+  distributorWholesalerNetwork: (distributor_id) =>
+    api.get(`/distributor/${distributor_id}/wholesaler-network`).then((r) => r.data),
+  distributorWholesalerDetail: (distributor_id, wholesaler_id) =>
+    api.get(`/distributor/${distributor_id}/wholesaler/${wholesaler_id}/detail`).then((r) => r.data),
 
   // Procurement (Cart · POs · Quotes · AI)
   manufacturerActivityPulse: (mid, window_minutes = 60) =>

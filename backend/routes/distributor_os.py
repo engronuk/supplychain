@@ -566,3 +566,255 @@ def _empty_payload(distributor: dict) -> dict:
         "network_health": {"score": 0, "band": "critical"},
         "totals": {"total_retailers": 0, "total_skus": 0},
     }
+
+
+
+# ============================================================================
+# WHOLESALER NETWORK — Distributor → Wholesalers (primary network surface)
+# ----------------------------------------------------------------------------
+# Per the canonical chain (Distributor → Wholesaler → Retailer), the
+# distributor's primary downstream relationship is with wholesalers, not
+# retailers. The dashboard surfaces wholesaler-level metrics and supports a
+# drill-down into each wholesaler to see the retailers it serves.
+# ============================================================================
+@router.get("/distributor/{distributor_id}/wholesaler-network")
+async def distributor_wholesaler_network(distributor_id: str):
+    """Wholesalers served by this distributor + roll-up metrics."""
+    today = datetime.now(timezone.utc).date()
+    start_90 = (today - timedelta(days=90)).isoformat()
+    start_180 = (today - timedelta(days=180)).isoformat()
+    start_30 = (today - timedelta(days=30)).isoformat()
+
+    # Wholesalers under this distributor
+    wholesalers = await db.organizations.find(
+        {"organization_type": "wholesaler", "parent_organization_id": distributor_id},
+        {"_id": 0},
+    ).to_list(500)
+    ws_ids = [w["id"] for w in wholesalers]
+
+    # Retailers under those wholesalers
+    retailers = await db.organizations.find(
+        {"organization_type": "retailer", "parent_organization_id": {"$in": ws_ids}},
+        {"_id": 0, "id": 1, "parent_organization_id": 1, "organization_name": 1, "region": 1, "city": 1},
+    ).to_list(5000) if ws_ids else []
+    rt_by_ws: Dict[str, list] = defaultdict(list)
+    for r in retailers:
+        rt_by_ws[r["parent_organization_id"]].append(r)
+
+    retailer_ids = [r["id"] for r in retailers]
+    rev_by_retailer_90: Dict[str, float] = defaultdict(float)
+    rev_by_retailer_prev: Dict[str, float] = defaultdict(float)
+    active_retailers_30: set[str] = set()
+    if retailer_ids:
+        async for s in db.daily_sales.find(
+            {"retailer_id": {"$in": retailer_ids}, "date": {"$gte": start_180}},
+            {"_id": 0, "retailer_id": 1, "date": 1, "revenue": 1},
+        ):
+            rid = s["retailer_id"]
+            d = s.get("date", "")
+            rev = float(s.get("revenue") or 0)
+            if d >= start_90:
+                rev_by_retailer_90[rid] += rev
+                if d >= start_30:
+                    active_retailers_30.add(rid)
+            else:
+                rev_by_retailer_prev[rid] += rev
+
+    # Aggregate per wholesaler
+    cards: list[dict] = []
+    for ws in wholesalers:
+        rs = rt_by_ws.get(ws["id"], [])
+        retailer_count = len(rs)
+        active_30 = sum(1 for r in rs if r["id"] in active_retailers_30)
+        rev_90 = sum(rev_by_retailer_90.get(r["id"], 0) for r in rs)
+        rev_prev = sum(rev_by_retailer_prev.get(r["id"], 0) for r in rs)
+        growth_pct = _delta_pct(rev_90, rev_prev)
+        pending_orders = await db.purchase_orders.count_documents({
+            "distributor_id": ws["id"], "supplier_type": "wholesaler",
+            "status": {"$in": ["submitted", "approved", "processing"]},
+        })
+        status = (
+            "critical" if active_30 == 0 and retailer_count > 0
+            else "attention" if growth_pct < -10
+            else "healthy"
+        )
+        cards.append({
+            "id": ws["id"],
+            "name": ws.get("organization_name"),
+            "code": ws.get("organization_code"),
+            "region": ws.get("region"),
+            "city": ws.get("city"),
+            "retailer_count": retailer_count,
+            "active_retailers_30d": active_30,
+            "revenue_90d": round(rev_90, 2),
+            "growth_pct": growth_pct,
+            "pending_orders": pending_orders,
+            "status": status,
+        })
+
+    cards.sort(key=lambda c: c["revenue_90d"], reverse=True)
+    top = cards[:5]
+    attention = sorted([c for c in cards if c["status"] != "healthy"],
+                       key=lambda c: c["revenue_90d"], reverse=True)[:5]
+
+    # Key-account retailers served direct (legacy / Shoprite etc.)
+    ka_retailers = await db.organizations.find(
+        {"organization_type": "retailer", "parent_organization_id": distributor_id},
+        {"_id": 0, "id": 1, "organization_name": 1, "region": 1, "city": 1, "metadata": 1},
+    ).to_list(50)
+    ka_cards = []
+    if ka_retailers:
+        ka_ids = [r["id"] for r in ka_retailers]
+        ka_rev: Dict[str, float] = defaultdict(float)
+        async for s in db.daily_sales.find(
+            {"retailer_id": {"$in": ka_ids}, "date": {"$gte": start_90}},
+            {"_id": 0, "retailer_id": 1, "revenue": 1},
+        ):
+            ka_rev[s["retailer_id"]] += float(s.get("revenue") or 0)
+        for r in ka_retailers:
+            ka_cards.append({
+                "id": r["id"],
+                "name": r.get("organization_name"),
+                "region": r.get("region"),
+                "city": r.get("city"),
+                "brand": (r.get("metadata") or {}).get("key_account_brand"),
+                "revenue_90d": round(ka_rev.get(r["id"], 0), 2),
+            })
+        ka_cards.sort(key=lambda c: c["revenue_90d"], reverse=True)
+
+    return {
+        "distributor_id": distributor_id,
+        "as_of": datetime.now(timezone.utc).isoformat(),
+        "kpis": {
+            "total_wholesalers": len(wholesalers),
+            "active_wholesalers_30d": sum(1 for c in cards if c["active_retailers_30d"] > 0),
+            "total_retailers_in_network": len(retailers),
+            "active_retailers_30d": len(active_retailers_30),
+            "revenue_90d": round(sum(rev_by_retailer_90.values()), 2),
+            "key_account_retailers": len(ka_retailers),
+        },
+        "wholesalers": cards,
+        "top_wholesalers": top,
+        "attention_wholesalers": attention,
+        "key_account_retailers": ka_cards,
+    }
+
+
+@router.get("/distributor/{distributor_id}/wholesaler/{wholesaler_id}/detail")
+async def distributor_wholesaler_detail(distributor_id: str, wholesaler_id: str):
+    """Full drill-down on one wholesaler — retailers + recent orders."""
+    ws = await db.organizations.find_one(
+        {"id": wholesaler_id, "organization_type": "wholesaler",
+         "parent_organization_id": distributor_id},
+        {"_id": 0},
+    )
+    if not ws:
+        raise HTTPException(404, "Wholesaler not in this distributor's network")
+
+    today = datetime.now(timezone.utc).date()
+    start_90 = (today - timedelta(days=90)).isoformat()
+    start_30 = (today - timedelta(days=30)).isoformat()
+
+    retailers = await db.organizations.find(
+        {"organization_type": "retailer", "parent_organization_id": wholesaler_id},
+        {"_id": 0},
+    ).to_list(500)
+    rt_ids = [r["id"] for r in retailers]
+    rev_90: Dict[str, float] = defaultdict(float)
+    units_90: Dict[str, int] = defaultdict(int)
+    last_sale: Dict[str, str] = {}
+    if rt_ids:
+        async for s in db.daily_sales.find(
+            {"retailer_id": {"$in": rt_ids}, "date": {"$gte": start_90}},
+            {"_id": 0, "retailer_id": 1, "revenue": 1, "units": 1, "date": 1},
+        ):
+            rid = s["retailer_id"]
+            rev_90[rid] += float(s.get("revenue") or 0)
+            units_90[rid] += int(s.get("units") or 0)
+            d = s.get("date", "")
+            if d and d > last_sale.get(rid, ""):
+                last_sale[rid] = d
+
+    retailer_cards = []
+    for r in retailers:
+        rev = round(rev_90.get(r["id"], 0), 2)
+        last = last_sale.get(r["id"])
+        status = (
+            "healthy" if last and last >= start_30
+            else "attention" if last
+            else "critical"
+        )
+        retailer_cards.append({
+            "id": r["id"],
+            "name": r.get("organization_name"),
+            "code": r.get("organization_code"),
+            "region": r.get("region"),
+            "city": r.get("city"),
+            "revenue_90d": rev,
+            "units_90d": units_90.get(r["id"], 0),
+            "last_sale_date": last,
+            "status": status,
+        })
+    retailer_cards.sort(key=lambda c: c["revenue_90d"], reverse=True)
+
+    # Recent retailer orders against this wholesaler
+    recent_orders = []
+    async for po in db.purchase_orders.find(
+        {"distributor_id": wholesaler_id, "supplier_type": "wholesaler"},
+        {"_id": 0, "id": 1, "po_number": 1, "retailer_id": 1, "total_amount": 1,
+         "status": 1, "created_at": 1, "items": 1},
+    ).sort("created_at", -1).limit(25):
+        retailer = next((r for r in retailers if r["id"] == po.get("retailer_id")), {})
+        recent_orders.append({
+            "id": po["id"],
+            "po_number": po.get("po_number"),
+            "retailer_id": po.get("retailer_id"),
+            "retailer_name": retailer.get("organization_name", "Unknown"),
+            "total_amount": float(po.get("total_amount") or 0),
+            "status": po.get("status"),
+            "line_count": len(po.get("items") or []),
+            "created_at": po.get("created_at"),
+        })
+
+    # Pending wholesaler PO to this distributor (procurement upstream)
+    incoming_pos = []
+    async for wpo in db.wholesaler_purchase_orders.find(
+        {"wholesaler_id": wholesaler_id, "supplier_id": distributor_id},
+        {"_id": 0, "id": 1, "po_number": 1, "total_amount": 1, "status": 1,
+         "items": 1, "created_at": 1},
+    ).sort("created_at", -1).limit(15):
+        incoming_pos.append({
+            "id": wpo["id"], "po_number": wpo.get("po_number"),
+            "total_amount": float(wpo.get("total_amount") or 0),
+            "status": wpo.get("status"),
+            "line_count": len(wpo.get("items") or []),
+            "created_at": wpo.get("created_at"),
+        })
+
+    return {
+        "wholesaler": {
+            "id": ws["id"],
+            "name": ws.get("organization_name"),
+            "code": ws.get("organization_code"),
+            "region": ws.get("region"),
+            "city": ws.get("city"),
+            "address": ws.get("address"),
+            "contact_email": ws.get("contact_email"),
+        },
+        "kpis": {
+            "total_retailers": len(retailers),
+            "active_retailers_30d": sum(1 for c in retailer_cards if c["status"] == "healthy"),
+            "revenue_90d": round(sum(rev_90.values()), 2),
+            "pending_orders_from_retailers": sum(
+                1 for o in recent_orders
+                if o["status"] in ("submitted", "approved", "processing")
+            ),
+            "pending_procurement_to_distributor": sum(
+                1 for p in incoming_pos
+                if p["status"] in ("submitted", "approved", "processing")
+            ),
+        },
+        "retailers": retailer_cards,
+        "recent_retailer_orders": recent_orders,
+        "wholesaler_purchase_orders_to_distributor": incoming_pos,
+    }
