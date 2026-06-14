@@ -299,6 +299,8 @@ export const Api = {
     api.post(`/distributor/${distributor_id}/operations-intelligence/refresh`).then((r) => r.data),
 
   // Procurement (Cart · POs · Quotes · AI)
+  manufacturerActivityPulse: (mid, window_minutes = 60) =>
+    api.get(`/manufacturer/${mid}/activity-pulse`, { params: { window_minutes } }).then((r) => r.data),
   retailerSuppliers: (retailer_id) =>
     api.get(`/procurement/retailer/${retailer_id}/suppliers`).then((r) => r.data),
   cart: (retailer_id) =>

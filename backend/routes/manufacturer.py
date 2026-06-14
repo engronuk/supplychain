@@ -59,7 +59,7 @@ async def _build_manufacturer_overview(manufacturer_id: str):
         {"manufacturer_id": manufacturer_id}, {"_id": 0},
     ).to_list(5000)
     dist_ids = [d["id"] for d in distributors]
-    dist_by_id = {d["id"]: d for d in distributors}
+    dist_by_id = {d["id"]: d for d in distributors}  # noqa: F841 — kept for future drill-down
 
     retailers = await db.retailers.find(
         {"distributor_id": {"$in": dist_ids}}, {"_id": 0},
@@ -199,11 +199,13 @@ async def _build_manufacturer_overview(manufacturer_id: str):
         dp["health_score"] = score
         dp["growth_pct"] = _delta_pct(dp["revenue_mtd"], dp["revenue_prev"])
         if score >= 80:
-            dp["risk_level"] = "low"; healthy_count += 1
+            dp["risk_level"] = "low"
+            healthy_count += 1
         elif score >= 60:
             dp["risk_level"] = "medium"
         else:
-            dp["risk_level"] = "high"; at_risk_count += 1
+            dp["risk_level"] = "high"
+            at_risk_count += 1
         dp["revenue_mtd"] = round(dp["revenue_mtd"], 2)
     dist_table = sorted(dist_perf.values(), key=lambda x: x["revenue_mtd"], reverse=True)[:8]
 
@@ -254,7 +256,7 @@ async def _build_manufacturer_overview(manufacturer_id: str):
 
     # Demand forecast — naive: project last 30d's avg-by-DOW into next 30d
     forecast_bars: List[int] = []
-    sorted_days = sorted(daily_units_30.items())
+    sorted_days = sorted(daily_units_30.items())  # noqa: F841 — kept for future DOW model
     # Average daily units last 30d
     avg_units = (sum(daily_units_30.values()) / 30) if daily_units_30 else 0
     # Build 30 projected bars with mild growth + slight DOW seasonality
@@ -437,6 +439,186 @@ def _delta_pct(curr: float, prev: float):
 
 # ============================================================================
 # PRODUCT CATALOG — enriched list for the Manufacturer Inventory page
+
+# ============================================================================
+# ACTIVITY PULSE — 60-second throughput strip for the dashboard hero.
+# ----------------------------------------------------------------------------
+# Returns rolling counters for the last 60 minutes across orders placed,
+# shipments moving, POs approved and retail sale events. Cheap aggregations
+# (covered by the tenant_id index) — safe to poll every 60s from the UI.
+# ============================================================================
+@router.get("/manufacturer/{manufacturer_id}/activity-pulse")
+async def manufacturer_activity_pulse(manufacturer_id: str, window_minutes: int = 60):
+    """Live throughput metrics for the manufacturer's network.
+
+    For each metric we return:
+      - ``current``: events within the last ``window_minutes``
+      - ``previous``: same-size window immediately before (for delta % calc)
+      - ``sparkline``: 12 evenly-sized buckets across the current window
+    """
+    window_minutes = max(5, min(window_minutes, 24 * 60))
+    now = datetime.now(timezone.utc)
+    win = timedelta(minutes=window_minutes)
+    cur_from = (now - win).isoformat()
+    prev_from = (now - 2 * win).isoformat()
+    prev_to = cur_from
+
+    # Resolve manufacturer tree ids so cross-collection filters are cheap.
+    wh_ids = [w["id"] for w in await db.organizations.find(
+        {"organization_type": "warehouse", "parent_organization_id": manufacturer_id},
+        {"_id": 0, "id": 1},
+    ).to_list(50)]
+    ds_ids = [d["id"] for d in await db.organizations.find(
+        {"organization_type": "distributor", "parent_organization_id": {"$in": wh_ids}},
+        {"_id": 0, "id": 1},
+    ).to_list(200)]
+    ws_ids = [w["id"] for w in await db.organizations.find(
+        {"organization_type": "wholesaler", "parent_organization_id": {"$in": ds_ids}},
+        {"_id": 0, "id": 1},
+    ).to_list(500)]
+    rt_ids = [r["id"] for r in await db.organizations.find(
+        {"organization_type": "retailer",
+         "$or": [
+             {"parent_organization_id": {"$in": ws_ids}},
+             {"parent_organization_id": {"$in": ds_ids}},
+         ]},
+        {"_id": 0, "id": 1},
+    ).to_list(500)]
+
+    # --- Helpers -------------------------------------------------------------
+    def _bucketize(events: list[str], buckets: int = 12) -> list[int]:
+        if not events:
+            return [0] * buckets
+        bucket_secs = (window_minutes * 60) / buckets
+        out = [0] * buckets
+        for ts in events:
+            try:
+                t = datetime.fromisoformat(ts)
+            except (TypeError, ValueError):
+                continue
+            delta = (now - t).total_seconds()
+            if delta < 0:
+                continue
+            idx = buckets - 1 - int(delta // bucket_secs)
+            if 0 <= idx < buckets:
+                out[idx] += 1
+        return out
+
+    async def _count_window(coll, time_field: str, q: dict, frm: str, to: str | None = None) -> int:
+        rng = {"$gte": frm} if to is None else {"$gte": frm, "$lt": to}
+        return await coll.count_documents({**q, time_field: rng})
+
+    async def _stamps(coll, time_field: str, q: dict, frm: str) -> list[str]:
+        rows = await coll.find(
+            {**q, time_field: {"$gte": frm}},
+            {"_id": 0, time_field: 1},
+        ).to_list(2000)
+        return [r.get(time_field) for r in rows if r.get(time_field)]
+
+    # --- 1) Orders placed (retailer POs + wholesaler POs + dist orders) -----
+    po_q = {"$or": [
+        {"retailer_id": {"$in": rt_ids}},
+        {"distributor_id": {"$in": ws_ids + ds_ids}},
+    ]}
+    wpo_q = {"wholesaler_id": {"$in": ws_ids}}
+    do_q = {"distributor_id": {"$in": ds_ids}}
+
+    orders_cur = (
+        await _count_window(db.purchase_orders, "created_at", po_q, cur_from)
+        + await _count_window(db.wholesaler_purchase_orders, "created_at", wpo_q, cur_from)
+        + await _count_window(db.distributor_orders, "created_at", do_q, cur_from)
+    )
+    orders_prev = (
+        await _count_window(db.purchase_orders, "created_at", po_q, prev_from, prev_to)
+        + await _count_window(db.wholesaler_purchase_orders, "created_at", wpo_q, prev_from, prev_to)
+        + await _count_window(db.distributor_orders, "created_at", do_q, prev_from, prev_to)
+    )
+    orders_events = (
+        await _stamps(db.purchase_orders, "created_at", po_q, cur_from)
+        + await _stamps(db.wholesaler_purchase_orders, "created_at", wpo_q, cur_from)
+        + await _stamps(db.distributor_orders, "created_at", do_q, cur_from)
+    )
+
+    # --- 2) Shipments moving (in_transit + shipped, by created_at) ---------
+    ship_q = {
+        "status": {"$in": ["in_transit", "shipped"]},
+        "$or": [
+            {"from_id": {"$in": ds_ids + ws_ids + wh_ids}},
+            {"to_id":   {"$in": ds_ids + ws_ids + rt_ids + wh_ids}},
+        ],
+    }
+    ships_cur = await _count_window(db.shipments, "created_at", ship_q, cur_from)
+    ships_prev = await _count_window(db.shipments, "created_at", ship_q, prev_from, prev_to)
+    ships_events = await _stamps(db.shipments, "created_at", ship_q, cur_from)
+
+    # --- 3) POs approved (status transition to approved) -------------------
+    approved_q = {
+        "status": "approved",
+        "$or": [
+            {"retailer_id": {"$in": rt_ids}},
+            {"wholesaler_id": {"$in": ws_ids}},
+            {"distributor_id": {"$in": ws_ids + ds_ids}},
+        ],
+    }
+    # `submitted_at` is the closest to "approved_at" we ledger; fall back to updated_at.
+    approved_cur = (
+        await _count_window(db.purchase_orders, "updated_at", approved_q, cur_from)
+        + await _count_window(db.wholesaler_purchase_orders, "updated_at", approved_q, cur_from)
+    )
+    approved_prev = (
+        await _count_window(db.purchase_orders, "updated_at", approved_q, prev_from, prev_to)
+        + await _count_window(db.wholesaler_purchase_orders, "updated_at", approved_q, prev_from, prev_to)
+    )
+    approved_events = (
+        await _stamps(db.purchase_orders, "updated_at", approved_q, cur_from)
+        + await _stamps(db.wholesaler_purchase_orders, "updated_at", approved_q, cur_from)
+    )
+
+    # --- 4) Retail sale events ---------------------------------------------
+    sales_q = {"retailer_id": {"$in": rt_ids}}
+    sales_cur = await _count_window(db.daily_sales, "created_at", sales_q, cur_from)
+    sales_prev = await _count_window(db.daily_sales, "created_at", sales_q, prev_from, prev_to)
+    sales_events = await _stamps(db.daily_sales, "created_at", sales_q, cur_from)
+
+    def _delta_pct(cur: int, prev: int) -> float:
+        if prev <= 0:
+            return 100.0 if cur > 0 else 0.0
+        return round(((cur - prev) / prev) * 100, 1)
+
+    return {
+        "manufacturer_id": manufacturer_id,
+        "window_minutes": window_minutes,
+        "as_of": now.isoformat(),
+        "metrics": {
+            "orders_placed": {
+                "current": orders_cur, "previous": orders_prev,
+                "delta_pct": _delta_pct(orders_cur, orders_prev),
+                "rate_per_min": round(orders_cur / window_minutes, 2),
+                "sparkline": _bucketize(orders_events),
+            },
+            "shipments_moving": {
+                "current": ships_cur, "previous": ships_prev,
+                "delta_pct": _delta_pct(ships_cur, ships_prev),
+                "rate_per_min": round(ships_cur / window_minutes, 2),
+                "sparkline": _bucketize(ships_events),
+            },
+            "pos_approved": {
+                "current": approved_cur, "previous": approved_prev,
+                "delta_pct": _delta_pct(approved_cur, approved_prev),
+                "rate_per_min": round(approved_cur / window_minutes, 2),
+                "sparkline": _bucketize(approved_events),
+            },
+            "sales_logged": {
+                "current": sales_cur, "previous": sales_prev,
+                "delta_pct": _delta_pct(sales_cur, sales_prev),
+                "rate_per_min": round(sales_cur / window_minutes, 2),
+                "sparkline": _bucketize(sales_events),
+            },
+        },
+    }
+
+
+
 # ============================================================================
 @router.get("/manufacturer/{manufacturer_id}/products")
 async def manufacturer_products(manufacturer_id: str):

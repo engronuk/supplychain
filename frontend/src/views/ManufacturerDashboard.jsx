@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { STATE_PATHS, STATE_ZONE, VIEWBOX as NG_VIEWBOX } from "@/lib/nigeriaStates";
 import CommandCenter from "@/views/CommandCenter";
 import { ManufacturerWholesalerPosWidget } from "@/views/CrossPersonaWidgets";
+import ActivityPulse from "@/components/ActivityPulse";
 import {
   TrendingUp, TrendingDown, Sparkles, Bell,
   Store, Warehouse, Activity, Truck, Package, AlertTriangle,
@@ -103,6 +104,9 @@ export default function ManufacturerDashboard() {
 
         {/* 2 — REVENUE PERFORMANCE (KPI strip on top) */}
         <KPIStripWide kpis={data.kpis} coverage={data.coverage_kpis} />
+
+        {/* 2.5 — REAL-TIME ACTIVITY PULSE (60s auto-refresh throughput strip) */}
+        <ActivityPulse manufacturerId={entityId} />
 
         {/* 3 + 4 — REVENUE TREND × REGIONAL PERFORMANCE (side by side) */}
         <div className="grid grid-cols-12 gap-6">

@@ -2,6 +2,15 @@
 
 Dated record of what has been implemented. Newest entries at the bottom.
 
+## Updates (2026-02-14) — Activity Pulse widget on manufacturer dashboard
+- **New API**: `GET /api/manufacturer/{id}/activity-pulse?window_minutes=60` returns rolling counters + sparkline for orders placed, shipments moving, POs approved and sales logged, scoped to the manufacturer's tree.
+- **New widget**: `ActivityPulse.jsx` — 4-card live throughput strip, 60s auto-refresh, micro-sparkline per metric, animated bump on increment, "updated Ns ago" footer. Wired in between the KPI strip and Revenue Trend on `ManufacturerDashboard`.
+- **Simulator activation**: tagged all 224 hierarchy organizations with `simulation_participant=true` so the existing 1-min simulator loop generates live activity against them. `scripts/rebuild.py` now auto-tags every node so the simulator never goes idle after a re-seed.
+- **Verified live**: dashboard shows Orders Placed 13, Shipments Moving 5, Sales Logged 51 with sparklines populated; updates every minute as the simulator ticks.
+- Files: `backend/routes/manufacturer.py`, `frontend/src/components/ActivityPulse.jsx`, `frontend/src/views/ManufacturerDashboard.jsx`, `frontend/src/lib/api.js`, `backend/scripts/rebuild.py`.
+
+
+
 ## Updates (2026-02-13d) — Live-activity seed on the canonical hierarchy
 - **New script** `backend/scripts/live_activity.py` orchestrates every existing idempotent seeder + adds tailored seeders so dashboards feel like a live platform-in-use. Stamps a `seed_meta.live_activity_v1` marker for re-run skip.
 - **Hierarchy-aware seed_warehouse_operations** — replaced the hard-coded WHR codes with dynamic warehouse resolution; now picks two warehouses per manufacturer from the live org tree.

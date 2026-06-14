@@ -215,6 +215,7 @@ async def build_tenant(db, cfg: dict) -> dict:
         "status": "active", "region": None, "state": None, "city": None, "address": None,
         "contact_email": cfg["contact_email"], "contact_phone": None, "contact_name": None,
         "metadata": {"tenant_id": tenant_id},
+        "simulation_participant": True,
         "created_at": now_iso(), "updated_at": now_iso(),
     }
     await db.organizations.insert_one(mfg_doc)
@@ -427,6 +428,12 @@ async def build_tenant(db, cfg: dict) -> dict:
                 "created_at": now_iso(),
             })
             retailers.append(r_org)
+
+    # Tag every org in the tree as a simulator participant so the activity
+    # simulator generates live events against them (orders, sales, shipments).
+    await db.organizations.update_many(
+        {}, {"$set": {"simulation_participant": True}},
+    )
 
     return {
         "tenant_id": tenant_id, "mfg": mfg_doc, "products": products,
@@ -684,7 +691,6 @@ async def remap_users(db, trees: list[dict]) -> dict:
 
     for tree in trees:
         mfg_id = tree["mfg"]["id"]
-        mfg_code = tree["mfg"]["organization_code"]
         tenant_prefix = "unilever" if "Unilever" in tree["mfg"]["organization_name"] else "fmn"
 
         # Manufacturer admin
