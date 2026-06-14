@@ -8,7 +8,7 @@ import {
   ChevronRight, MapPin, ShoppingBag, TrendingUp, TrendingDown,
   Activity, AlertTriangle, Crown,
 } from "lucide-react";
-import { Api } from "../lib/api";
+import { Api } from "@/lib/api";
 
 const fmtMoney = (n) => "₦" + Math.round(Number(n) || 0).toLocaleString();
 const fmtNum   = (n) => Number(n || 0).toLocaleString();

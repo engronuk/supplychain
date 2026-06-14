@@ -13,6 +13,7 @@ import { useSession } from "@/context/SessionContext";
 import { Api } from "@/lib/api";
 import { useCachedFetch, setCached as setDataCache } from "@/lib/dataCache";
 import { RefreshPill } from "@/components/RefreshPill";
+import WholesalerNetworkSection from "./distributor/WholesalerNetworkSection";
 import { toast } from "sonner";
 import {
   TrendingUp, TrendingDown, Sparkles, Compass, Trophy, Info,
@@ -342,21 +343,22 @@ function MiniSpark({ values, up }) {
 
 /* ---------- Revenue Trend ---------- */
 function RevenueTrendCard({ trend }) {
-  const max = Math.max(...trend.map((t) => t.revenue), 1);
+  const series = Array.isArray(trend) ? trend : [];
+  const max = Math.max(...series.map((t) => t.revenue || 0), 1);
   const w = 720, h = 220, padL = 36, padR = 16, padT = 12, padB = 26;
   const innerW = w - padL - padR, innerH = h - padT - padB;
-  const step = innerW / Math.max(1, trend.length - 1);
-  const pts = trend.map((t, i) => ({
+  const step = innerW / Math.max(1, series.length - 1);
+  const pts = series.map((t, i) => ({
     x: padL + i * step,
-    y: padT + innerH - (t.revenue / max) * innerH,
+    y: padT + innerH - ((t.revenue || 0) / max) * innerH,
     raw: t,
   }));
   const linePath = pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
   const areaPath = pts.length > 0
     ? `${linePath} L ${pts[pts.length - 1].x} ${padT + innerH} L ${pts[0].x} ${padT + innerH} Z`
     : "";
-  const total = trend.reduce((a, t) => a + t.revenue, 0);
-  const last7 = trend.slice(-7).reduce((a, t) => a + t.revenue, 0);
+  const total = series.reduce((a, t) => a + (t.revenue || 0), 0);
+  const last7 = series.slice(-7).reduce((a, t) => a + (t.revenue || 0), 0);
   return (
     <div className="col-span-12 lg:col-span-8 rounded-2xl bg-white border border-slate-200 shadow-sm p-6"
          data-testid="dist-revenue-trend">
