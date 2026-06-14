@@ -158,7 +158,7 @@ export function DispatchPage() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Dispatch" subtitle="Send goods out to distributors and retailers"
+      <PageHeader title="Dispatch" subtitle="Send goods to your distributors — your direct downstream tier"
         actions={<Button onClick={() => setParams({ new: "1" })} className="bg-blue-600 hover:bg-blue-700 text-white" data-testid="new-dispatch-btn"><Plus className="h-4 w-4 mr-1" /> New Dispatch</Button>} />
       <Card padding="p-0" className="overflow-hidden">
         <table className="w-full text-sm">

@@ -55,6 +55,19 @@ async def _build_manufacturer_overview(manufacturer_id: str):
         raise HTTPException(404, "Manufacturer not found")
 
     today = datetime.now(timezone.utc).date()
+
+    # Direct downstream tier (ownership): warehouses managed by this manufacturer.
+    warehouses = await db.organizations.find(
+        {"organization_type": "warehouse", "parent_organization_id": manufacturer_id},
+        {"_id": 0, "id": 1, "organization_name": 1, "region": 1},
+    ).to_list(500)
+
+    # Downstream visibility tiers — NOT direct children of the manufacturer.
+    wholesalers_count = await db.organizations.count_documents(
+        {"organization_type": "wholesaler",
+         "metadata.manufacturer_id": manufacturer_id},
+    )
+
     distributors = await db.distributors.find(
         {"manufacturer_id": manufacturer_id}, {"_id": 0},
     ).to_list(5000)
@@ -379,11 +392,30 @@ async def _build_manufacturer_overview(manufacturer_id: str):
     return {
         "as_of": now_iso(),
         "manufacturer": {"id": mfg["id"], "name": mfg["name"]},
+        # Strict ownership hierarchy:
+        #   Manufacturer → Warehouse  (direct children)
+        # All downstream tiers (distributors, wholesalers, retailers) are
+        # exposed for visibility, not as direct ownership.
+        "hierarchy": {
+            "direct_children": {
+                "tier": "warehouse",
+                "total": len(warehouses),
+            },
+            "downstream_visibility": {
+                "distributors": len(distributors),
+                "wholesalers": wholesalers_count,
+                "retailers": len(retailer_ids),
+            },
+        },
         "kpis": {
             "network_revenue": {
                 "value": round(network_30, 2),
                 "growth_pct": revenue_growth_pct or 12.0,
                 "spark": revenue_spark,
+            },
+            "warehouses": {
+                "value": len(warehouses),
+                "growth_pct": 0.0, "spark": [len(warehouses)] * 12,
             },
             "active_retailers": {
                 "value": len(retailers),

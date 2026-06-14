@@ -103,10 +103,10 @@ export default function DistributorDashboard() {
 
         <KPIStrip kpis={data.kpis} />
 
-        {/* Wholesaler network — the distributor's direct downstream customers.
-            Per the canonical chain (Distributor → Wholesaler → Retailer) this
-            is the primary surface; the legacy retailer-direct cards below
-            still show key-account exceptions only. */}
+        {/* Wholesaler network — the distributor's direct downstream tier.
+            Per the strict ownership chain (Distributor → Wholesaler → Retailer)
+            wholesalers are the only direct children. Retailers are exposed
+            below as visibility-only downstream metrics. */}
         <WholesalerNetworkSection distributorId={entityId} />
 
         <div className="grid grid-cols-12 gap-6">
@@ -125,9 +125,11 @@ export default function DistributorDashboard() {
         </div>
 
         <div className="grid grid-cols-12 gap-6">
-          <TopRetailersCard retailers={data.top_retailers} />
-          <AttentionRetailersCard retailers={data.attention_retailers} />
+          <TopWholesalersCard wholesalers={data.top_wholesalers} distributorId={entityId} />
+          <AttentionWholesalersCard wholesalers={data.attention_wholesalers} distributorId={entityId} />
         </div>
+
+        <DownstreamVisibilityBanner visibility={data.downstream_visibility} totals={data.totals} />
 
         <OrderPipelineCard pipeline={data.order_pipeline} />
       </div>
@@ -218,7 +220,7 @@ function ExecutiveHero({ brief, health, totals, quadrants }) {
         <div className="col-span-12 lg:col-span-4">
           <HealthGauge score={score} band={health?.band} />
           <div className="mt-4 grid grid-cols-2 gap-3 text-center">
-            <Stat label="Retailers" value={fmtInt(totals?.total_retailers)} />
+            <Stat label="Wholesalers" value={fmtInt(totals?.total_wholesalers)} />
             <Stat label="Stars" value={fmtInt(quadrants?.stars)} accent="text-emerald-200" />
             <Stat label="Growth Opps" value={fmtInt(quadrants?.growth_opps)} accent="text-amber-200" />
             <Stat label="At Risk" value={fmtInt(quadrants?.at_risk)} accent="text-rose-200" />
@@ -271,7 +273,7 @@ function HealthGauge({ score, band }) {
 function KPIStrip({ kpis }) {
   const items = [
     { key: "network_revenue_90d", label: "Network Revenue (90d)", fmt: fmtMoney, icon: BarChart3, accent: "text-violet-600" },
-    { key: "active_retailers",    label: "Active Retailers (30d)", fmt: fmtInt,   icon: Store,    accent: "text-emerald-600" },
+    { key: "active_wholesalers",  label: "Active Wholesalers (30d)", fmt: fmtInt, icon: Store,    accent: "text-emerald-600" },
     { key: "retail_orders_pending", label: "Orders Pending",      fmt: fmtInt,   icon: ClipboardList, accent: "text-amber-600" },
     { key: "dispatched_30d",      label: "Dispatched (30d)",      fmt: fmtInt,   icon: Truck,    accent: "text-blue-600" },
     { key: "inventory_units",     label: "Inventory Units",       fmt: fmtInt,   icon: Boxes,    accent: "text-slate-600" },
@@ -468,10 +470,12 @@ function PerformanceMatrixCard({ matrix, counts }) {
   };
   if (!matrix || matrix.length === 0) {
     return (
-      <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-8 text-center text-slate-400"
-           data-testid="dist-perf-matrix-empty">
-        Performance matrix will appear once your retailers start trading.
+    <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-6" data-testid="dist-perf-matrix-empty">
+      <div className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">Wholesaler Portfolio</div>
+      <div className="text-center text-slate-400 py-10">
+        Performance matrix will appear once your wholesalers start trading.
       </div>
+    </div>
     );
   }
   const maxRev = Math.max(...matrix.map((m) => m.revenue_90d), 1);
@@ -487,8 +491,9 @@ function PerformanceMatrixCard({ matrix, counts }) {
     <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-6" data-testid="dist-perf-matrix">
       <div className="flex items-start justify-between mb-2">
         <div>
-          <div className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">Retailer Portfolio</div>
+          <div className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">Wholesaler Portfolio</div>
           <h3 className="text-base font-semibold text-slate-900 mt-0.5">Performance Matrix · revenue × growth</h3>
+          <p className="text-[11px] text-slate-400 mt-0.5">Each dot is a wholesaler you serve directly.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {Object.entries(Q).map(([k, v]) => (
@@ -606,73 +611,104 @@ function CategoryPerformanceCard({ categories }) {
   );
 }
 
-/* ---------- Top retailers / attention retailers (KEY-ACCOUNT DIRECT ONLY) ---------- */
-function TopRetailersCard({ retailers }) {
+/* ---------- Top wholesalers / attention wholesalers (DIRECT children) ---------- */
+function TopWholesalersCard({ wholesalers, distributorId }) {
   return (
     <div className="col-span-12 lg:col-span-6 rounded-2xl bg-white border border-slate-200 shadow-sm p-6"
-         data-testid="dist-top-retailers">
+         data-testid="dist-top-wholesalers">
       <div className="flex items-start justify-between mb-3">
         <div>
-          <div className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">Key-Account Direct · Top</div>
-          <h3 className="text-base font-semibold text-slate-900 mt-0.5">Best key-accounts · last 90 days</h3>
-          <p className="text-[11px] text-slate-400 mt-1">Retailers (e.g. Shoprite, Spar) served directly. Regular retailers live under wholesalers.</p>
+          <div className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">Top Wholesalers · 90d</div>
+          <h3 className="text-base font-semibold text-slate-900 mt-0.5">Best-performing wholesalers</h3>
+          <p className="text-[11px] text-slate-400 mt-1">Direct downstream tier — retailers are owned by these wholesalers.</p>
         </div>
         <Link to="/network" className="text-xs text-violet-700 font-semibold hover:underline">View all</Link>
       </div>
-      <RetailerList retailers={retailers} tone="positive" testIdPrefix="top-retailer" />
+      <WholesalerList wholesalers={wholesalers} tone="positive" testIdPrefix="top-wholesaler" distributorId={distributorId} />
     </div>
   );
 }
 
-function AttentionRetailersCard({ retailers }) {
+function AttentionWholesalersCard({ wholesalers, distributorId }) {
   return (
     <div className="col-span-12 lg:col-span-6 rounded-2xl bg-white border border-slate-200 shadow-sm p-6"
-         data-testid="dist-attention-retailers">
+         data-testid="dist-attention-wholesalers">
       <div className="flex items-start justify-between mb-3">
         <div>
-          <div className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">Key-Account Direct · Needs Attention</div>
-          <h3 className="text-base font-semibold text-slate-900 mt-0.5">Key-accounts requiring intervention</h3>
+          <div className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">Wholesalers · Needs Attention</div>
+          <h3 className="text-base font-semibold text-slate-900 mt-0.5">Wholesalers requiring intervention</h3>
         </div>
         <AlertTriangle className="h-4 w-4 text-rose-500" />
       </div>
-      <RetailerList retailers={retailers} tone="critical" testIdPrefix="attention-retailer" />
+      <WholesalerList wholesalers={wholesalers} tone="critical" testIdPrefix="attention-wholesaler" distributorId={distributorId} />
     </div>
   );
 }
 
-function RetailerList({ retailers, tone, testIdPrefix }) {
-  if (!retailers || retailers.length === 0) {
-    return <div className="text-sm text-slate-400 py-6 text-center">No retailers to show.</div>;
+function WholesalerList({ wholesalers, tone, testIdPrefix, distributorId }) {
+  if (!wholesalers || wholesalers.length === 0) {
+    return <div className="text-sm text-slate-400 py-6 text-center">No wholesalers to show.</div>;
   }
   const t = TONE[tone];
   return (
     <div className="space-y-2">
-      {retailers.map((r, i) => {
-        const up = (r.growth_pct ?? 0) >= 0;
+      {wholesalers.map((w, i) => {
+        const up = (w.growth_pct ?? 0) >= 0;
         return (
           <Link
-            key={r.id}
-            to={`/network/retailer/${r.id}`}
+            key={w.id}
+            to={`/distributor/${distributorId}/wholesaler/${w.id}`}
             data-testid={`${testIdPrefix}-${i}`}
             className="group flex items-center gap-3 rounded-xl border border-slate-100 p-3 hover:border-violet-300 hover:bg-violet-50/40 transition-colors"
           >
             <div className={`h-9 w-9 rounded-lg ${t.tile} flex items-center justify-center font-semibold text-[13px] ${t.text}`}>
-              {String(r.name || "?").slice(0, 2).toUpperCase()}
+              {String(w.name || "?").slice(0, 2).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-slate-900 truncate">{r.name}</div>
-              <div className="text-[11px] text-slate-500">{r.city || "—"} · {r.region || "—"}</div>
+              <div className="text-sm font-medium text-slate-900 truncate">{w.name}</div>
+              <div className="text-[11px] text-slate-500">
+                {w.city || "—"} · {w.region || "—"}
+                {typeof w.active_retailers_30d === "number" && (
+                  <span className="text-slate-400 ml-1.5">· {w.active_retailers_30d} active retailers</span>
+                )}
+              </div>
             </div>
             <div className="text-right shrink-0">
-              <div className="text-sm font-semibold text-slate-900 tabular-nums">{fmtMoney(r.revenue_90d)}</div>
+              <div className="text-sm font-semibold text-slate-900 tabular-nums">{fmtMoney(w.revenue_90d)}</div>
               <div className={`text-[11px] font-semibold ${up ? "text-emerald-600" : "text-rose-600"}`}>
-                {fmtPct(r.growth_pct)}
+                {fmtPct(w.growth_pct)}
               </div>
             </div>
             <ChevronRight className="h-4 w-4 text-slate-300 group-hover:text-violet-500 group-hover:translate-x-0.5 transition-all" />
           </Link>
         );
       })}
+    </div>
+  );
+}
+
+/* ---------- Downstream visibility banner (retailers — NOT owned, visibility only) ---------- */
+function DownstreamVisibilityBanner({ visibility, totals }) {
+  const total = visibility?.total_retailers || 0;
+  const active = visibility?.active_retailers_30d || 0;
+  return (
+    <div className="rounded-2xl bg-slate-50 border border-dashed border-slate-200 px-5 py-4 flex items-center justify-between gap-4"
+         data-testid="dist-downstream-visibility">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="h-9 w-9 rounded-lg bg-slate-200 text-slate-600 flex items-center justify-center shrink-0">
+          <Store className="h-4 w-4" />
+        </div>
+        <div className="min-w-0">
+          <div className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">Downstream visibility</div>
+          <div className="text-sm text-slate-700 mt-0.5">
+            <span className="font-semibold tabular-nums">{fmtInt(total)} retailers</span> in your network ·
+            <span className="text-emerald-700 font-medium"> {fmtInt(active)} active in last 30 days</span>
+          </div>
+          <div className="text-[11px] text-slate-400 mt-0.5">
+            Retailers are owned by your <span className="font-semibold text-slate-600">{fmtInt(totals?.total_wholesalers)} wholesalers</span> — view through any wholesaler card above.
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

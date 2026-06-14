@@ -6,23 +6,30 @@ analytical roll-ups are pre-computed (and cached as a single doc in
 ``dashboard_snapshots``) — the page renders instantly while a background
 job refreshes it.
 
+STRICT OWNERSHIP: A distributor owns wholesalers, not retailers. All
+portfolio-style outputs (performance_matrix, top/attention, quadrant_counts,
+KPIs marked "active_*") describe the WHOLESALER tier — the distributor's
+direct downstream. Retailer numbers are exposed as downstream visibility only
+under ``downstream_visibility``.
+
 Payload structure (see GET /api/distributor/{id}/operations-intelligence):
     - as_of, distributor (id, name, region, city)
     - kpis: 6 cards w/ {value, growth_pct, spark}
-        network_revenue_90d   - sum of retailer daily_sales last 90d
-        active_retailers      - retailers w/ sales activity in last 30d
-        retail_orders_pending - pending retailer stock-requests
+        network_revenue_90d   - sum of downstream retailer daily_sales last 90d
+        active_wholesalers    - wholesalers with ≥1 retailer active in last 30d
+        retail_orders_pending - pending downstream stock-requests
         dispatched_30d        - shipments dispatched (last 30d)
         inventory_units       - units in distributor warehouse
         low_stock_skus        - SKUs at/below reorder at distributor
     - ai_brief: { insights, recommended_actions }
     - revenue_trend: 30-day daily { date, revenue, units }
-    - performance_matrix: per-retailer { x: revenue, y: growth_pct, quadrant }
-    - regional_coverage: per-region { region, retailers, revenue }
+    - performance_matrix: per-WHOLESALER { x: revenue, y: growth_pct, quadrant }
+    - regional_coverage: per-region { region, retailers, revenue } (visibility)
     - inventory_health: { healthy_skus, low_skus, out_skus, donut, total_units }
-    - top_retailers / attention_retailers
+    - top_wholesalers / attention_wholesalers
     - category_performance: top categories last 90d
     - order_pipeline: { pending, approved, dispatched, delivered_30d }
+    - downstream_visibility: { total_retailers, active_retailers_30d }
 """
 from __future__ import annotations
 
@@ -117,24 +124,41 @@ async def _build_distributor_os(distributor_id: str) -> dict:
     start_30 = (today - timedelta(days=30)).isoformat()
     start_60 = (today - timedelta(days=60)).isoformat()
 
-    # ---- retailers under this distributor ----------------------------------
-    retailers = await db.retailers.find(
-        {"distributor_id": distributor_id}, {"_id": 0},
-    ).to_list(20000)
+    # ---- Direct children = wholesalers (strict ownership tier) -------------
+    wholesalers = await db.organizations.find(
+        {"organization_type": "wholesaler", "parent_organization_id": distributor_id},
+        {"_id": 0, "id": 1, "organization_name": 1, "organization_code": 1,
+         "region": 1, "city": 1},
+    ).to_list(500)
+    wholesaler_ids = [w["id"] for w in wholesalers]
+    wholesaler_by_id = {w["id"]: w for w in wholesalers}
+
+    # ---- Downstream visibility: retailers under those wholesalers ----------
+    # (Retailers are children of wholesalers — distributor visibility only.)
+    retailers = await db.organizations.find(
+        {"organization_type": "retailer",
+         "parent_organization_id": {"$in": wholesaler_ids}},
+        {"_id": 0, "id": 1, "organization_name": 1, "parent_organization_id": 1,
+         "region": 1, "city": 1, "metadata": 1},
+    ).to_list(20000) if wholesaler_ids else []
     retailer_ids = [r["id"] for r in retailers]
     retailer_by_id = {r["id"]: r for r in retailers}
+    # retailer -> wholesaler (its owning parent)
+    retailer_to_wholesaler = {r["id"]: r["parent_organization_id"] for r in retailers}
 
     products = {p["id"]: p for p in await db.products.find({}, {"_id": 0}).to_list(5000)}
 
-    if not retailer_ids:
+    if not wholesaler_ids:
         return _empty_payload(distributor)
 
     # ---- daily_sales rollups (last 180d) -----------------------------------
     by_date: Dict[str, dict] = defaultdict(lambda: {"revenue": 0.0, "units": 0})
     by_retailer_rev: Dict[str, float] = defaultdict(float)
-    by_retailer_units: Dict[str, int] = defaultdict(int)
-    by_retailer_rev_prev: Dict[str, float] = defaultdict(float)
     by_retailer_active_dates: Dict[str, set] = defaultdict(set)
+    by_wholesaler_rev: Dict[str, float] = defaultdict(float)
+    by_wholesaler_units: Dict[str, int] = defaultdict(int)
+    by_wholesaler_rev_prev: Dict[str, float] = defaultdict(float)
+    by_wholesaler_active_retailers: Dict[str, set] = defaultdict(set)
     by_category: Dict[str, dict] = defaultdict(lambda: {"revenue": 0.0, "units": 0})
     by_region_rev: Dict[str, float] = defaultdict(float)
     by_region_count: Dict[str, set] = defaultdict(set)
@@ -151,12 +175,17 @@ async def _build_distributor_os(distributor_id: str) -> dict:
         units = int(s.get("units", s.get("quantity_sold", 0)))
         d = s["date"]
         rid = s["retailer_id"]
+        wid = retailer_to_wholesaler.get(rid)
         if d >= start_90:
             rev_90d_total += rev
             by_retailer_rev[rid] += rev
-            by_retailer_units[rid] += units
+            if wid:
+                by_wholesaler_rev[wid] += rev
+                by_wholesaler_units[wid] += units
             if d >= start_30:
                 by_retailer_active_dates[rid].add(d)
+                if wid:
+                    by_wholesaler_active_retailers[wid].add(rid)
             by_date[d]["revenue"] += rev
             by_date[d]["units"] += units
             p = products.get(s.get("product_id"))
@@ -171,7 +200,8 @@ async def _build_distributor_os(distributor_id: str) -> dict:
                 by_region_count[region].add(rid)
         else:
             rev_prev_90d_total += rev
-            by_retailer_rev_prev[rid] += rev
+            if wid:
+                by_wholesaler_rev_prev[wid] += rev
 
     # ---- 30-day daily revenue trend ----------------------------------------
     revenue_trend: List[dict] = []
@@ -184,24 +214,31 @@ async def _build_distributor_os(distributor_id: str) -> dict:
             "units": agg["units"],
         })
 
-    # ---- KPI: active retailers (any sales activity last 30d) ----------------
-    active_30d = sum(1 for rid in retailer_ids if by_retailer_active_dates.get(rid))
-    # Build active_prev set (30-60d ago window)
-    active_prev_set: set = set()
-    async for s in db.daily_sales.find(
-        {"retailer_id": {"$in": retailer_ids},
-         "date": {"$gte": start_60, "$lt": start_30}},
-        {"_id": 0, "retailer_id": 1},
-    ):
-        active_prev_set.add(s["retailer_id"])
-    active_prev_n = len(active_prev_set)
+    # ---- KPI: active wholesalers (any of its retailers sold in last 30d) ---
+    active_wholesalers_30d = sum(
+        1 for wid in wholesaler_ids if by_wholesaler_active_retailers.get(wid)
+    )
+    # active wholesalers in previous 30d window (30-60 days ago)
+    active_wholesalers_prev: set[str] = set()
+    if retailer_ids:
+        async for s in db.daily_sales.find(
+            {"retailer_id": {"$in": retailer_ids},
+             "date": {"$gte": start_60, "$lt": start_30}},
+            {"_id": 0, "retailer_id": 1},
+        ):
+            w = retailer_to_wholesaler.get(s["retailer_id"])
+            if w:
+                active_wholesalers_prev.add(w)
+    active_wholesalers_prev_n = len(active_wholesalers_prev)
+    # Downstream-visibility-only retailer activity
+    active_retailers_30d = sum(1 for rid in retailer_ids if by_retailer_active_dates.get(rid))
 
     # ---- KPI: orders pending (requests pending state) ----------------------
     pending_requests = await db.requests.count_documents(
         {"distributor_id": distributor_id, "status": "pending"},
     )
 
-    # ---- KPI: dispatched_30d (shipments dispatched last 30d to retailers) --
+    # ---- KPI: dispatched_30d (shipments dispatched last 30d) ---------------
     dispatched_30d = await db.shipments.count_documents({
         "from_role": "distributor", "from_id": distributor_id,
         "dispatched_at": {"$gte": start_30},
@@ -232,23 +269,28 @@ async def _build_distributor_os(distributor_id: str) -> dict:
         else:
             healthy_skus += 1
 
-    # ---- Per-retailer growth & performance matrix --------------------------
+    # ---- Per-wholesaler growth & performance matrix ------------------------
+    # (Strict-ownership: distributor's portfolio is wholesalers, not retailers.)
     matrix: List[dict] = []
     growth_list: List[dict] = []
-    for rid in retailer_ids:
-        r = retailer_by_id.get(rid) or {}
-        rev = by_retailer_rev.get(rid, 0.0)
-        prev = by_retailer_rev_prev.get(rid, 0.0)
+    for wid in wholesaler_ids:
+        w = wholesaler_by_id.get(wid) or {}
+        rev = by_wholesaler_rev.get(wid, 0.0)
+        prev = by_wholesaler_rev_prev.get(wid, 0.0)
         growth = _delta_pct(rev, prev)
-        units = by_retailer_units.get(rid, 0)
-        if rev > 0 or prev > 0:
-            growth_list.append({
-                "id": rid, "name": r.get("name", "—"),
-                "city": r.get("city", ""), "region": r.get("region", ""),
-                "revenue_90d": round(rev, 2),
-                "revenue_prev_90d": round(prev, 2),
-                "growth_pct": growth, "units": units,
-            })
+        units = by_wholesaler_units.get(wid, 0)
+        growth_list.append({
+            "id": wid,
+            "name": w.get("organization_name", "—"),
+            "code": w.get("organization_code", ""),
+            "city": w.get("city", ""),
+            "region": w.get("region", ""),
+            "revenue_90d": round(rev, 2),
+            "revenue_prev_90d": round(prev, 2),
+            "growth_pct": growth,
+            "units": units,
+            "active_retailers_30d": len(by_wholesaler_active_retailers.get(wid, set())),
+        })
     rev_values = [g["revenue_90d"] for g in growth_list if g["revenue_90d"] > 0]
     rev_values.sort()
     med_rev = rev_values[len(rev_values) // 2] if rev_values else 0.0
@@ -256,7 +298,7 @@ async def _build_distributor_os(distributor_id: str) -> dict:
         q = _quadrant(g["revenue_90d"], g["growth_pct"], med_rev)
         matrix.append({**g, "quadrant": q})
 
-    # quadrant counts for chips
+    # quadrant counts now reference wholesalers
     quadrant_counts = {
         "stars": sum(1 for m in matrix if m["quadrant"] == "stars"),
         "cash_cows": sum(1 for m in matrix if m["quadrant"] == "cash_cows"),
@@ -264,17 +306,16 @@ async def _build_distributor_os(distributor_id: str) -> dict:
         "at_risk": sum(1 for m in matrix if m["quadrant"] == "at_risk"),
     }
 
-    # ---- Top retailers / attention list -----------------------------------
-    top_retailers = sorted(growth_list, key=lambda x: x["revenue_90d"], reverse=True)[:5]
-    attention_retailers = sorted(
-        [g for g in growth_list if g["growth_pct"] < 0 or g["revenue_90d"] < med_rev / 2 if med_rev > 0],
+    # ---- Top / attention WHOLESALERS ---------------------------------------
+    top_wholesalers = sorted(growth_list, key=lambda x: x["revenue_90d"], reverse=True)[:5]
+    attention_wholesalers = sorted(
+        [g for g in growth_list if g["growth_pct"] < 0 or (med_rev > 0 and g["revenue_90d"] < med_rev / 2)],
         key=lambda x: x["growth_pct"],
     )[:5]
-    # Fall back to lowest revenue if nothing crossed the threshold
-    if not attention_retailers:
-        attention_retailers = sorted(growth_list, key=lambda x: x["revenue_90d"])[:5]
+    if not attention_wholesalers:
+        attention_wholesalers = sorted(growth_list, key=lambda x: x["revenue_90d"])[:5]
 
-    # ---- Regional coverage --------------------------------------------------
+    # ---- Regional coverage (downstream rollup — VISIBILITY) ----------------
     regional_coverage = []
     for region, rev in by_region_rev.items():
         regional_coverage.append({
@@ -308,18 +349,18 @@ async def _build_distributor_os(distributor_id: str) -> dict:
     # ---- Revenue trend 12-pt spark (for hero) ------------------------------
     revenue_spark = _spark([t["revenue"] for t in revenue_trend])
 
-    # ---- KPI strip ----------------------------------------------------------
+    # ---- KPI strip (direct-tier = wholesalers; retailer numbers visibility-only) -----
     kpis = {
         "network_revenue_90d": {
             "value": round(rev_90d_total, 2),
             "growth_pct": _delta_pct(rev_90d_total, rev_prev_90d_total),
             "spark": revenue_spark,
         },
-        "active_retailers": {
-            "value": active_30d,
-            "growth_pct": _delta_pct(active_30d, active_prev_n),
-            "spark": _spark([1 if rid in by_retailer_active_dates else 0
-                             for rid in retailer_ids[:60]]) or [0],
+        "active_wholesalers": {
+            "value": active_wholesalers_30d,
+            "growth_pct": _delta_pct(active_wholesalers_30d, active_wholesalers_prev_n),
+            "spark": _spark([1 if wid in by_wholesaler_active_retailers else 0
+                             for wid in wholesaler_ids[:60]]) or [0],
         },
         "retail_orders_pending": {
             "value": pending_requests + pipeline["pending"],
@@ -362,21 +403,22 @@ async def _build_distributor_os(distributor_id: str) -> dict:
         distributor_name=distributor.get("name", ""),
         rev_90d=rev_90d_total,
         rev_growth=_delta_pct(rev_90d_total, rev_prev_90d_total),
-        active_30d=active_30d, active_total=len(retailer_ids),
-        attention=attention_retailers, top=top_retailers,
+        active_30d=active_wholesalers_30d, active_total=len(wholesaler_ids),
+        attention=attention_wholesalers, top=top_wholesalers,
         pending_requests=pending_requests + pipeline["pending"],
         low_stock=low_stock_skus + out_stock_skus,
         top_region=regional_coverage[0] if regional_coverage else None,
         top_category=category_performance[0] if category_performance else None,
         quadrant_counts=quadrant_counts,
+        tier_label="wholesaler",
     )
 
     # ---- Composite health score for hero -----------------------------------
     health_score = _composite_health(
         rev_growth=_delta_pct(rev_90d_total, rev_prev_90d_total),
-        active_ratio=active_30d / max(1, len(retailer_ids)),
+        active_ratio=active_wholesalers_30d / max(1, len(wholesaler_ids)),
         low_stock=low_stock_skus + out_stock_skus,
-        attention_count=len(attention_retailers),
+        attention_count=len(attention_wholesalers),
     )
 
     return {
@@ -391,12 +433,14 @@ async def _build_distributor_os(distributor_id: str) -> dict:
         "kpis": kpis,
         "ai_brief": ai_brief,
         "revenue_trend": revenue_trend,
+        # NOTE: performance_matrix / quadrant_counts / top / attention now describe
+        # WHOLESALERS (direct downstream tier). Retailers are visibility-only.
         "performance_matrix": matrix,
         "quadrant_counts": quadrant_counts,
         "regional_coverage": regional_coverage,
         "inventory_health": inventory_health,
-        "top_retailers": top_retailers,
-        "attention_retailers": attention_retailers,
+        "top_wholesalers": top_wholesalers,
+        "attention_wholesalers": attention_wholesalers,
         "category_performance": category_performance,
         "order_pipeline": pipeline,
         "network_health": {
@@ -404,8 +448,14 @@ async def _build_distributor_os(distributor_id: str) -> dict:
             "band": _health_band(health_score),
         },
         "totals": {
-            "total_retailers": len(retailer_ids),
+            "total_wholesalers": len(wholesaler_ids),
             "total_skus": total_skus,
+        },
+        # Downstream visibility (not ownership): aggregated retailer numbers the
+        # distributor can see through its wholesalers.
+        "downstream_visibility": {
+            "total_retailers": len(retailer_ids),
+            "active_retailers_30d": active_retailers_30d,
         },
     }
 
@@ -430,16 +480,18 @@ def _build_ai_brief(
     pending_requests: int, low_stock: int,
     top_region: dict | None, top_category: dict | None,
     quadrant_counts: dict,
+    tier_label: str = "wholesaler",
 ) -> dict:
     """Deterministic, instant AI brief — kept fast for snapshot builds."""
     insights: List[dict] = []
     recommended_actions: List[dict] = []
+    tier_label_plural = f"{tier_label}s"
 
     if rev_growth > 5:
         insights.append({
             "tone": "positive", "icon": "trending-up",
             "title": f"Revenue is up {rev_growth:.1f}% versus the prior 90 days",
-            "detail": "Sustain stock depth across top retailers to capture demand.",
+            "detail": f"Sustain stock depth across top {tier_label_plural} to capture demand.",
         })
     elif rev_growth < -5:
         insights.append({
@@ -472,14 +524,14 @@ def _build_ai_brief(
     if coverage_pct < 60:
         insights.append({
             "tone": "warning", "icon": "alert-triangle",
-            "title": f"Only {active_30d}/{active_total} retailers ({coverage_pct:.0f}%) active in last 30 days",
-            "detail": "Re-engage dormant retailers to grow coverage.",
+            "title": f"Only {active_30d}/{active_total} {tier_label_plural} ({coverage_pct:.0f}%) active in last 30 days",
+            "detail": f"Re-engage dormant {tier_label_plural} to grow coverage.",
         })
 
     if quadrant_counts.get("at_risk", 0) > 0:
         insights.append({
             "tone": "warning", "icon": "alert-octagon",
-            "title": f"{quadrant_counts['at_risk']} retailer(s) in At-Risk quadrant",
+            "title": f"{quadrant_counts['at_risk']} {tier_label}(s) in At-Risk quadrant",
             "detail": "Low revenue × declining growth — schedule rescue calls.",
         })
 
@@ -488,13 +540,13 @@ def _build_ai_brief(
         recommended_actions.append({
             "tone": "critical",
             "title": f"Replenish {low_stock} low-stock SKUs in warehouse",
-            "detail": "Place purchase order with manufacturer to avoid retailer stockouts.",
+            "detail": f"Place purchase order with manufacturer to avoid {tier_label} stockouts.",
             "cta": "Open Inventory",
         })
     if pending_requests > 0:
         recommended_actions.append({
             "tone": "warning",
-            "title": f"{pending_requests} retailer order(s) awaiting your decision",
+            "title": f"{pending_requests} {tier_label} order(s) awaiting your decision",
             "detail": "Approve or reject pending stock requests to keep flow steady.",
             "cta": "Open Requests",
         })
@@ -504,7 +556,7 @@ def _build_ai_brief(
             "tone": "warning",
             "title": f"Engage {first['name']}",
             "detail": f"Revenue declined {first['growth_pct']:.1f}% — recommend a restock visit.",
-            "cta": "View Retailer",
+            "cta": f"View {tier_label.title()}",
         })
     if top:
         leader = top[0]
@@ -512,7 +564,7 @@ def _build_ai_brief(
             "tone": "positive",
             "title": f"Reward {leader['name']}",
             "detail": f"₦{leader['revenue_90d']:,.0f} in 90 days — consider promotional volume.",
-            "cta": "View Retailer",
+            "cta": f"View {tier_label.title()}",
         })
     while len(recommended_actions) < 3:
         recommended_actions.append({
@@ -525,7 +577,7 @@ def _build_ai_brief(
 
 
 def _empty_payload(distributor: dict) -> dict:
-    """Return well-formed empty payload when distributor has no retailers."""
+    """Return well-formed empty payload when distributor has no wholesalers."""
     return {
         "as_of": datetime.now(timezone.utc).isoformat(),
         "distributor": {
@@ -537,7 +589,7 @@ def _empty_payload(distributor: dict) -> dict:
         },
         "kpis": {
             "network_revenue_90d": {"value": 0, "growth_pct": 0, "spark": [0] * 12},
-            "active_retailers": {"value": 0, "growth_pct": 0, "spark": [0] * 12},
+            "active_wholesalers": {"value": 0, "growth_pct": 0, "spark": [0] * 12},
             "retail_orders_pending": {"value": 0, "growth_pct": 0, "spark": [0] * 12},
             "dispatched_30d": {"value": 0, "growth_pct": 0, "spark": [0] * 12},
             "inventory_units": {"value": 0, "growth_pct": 0, "spark": [0] * 12},
@@ -545,8 +597,8 @@ def _empty_payload(distributor: dict) -> dict:
         },
         "ai_brief": {
             "insights": [{"tone": "info", "icon": "info",
-                          "title": "No retailers yet",
-                          "detail": "Onboard retailers to start seeing operations intelligence."}],
+                          "title": "No wholesalers yet",
+                          "detail": "Onboard wholesalers to start seeing operations intelligence."}],
             "recommended_actions": [],
         },
         "revenue_trend": [{"date": (datetime.now(timezone.utc).date() - timedelta(days=29 - i)).isoformat(),
@@ -559,12 +611,13 @@ def _empty_payload(distributor: dict) -> dict:
             "total_skus": 0, "total_units": 0,
             "donut": [{"label": "Healthy", "value": 0, "color": "#10b981"}],
         },
-        "top_retailers": [],
-        "attention_retailers": [],
+        "top_wholesalers": [],
+        "attention_wholesalers": [],
         "category_performance": [],
         "order_pipeline": {"pending": 0, "approved": 0, "dispatched": 0, "delivered_30d": 0},
         "network_health": {"score": 0, "band": "critical"},
-        "totals": {"total_retailers": 0, "total_skus": 0},
+        "totals": {"total_wholesalers": 0, "total_skus": 0},
+        "downstream_visibility": {"total_retailers": 0, "active_retailers_30d": 0},
     }
 
 

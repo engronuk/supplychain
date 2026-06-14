@@ -1,0 +1,71 @@
+{
+  "iteration": 26,
+  "date": "2026-01",
+  "scope": "STRICT 5-tier ownership hierarchy migration validation - backend endpoints + frontend dashboards (distributor, manufacturer, warehouse) across 2 tenants.",
+  "summary": "Migration validation script PASSES (0 forbidden relationships, 168 retailers under wholesalers, 36 wholesalers under distributors, 12 distributors under warehouses, 6 warehouses under manufacturers). All 9 pytest backend tests pass against the live preview URL. Frontend dashboards render correctly for distributor (Unilever Apex + FMN), manufacturer (Unilever), and warehouse (Unilever) with the renamed KPIs/labels/data-testids. One minor issue found: the manufacturer Distributor Intelligence card subtitle 'Downstream visibility · 3 tiers below' is NOT present in the rendered DOM.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "GET /api/manufacturer/{id}/overview",
+        "issue": "Backend still exposes legacy kpis.active_distributors alongside the new kpis.warehouses. The UI correctly hides kpi-active-distributors so this is informational only - main agent may want to remove it server-side for cleanliness."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "ManufacturerDashboard / Distributor Intelligence card",
+        "issue": "Expected subtitle 'Downstream visibility · 3 tiers below' on the Distributor Intelligence card is NOT present in the rendered DOM (neither '3 tiers below' nor 'Downstream visibility' text found on the page). The cov-distributors card shows 'DISTRIBUTORS · VISIBILITY' header with '6 / 0 healthy · 6 at risk' but no '3 tiers below' subtitle string.",
+        "selector": "manufacturer dashboard body, near Distributor Intelligence card",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Warehouse WMS Dashboard (/wms)",
+        "issues": [
+          "React DEV warning logged on render: 'Each child in a list should have a unique key prop' in WMSDashboardPage. Non-blocking but shows in console - main agent should add stable keys to the iterated list."
+        ]
+      }
+    ]
+  },
+  "verified_flows": [
+    "Migration script `python -m scripts.migrate_keyaccounts_to_wholesalers` -> PASS, strict hierarchy verified (0 forbidden relationships)",
+    "Distributor OS endpoint (Unilever): returns top_wholesalers (3), attention_wholesalers (3), downstream_visibility{total_retailers, active_retailers_30d}, totals.total_wholesalers=3, kpis.active_wholesalers, performance_matrix rows with `code` + `active_retailers_30d`. Legacy keys (top_retailers, attention_retailers, totals.total_retailers, kpis.active_retailers) are all absent.",
+    "Distributor OS endpoint (FMN multi-tenant): same shape, totals.total_wholesalers >= 1, top_wholesalers present.",
+    "Wholesaler-network endpoint: key_account_retailers returns empty list (post-migration), Apex distributor's Royal Trading 1 wholesaler now shows 6 retailers (was 4 before re-parent of Shoprite Apapa + Spar Apapa).",
+    "Distributor Dashboard UI (Unilever, /dashboard): Hero shows 'Wholesalers 3 · Stars 2 · Growth Opps 1 · At Risk 0', kpi-active_wholesalers visible, wholesaler-network-section with 3 wholesaler-card-* (Royal Trading 1 / Sunrise Wholesale 3 / Crown Bulk Mart 2 each showing retailer counts including Royal Trading 1=6 retailers), dist-top-wholesalers with 3 top-wholesaler-* rows, dist-attention-wholesalers with 3 attention-wholesaler-* rows, dist-downstream-visibility banner shows '14 retailers in your network · 14 active in last 30 days', dist-perf-matrix shows 'WHOLESALER PORTFOLIO' eyebrow + 'Performance Matrix · revenue × growth'. Legacy dist-top-retailers absent. No 'Key-Account Direct Retailers' text anywhere. 0 console errors.",
+    "Manufacturer Dashboard UI (Unilever, /dashboard): data-testid kpi-warehouses shows 'WAREHOUSES · DIRECT TIER' with value 3. Legacy data-testid kpi-active-distributors is absent. data-testid cov-distributors shows 'DISTRIBUTORS · VISIBILITY' with value 6. 0 console errors.",
+    "Warehouse Workspace (Unilever, /wms /wms/dispatch /wms/returns): /wms loads OK. Dispatch subtitle reads 'Send goods to your distributors — your direct downstream tier'. Returns subtitle reads 'Manage inbound returns from your distributors (direct downstream tier)'. 0 console errors on dispatch/returns; 1 React DEV warning on /wms dashboard.",
+    "FMN Distributor multi-tenant smoke (/dashboard): 3 wholesaler-card-* render, wholesaler-network-section + dist-top-wholesalers present, 0 console errors."
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_strict_ownership_hierarchy.py",
+    "/app/test_reports/pytest/strict_hierarchy.xml"
+  ],
+  "action_items": [
+    "Add missing subtitle 'Downstream visibility · 3 tiers below' to the Manufacturer Distributor Intelligence card on ManufacturerDashboard.jsx (currently absent in rendered DOM).",
+    "OPTIONAL: Remove legacy kpis.active_distributors from /api/manufacturer/{id}/overview response - UI no longer uses it.",
+    "OPTIONAL: Fix React key-prop warning in WMSDashboardPage list render."
+  ],
+  "critical_code_review_comments": [
+    "Migration is clean and idempotent (re-running script reports 0 retailers to migrate, validation still passes).",
+    "All new data-testids are present (kpi-active_wholesalers, wholesaler-network-section, wholesaler-card-*, dist-top-wholesalers, top-wholesaler-*, dist-attention-wholesalers, attention-wholesaler-*, dist-downstream-visibility, dist-perf-matrix, kpi-warehouses, cov-distributors) and legacy ones removed correctly.",
+    "Distributor snapshot may briefly return _snapshot.computing=true on first hit for FMN tenant; ~6s wait was sufficient. Frontend hero/cards/banner render real data after that delay."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_strict_ownership_hierarchy.py (NEW)"
+  ],
+  "success_rate": {
+    "backend": "100% (9/9 pytest passing)",
+    "frontend": "~95% (all required data-testids and labels verified across distributor/manufacturer/warehouse for both tenants; one missing subtitle on manufacturer)"
+  },
+  "test_credentials": "All accounts use TradeKonekt2026! - see /app/memory/test_credentials.md",
+  "seed_data_creation": "None - migration was already applied to live DB; only new test file added.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Strict 5-tier hierarchy verified end-to-end. Backend test file at /app/backend/tests/test_strict_ownership_hierarchy.py is reusable - 9 tests covering distributor OS endpoint shape, wholesaler-network key_account_retailers=[], Apex Royal Trading 1 = 6 retailers post-migration, manufacturer overview warehouses=3, and FMN multi-tenant smoke. Snapshot endpoints poll on _snapshot.computing flag. Only outstanding UI gap is the manufacturer Distributor Intelligence subtitle 'Downstream visibility · 3 tiers below' - not yet rendered.",
+  "rca_of_issue": "Missing 'Downstream visibility · 3 tiers below' subtitle: The manufacturer dashboard renames KPIs correctly (cov-distributors = 'DISTRIBUTORS · VISIBILITY') but the explicit '3 tiers below' subtitle string described in the request is not present in the DOM. Likely cause: the JSX update to add this subtitle inside the Distributor Intelligence card title block (in ManufacturerDashboard.jsx around line 340 KPIStripWide / DistributorIntelligence card header) was not applied or was applied to a different element. Mitigation: add the subtitle string under the Distributor Intelligence card title."
+}

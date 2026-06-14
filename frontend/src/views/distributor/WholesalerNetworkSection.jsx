@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ChevronRight, MapPin, ShoppingBag, TrendingUp, TrendingDown,
-  Activity, AlertTriangle, Crown,
+  Activity, AlertTriangle,
 } from "lucide-react";
 import { Api } from "@/lib/api";
 
@@ -61,12 +61,11 @@ export default function WholesalerNetworkSection({ distributorId }) {
             </p>
           </div>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Kpi label="Wholesalers" value={fmtNum(k.total_wholesalers)} sub={`${k.active_wholesalers_30d ?? 0} active 30d`} tone="violet" Icon={ShoppingBag} />
-          <Kpi label="Retailers in network" value={fmtNum(k.total_retailers_in_network)} sub={`${k.active_retailers_30d ?? 0} active 30d`} tone="blue" Icon={Activity} />
+          <Kpi label="Retailers (visibility)" value={fmtNum(k.total_retailers_in_network)} sub={`${k.active_retailers_30d ?? 0} active 30d · owned by wholesalers`} tone="blue" Icon={Activity} />
           <Kpi label="Network Revenue · 90d" value={fmtMoney(k.revenue_90d)} sub="across all wholesalers" tone="emerald" Icon={TrendingUp} />
-          <Kpi label="Key-account direct" value={fmtNum(k.key_account_retailers)} sub="Shoprite-style exceptions" tone="amber" Icon={Crown} />
-          <Kpi label="Coverage tier" value="Tier-2 ←→ Tier-3" sub="Primary downstream" tone="slate" Icon={MapPin} />
+          <Kpi label="Coverage tier" value="Tier-2 ←→ Tier-3" sub="Distributor → Wholesaler" tone="slate" Icon={MapPin} />
         </div>
       </div>
 
@@ -78,38 +77,6 @@ export default function WholesalerNetworkSection({ distributorId }) {
           </div>
         ) : ws.map((w) => <WholesalerCard key={w.id} w={w} distributorId={distributorId} />)}
       </div>
-
-      {/* Optional — key-account direct retailers (Shoprite etc.) */}
-      {Array.isArray(data.key_account_retailers) && data.key_account_retailers.length > 0 && (
-        <div className="rounded-2xl bg-white border border-slate-200 shadow-sm p-5 md:p-6">
-          <div className="flex items-start justify-between mb-3 gap-3">
-            <div>
-              <div className="text-[11px] uppercase tracking-wider text-slate-500 font-semibold">Exception flow</div>
-              <h3 className="text-base font-semibold text-slate-900 mt-0.5 flex items-center gap-2">
-                <Crown className="h-4 w-4 text-amber-500" /> Key-Account Direct Retailers
-              </h3>
-              <p className="text-xs text-slate-400 mt-1">Large-format retailers served direct (Shoprite, Spar, Game…) bypassing the wholesaler tier.</p>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-            {data.key_account_retailers.slice(0, 9).map((r) => (
-              <div key={r.id} className="rounded-xl border border-slate-100 p-3 flex items-center gap-3" data-testid={`ka-retailer-${r.id}`}>
-                <div className="h-9 w-9 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center font-semibold text-[13px]">
-                  {String(r.brand || r.name || "?").slice(0, 2).toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-slate-900 truncate">{r.name}</div>
-                  <div className="text-[11px] text-slate-500 truncate">{r.city || "—"} · {r.region || "—"}</div>
-                </div>
-                <div className="text-right">
-                  <div className="text-xs font-semibold text-slate-900 tabular-nums">{fmtMoney(r.revenue_90d)}</div>
-                  <div className="text-[10px] text-slate-400">90d</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </section>
   );
 }

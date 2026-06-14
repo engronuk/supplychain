@@ -171,7 +171,7 @@ function Shell({ title, subtitle, points }) {
 
 export const TransfersPage = () => <Shell title="Transfers" subtitle="Move stock between warehouses"
   points={["Create warehouse → warehouse transfer", "Track in-transit quantities", "Auto-decrement source on dispatch, increment destination on receipt"]} />;
-export const ReturnsPage = () => <Shell title="Returns" subtitle="Manage inbound returns from distributors and retailers"
+export const ReturnsPage = () => <Shell title="Returns" subtitle="Manage inbound returns from your distributors (direct downstream tier)"
   points={["RMA workflow", "Restock vs scrap decisions", "Refund tracking"]} />;
 export const CycleCountsPage = () => <Shell title="Cycle Counts" subtitle="Plan and reconcile physical inventory counts"
   points={["Schedule count cycles by zone", "Capture counted quantities on a tablet", "Compare vs system, flag variances above threshold"]} />;

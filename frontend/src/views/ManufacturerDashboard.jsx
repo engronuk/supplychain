@@ -339,6 +339,9 @@ function AIOrbIllustration() {
 function KPIStripWide({ kpis, coverage }) {
   return (
     <div className="space-y-4">
+      {/* Ownership-strict KPI strip: warehouses are the manufacturer's only
+          DIRECT children. Distributors / retailers are exposed below as
+          downstream-visibility metrics, not as ownership. */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-5" data-testid="kpi-strip">
         <KPICard
           label="Network Revenue"
@@ -350,22 +353,22 @@ function KPIStripWide({ kpis, coverage }) {
           testId="kpi-network-revenue"
         />
         <KPICard
-          label="Active Retailers"
+          label="Warehouses · direct tier"
+          value={fmtInt((kpis.warehouses || {}).value)}
+          delta={(kpis.warehouses || {}).growth_pct}
+          spark={(kpis.warehouses || {}).spark}
+          Icon={Warehouse}
+          color="violet"
+          testId="kpi-warehouses"
+        />
+        <KPICard
+          label="Active Retailers · downstream"
           value={fmtInt(kpis.active_retailers.value)}
           delta={kpis.active_retailers.growth_pct}
           spark={kpis.active_retailers.spark}
           Icon={Store}
           color="emerald"
           testId="kpi-active-retailers"
-        />
-        <KPICard
-          label="Active Distributors"
-          value={fmtInt(kpis.active_distributors.value)}
-          delta={kpis.active_distributors.growth_pct}
-          spark={kpis.active_distributors.spark}
-          Icon={Warehouse}
-          color="violet"
-          testId="kpi-active-distributors"
         />
         <KPICard
           label="Network Health"
@@ -379,13 +382,14 @@ function KPIStripWide({ kpis, coverage }) {
         />
       </div>
 
-      {/* Coverage strip */}
+      {/* Coverage strip — downstream-visibility detail. Labels emphasize
+          that these tiers are NOT direct children of the manufacturer. */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-5" data-testid="coverage-kpis">
         <CovCard Icon={Store} color="indigo"
           value={fmtInt(coverage.retail_coverage)} label="Retail Coverage"
-          sub="Active retailers in network" testId="cov-retail" />
+          sub="Visibility · downstream tier" testId="cov-retail" />
         <CovCard Icon={Warehouse} color="violet"
-          value={fmtInt(coverage.distributor_performance.total)} label="Distributor Performance"
+          value={fmtInt(coverage.distributor_performance.total)} label="Distributors · visibility"
           sub={`${coverage.distributor_performance.healthy} healthy · ${coverage.distributor_performance.at_risk} at risk`}
           testId="cov-distributors" />
         <CovCard Icon={Package} color="amber"
@@ -1132,12 +1136,15 @@ function DistributorIntelligenceCard({ rows }) {
   return (
     <div className="col-span-12 lg:col-span-8 bg-white rounded-[22px] p-6 shadow-[0_2px_8px_rgba(15,23,42,0.04)] border border-slate-100/70" data-testid="distributor-table-card">
       <div className="flex items-center justify-between mb-1">
-        <h3 className="text-[17px] font-semibold text-slate-900">Distributor Intelligence</h3>
+        <div>
+          <div className="text-[10px] uppercase tracking-[0.18em] text-slate-400 font-semibold">Downstream visibility · 3 tiers below</div>
+          <h3 className="text-[17px] font-semibold text-slate-900 mt-0.5">Distributor Intelligence</h3>
+        </div>
         <Link to="/network" className="text-xs text-violet-600 hover:underline font-semibold flex items-center gap-1">
           View network <ArrowRight className="h-3 w-3" />
         </Link>
       </div>
-      <p className="text-xs text-slate-500 mb-5">Top 8 by revenue · last 30 days</p>
+      <p className="text-xs text-slate-500 mb-5">Top 8 by revenue · last 30 days · distributors are owned by their warehouse parent</p>
 
       <div className="grid grid-cols-12 px-3 pb-3 text-[10px] uppercase tracking-wider font-semibold text-slate-400 border-b border-slate-100">
         <div className="col-span-4">Distributor</div>
