@@ -6,9 +6,12 @@ Designed for use after a fresh deploy when production has drifted from
 preview.
 
 Security:
-    Protected by the ``X-Admin-Token`` header. The token must match the
-    ``ADMIN_SYNC_TOKEN`` environment variable. If the env var is unset
-    the endpoint refuses to act (fail-closed).
+    Protected by the standard ``super_admin`` JWT role — the same gate
+    the rest of the admin console uses. There is no separate "admin
+    sync token" to copy-paste; sign in as super_admin and you have
+    access. For automated/curl-from-shell use cases, set ``ADMIN_SYNC_TOKEN``
+    env var and pass it via the ``X-Admin-Token`` header — that path is
+    optional and acts as a side-door for headless ops.
 
 Endpoints:
     POST /api/admin/sync/diff      Dry-run — returns current counts +
@@ -34,29 +37,41 @@ import traceback
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 from core import db, logger
+from services.auth import require_role
 
 router = APIRouter(tags=["admin-sync"])
 
 CONFIRM_PHRASE = "I_UNDERSTAND_THIS_WIPES_DATA"
+_super_admin = require_role("super_admin")
 
 
-def _require_admin_token(token: Optional[str]) -> None:
-    """Fail-closed admin token check."""
+def _check_admin_token(token: Optional[str]) -> bool:
+    """Returns True if the ``X-Admin-Token`` header matches the env var.
+    Acts as a headless escape-hatch for curl-from-shell ops; the
+    primary auth is the super_admin JWT.
+    """
     expected = (os.environ.get("ADMIN_SYNC_TOKEN") or "").strip()
-    if not expected:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Admin sync disabled (ADMIN_SYNC_TOKEN unset).",
-        )
-    if not token or token.strip() != expected:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid admin token.",
-        )
+    if not expected or not token:
+        return False
+    return token.strip() == expected
+
+
+async def _require_super_admin_or_token(
+    request: Request,
+    x_admin_token: Optional[str] = Header(None),
+):
+    """Dual auth: super_admin JWT OR the legacy X-Admin-Token header.
+    Either is sufficient.  The header is optional — if both are
+    missing/invalid the JWT path raises 401/403.
+    """
+    if _check_admin_token(x_admin_token):
+        return {"via": "token"}
+    user = await _super_admin(request)
+    return {"via": "jwt", "user": user}
 
 
 async def _current_counts() -> Dict[str, Any]:
@@ -102,9 +117,8 @@ class ApplyPayload(BaseModel):
 
 
 @router.get("/admin/sync/status")
-async def sync_status(x_admin_token: Optional[str] = Header(None)):
+async def sync_status(_auth=Depends(_require_super_admin_or_token)):
     """Returns the most recent canonical-sync marker (if any)."""
-    _require_admin_token(x_admin_token)
     last_sync = await db.seed_meta.find_one(
         {"key": "last_admin_sync"}, {"_id": 0},
     )
@@ -125,9 +139,8 @@ async def sync_status(x_admin_token: Optional[str] = Header(None)):
 
 
 @router.post("/admin/sync/diff")
-async def sync_diff(x_admin_token: Optional[str] = Header(None)):
+async def sync_diff(_auth=Depends(_require_super_admin_or_token)):
     """Dry-run — shows the operator what a /apply would change."""
-    _require_admin_token(x_admin_token)
     current = await _current_counts()
     target_orgs = CANONICAL_TARGET["organizations_by_type"]
     current_orgs = current["organizations_by_type"]
@@ -272,7 +285,7 @@ async def _run_canonical_sync(*, backfill_history: bool,
 @router.post("/admin/sync/apply")
 async def sync_apply(
     payload: ApplyPayload,
-    x_admin_token: Optional[str] = Header(None),
+    _auth=Depends(_require_super_admin_or_token),
 ):
     """Kick off the canonical sync as a background task and return 202.
 
@@ -281,7 +294,6 @@ async def sync_apply(
     long behind a Cloud Run / gunicorn timeout, so we return immediately
     and let the operator poll ``/api/admin/sync/status`` for completion.
     """
-    _require_admin_token(x_admin_token)
     if payload.confirm != CONFIRM_PHRASE:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

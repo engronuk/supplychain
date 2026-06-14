@@ -2,17 +2,16 @@
  * Super Admin · Sync panel
  *
  * One-screen control to bring a deployed environment to the canonical
- * preview state. Walks the operator through:
- *   1.  Paste admin token (session only, never persisted).
- *   2.  Dry-run diff — see exactly what changes.
- *   3.  Apply  — kicks off the background job (~5 min).
- *   4.  Live progress poll (every 5 s) — Wipe → Rebuild → Backfill → Forecasts.
+ * preview state. Auth is the same super_admin JWT used everywhere else
+ * in the admin console — no separate token to paste.
+ *   1.  Dry-run diff — see exactly what changes.
+ *   2.  Apply  — kicks off the background job (~5 min).
+ *   3.  Live progress poll (every 5 s) — Wipe → Rebuild → Backfill → Forecasts.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { SyncApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -32,7 +31,6 @@ import {
   Loader2,
   Eye,
   Play,
-  Lock,
   Database,
 } from "lucide-react";
 
@@ -58,8 +56,6 @@ function currentStep(status) {
 }
 
 export default function SyncPanel() {
-  const [token, setToken] = useState("");
-  const [unlocked, setUnlocked] = useState(false);
   const [status, setStatus] = useState(null);
   const [statusErr, setStatusErr] = useState("");
   const [diffData, setDiffData] = useState(null);
@@ -70,10 +66,9 @@ export default function SyncPanel() {
   const [recompute, setRecompute] = useState(true);
   const pollRef = useRef(null);
 
-  // Fetch status on unlock and every 5s while in-flight.
-  const fetchStatus = async (tkn = token) => {
+  const fetchStatus = async () => {
     try {
-      const d = await SyncApi.status(tkn);
+      const d = await SyncApi.status();
       setStatus(d);
       setStatusErr("");
       return d;
@@ -85,7 +80,6 @@ export default function SyncPanel() {
   };
 
   useEffect(() => {
-    if (!unlocked) return undefined;
     let cancelled = false;
     const poll = async () => {
       if (cancelled) return;
@@ -97,28 +91,12 @@ export default function SyncPanel() {
       cancelled = true;
       clearInterval(pollRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [unlocked]);
-
-  const handleUnlock = async () => {
-    if (!token.trim()) {
-      toast.error("Paste the admin sync token first.");
-      return;
-    }
-    try {
-      await SyncApi.status(token.trim());
-      setUnlocked(true);
-      toast.success("Admin token accepted.");
-    } catch (e) {
-      const detail = e?.response?.data?.detail || "Invalid token.";
-      toast.error(detail);
-    }
-  };
+  }, []);
 
   const handleDiff = async () => {
     setDiffLoading(true);
     try {
-      const d = await SyncApi.diff(token);
+      const d = await SyncApi.diff();
       setDiffData(d);
     } catch (e) {
       toast.error(e?.response?.data?.detail || "Diff failed.");
@@ -130,7 +108,7 @@ export default function SyncPanel() {
   const handleApply = async () => {
     setApplying(true);
     try {
-      const res = await SyncApi.apply(token, {
+      const res = await SyncApi.apply({
         backfill_history: backfill,
         recompute_forecasts: recompute,
       });
@@ -154,42 +132,6 @@ export default function SyncPanel() {
   const inFlight = !!status?.in_flight;
   const counts = status?.current?.organizations_by_type || {};
   const target = status?.target?.organizations_by_type || {};
-
-  // ---------------- token-gate ----------------
-  if (!unlocked) {
-    return (
-      <Card className="bg-white border-stone-200">
-        <CardContent className="p-8 max-w-xl mx-auto">
-          <div className="text-center">
-            <Lock className="h-10 w-10 mx-auto text-graphite mb-3" />
-            <h2 className="font-display text-2xl tracking-tight mb-2">
-              Admin token required
-            </h2>
-            <p className="text-sm text-graphite mb-6">
-              This panel can wipe and rebuild the entire environment. Paste
-              the <code className="bg-stone-100 px-1 rounded">ADMIN_SYNC_TOKEN</code> {" "}
-              configured in production secrets to continue. The token is
-              held only in this tab&apos;s memory and never sent anywhere else.
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Input
-              type="password"
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleUnlock()}
-              placeholder="Paste X-Admin-Token…"
-              data-testid="sync-token-input"
-              className="font-mono"
-            />
-            <Button onClick={handleUnlock} data-testid="sync-unlock-btn">
-              Unlock
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -385,7 +327,7 @@ export default function SyncPanel() {
               Confirm canonical sync
             </DialogTitle>
             <DialogDescription>
-              This will <span className="font-semibold text-rose-700">wipe</span> {" "}
+              This will <span className="font-semibold text-rose-700">wipe</span>{" "}
               all transactional collections in <strong>this environment</strong> and
               rebuild the strict 5-tier hierarchy to match preview. Demo users
               are preserved.

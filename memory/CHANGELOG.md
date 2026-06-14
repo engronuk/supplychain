@@ -1,4 +1,19 @@
 # CHANGELOG
+## 2026-06-14 — Sync Now UX simplified (drop token gate)
+
+- Auth on `/api/admin/sync/*` now uses the same super_admin JWT as the
+  rest of the admin console — no separate `ADMIN_SYNC_TOKEN` paste in
+  the UI.
+- `X-Admin-Token` header is kept as an optional escape-hatch for curl /
+  CI use, but it is no longer required.
+- `SyncPanel.jsx` opens straight into the control surface; the
+  Lock/Unlock screen is removed.
+- Backend dual-auth dependency: `_require_super_admin_or_token(request,
+  x_admin_token)` — JWT path runs `require_role("super_admin")`, header
+  path bypasses if it matches the env var.
+- Verified: anon → 401 · header token → 200 · super_admin JWT → 200 ·
+  non-admin JWT → 403.
+
 ## 2026-06-14 — Sync Now UI panel
 
 Added a self-service Sync surface to `/admin` (Super Admin Console → Sync tab):
