@@ -177,10 +177,17 @@ async def generate_retail_sale(retailer: dict, rng) -> Optional[str]:
     }))
 
     # Decrement inventory + audit trail.
-    await db.inventory.update_one(
-        {"id": row["id"]},
-        {"$inc": {"quantity": -qty}, "$set": {"updated_at": now}},
-    )
+    inv_id = row.get("id")
+    if inv_id:
+        await db.inventory.update_one(
+            {"id": inv_id},
+            {"$inc": {"quantity": -qty}, "$set": {"updated_at": now}},
+        )
+    elif row.get("_id"):
+        await db.inventory.update_one(
+            {"_id": row["_id"]},
+            {"$inc": {"quantity": -qty}, "$set": {"updated_at": now}},
+        )
     await db.inventory_movements.insert_one(_stamp({
         "id": str(uuid.uuid4()),
         "owner_type": "retailer", "owner_id": retailer["id"],

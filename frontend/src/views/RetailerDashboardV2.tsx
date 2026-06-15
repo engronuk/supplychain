@@ -72,23 +72,29 @@ export default function RetailerDashboardV2() {
 
   const loadAll = useCallback(async () => {
     setRefreshing(true);
-    try {
-      const [dash, ins, act, tr] = await Promise.all([
-        retailerAnalyticsService.dashboard(retailerId),
-        retailerAnalyticsService.insights(retailerId),
-        retailerAnalyticsService.activity(retailerId),
-        retailerAnalyticsService.salesTrend(retailerId, 7),
-      ]);
-      setData(dash.data);
-      setInsights(ins.data);
-      setActivity(act.data);
-      setTrend(tr.data);
-      setFromCache(dash.fromCache || ins.fromCache || act.fromCache || tr.fromCache);
-    } catch (e: any) {
-      toast.error("Failed to load — showing what we have.");
-    } finally {
-      setRefreshing(false);
+    // Use Promise.allSettled so one bad endpoint doesn't blank the
+    // entire dashboard — every panel falls back to its last cached
+    // value (the service already caches in localStorage).
+    const [dashR, insR, actR, trR] = await Promise.allSettled([
+      retailerAnalyticsService.dashboard(retailerId),
+      retailerAnalyticsService.insights(retailerId),
+      retailerAnalyticsService.activity(retailerId),
+      retailerAnalyticsService.salesTrend(retailerId, 7),
+    ]);
+    const errors: string[] = [];
+    if (dashR.status === "fulfilled") setData(dashR.value.data); else errors.push("dashboard");
+    if (insR.status === "fulfilled") setInsights(insR.value.data); else errors.push("insights");
+    if (actR.status === "fulfilled") setActivity(actR.value.data); else errors.push("activity");
+    if (trR.status === "fulfilled") setTrend(trR.value.data); else errors.push("sales-trend");
+    setFromCache(
+      [dashR, insR, actR, trR].some(
+        (r) => r.status === "fulfilled" && r.value.fromCache,
+      ),
+    );
+    if (errors.length) {
+      toast.error(`Some panels failed to load: ${errors.join(", ")}.`);
     }
+    setRefreshing(false);
   }, [retailerId]);
 
   useEffect(() => {

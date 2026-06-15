@@ -1,4 +1,46 @@
 # CHANGELOG
+## 2026-06-15 — Retailer Dashboard + Inventory Command Center fix (P0)
+
+User report: retailer dashboard and retailer inventory command center
+were blank on both preview and production with "Failed to load" toast.
+
+### Root cause
+2,220 of 2,224 inventory rows were seeded **without** an `id` field, and
+2,222 were missing `reorder_level`. The legacy data came from
+`scripts/rebuild.py` which used an older inventory shape. Three
+downstream consumers crashed:
+- `routes/retailer_inventory.py:169` — `inv["id"]` → KeyError
+- `routes/retailer_os.py:114` — `i["reorder_level"]` → KeyError
+- `services/simulator_generators.py:181` — `row["id"]` → KeyError
+  (this was also the source of the 1Hz simulator log spam)
+
+The dashboard further used `Promise.all` so ONE 500 wiped every panel.
+
+### Repairs
+- **Inventory backfill** — stamped `id=uuid4` and
+  `reorder_level=max(10, 20% of qty)` on 2,220+ rows. Wired into
+  `services/data_backfills.py` so any future env (incl. production after
+  the next Sync Now) gets the same repair on boot.
+- **Defensive reads** — `retailer_inventory.py`, `retailer_os.py`,
+  `simulator_generators.py`, and `services/retailer.py` now use
+  `.get("id")` / `.get("reorder_level", N)` with fallbacks. The
+  enrichment service also normalises every row so downstream consumers
+  can rely on the fields existing.
+- **Manufacturer-id backfill** also rolled into `data_backfills.run_all()`
+  so the orphaned-trucks fix from yesterday auto-applies on every boot.
+- **Dashboard resilience** — `RetailerDashboardV2.tsx` switched from
+  `Promise.all` to `Promise.allSettled`. One bad panel no longer blanks
+  the whole page; the operator sees a focused error listing which panels
+  failed.
+
+### Validation
+- `/api/retailer/{id}/insights` → 200 ✓
+- `/api/retailer/{id}/inventory-command-center` → 200 ✓
+- Visual: dashboard shows ₦110,450 today's sales, 88/100 stock score,
+  AI insights ✓
+- Inventory CC shows ₦4.3M value, 10 SKUs, donut, AI reorder cards ✓
+- Simulator KeyError log spam silenced ✓
+
 ## 2026-06-15 — Logistics map · leg-type toggles
 
 User wanted visibility into the upstream legs of the supply chain on the

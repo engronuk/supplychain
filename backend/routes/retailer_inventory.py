@@ -166,7 +166,7 @@ async def inventory_command_center(retailer_id: str):
                 })
 
         enriched.append({
-            "id": inv["id"],
+            "id": inv.get("id") or inv.get("product_id"),
             "product_id": inv["product_id"],
             "product": product,
             "quantity": qty,

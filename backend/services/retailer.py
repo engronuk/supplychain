@@ -69,7 +69,17 @@ async def retailer_inventory_enriched(retailer_id: str) -> List[Dict[str, Any]]:
             float(it.get("velocity", 0)),
             int(it.get("reorder_level", 10)),
         )
-        enriched.append({**it, "product": p, "urgency": urg, "days_remaining": days})
+        enriched.append({
+            **it,
+            "product": p,
+            "urgency": urg,
+            "days_remaining": days,
+            # Normalise the legacy/sparse fields so downstream
+            # consumers can rely on them.
+            "quantity": int(it.get("quantity", 0)),
+            "reorder_level": int(it.get("reorder_level", 10)),
+            "velocity": float(it.get("velocity", 0)),
+        })
     return enriched
 
 

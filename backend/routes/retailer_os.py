@@ -111,7 +111,11 @@ async def retailer_insights_endpoint(retailer_id: str):
             "action": "View", "product_id": i["product_id"],
         })
 
-    slow = [i for i in inv if float(i.get("velocity", 0)) <= 0.3 and i["quantity"] > i["reorder_level"] * 3]
+    slow = [
+        i for i in inv
+        if float(i.get("velocity", 0)) <= 0.3
+        and int(i.get("quantity", 0)) > int(i.get("reorder_level", 0)) * 3
+    ]
     for i in slow[:2]:
         name = (i.get("product") or {}).get("name", "Item")
         insights.append({
