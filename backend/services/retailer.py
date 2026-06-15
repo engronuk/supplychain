@@ -37,6 +37,16 @@ If you don't have enough info, ask one short clarifying question instead.
 
 Today is {today}. Here is THIS RETAILER's live data (do not invent values outside this):
 
+The `sales` block in the data already contains:
+  • `sales.today` — today's units, revenue, transactions.
+  • `sales.yesterday` — yesterday's totals (use for "vs yesterday" comparisons).
+  • `sales.last_7_days` — daily array, latest first. Use this to answer day-of-week
+    questions ("how were Monday's sales?"), week-to-date totals, or trends.
+
+When the user asks "how are sales today?", quote `sales.today.revenue` and units
+directly. If the value is 0, say sales haven't started yet today (don't dodge with
+"I only see weekly data").
+
 {context}
 """
 
@@ -92,11 +102,28 @@ async def build_retailer_context(retailer_id: str) -> str:
     inv = await retailer_inventory_enriched(retailer_id)
 
     today = datetime.now(timezone.utc).date()
+    today_iso = today.isoformat()
+    yesterday_iso = (today - timedelta(days=1)).isoformat()
     seven_ago = (today - timedelta(days=6)).isoformat()
+
+    # 7-day rollup (by product, for the inventory cross-reference below).
     sales = await db.daily_sales.aggregate([
         {"$match": {"retailer_id": retailer_id, "date": {"$gte": seven_ago}}},
         {"$group": {"_id": "$product_id", "units": {"$sum": "$units"}, "revenue": {"$sum": "$revenue"}}},
     ]).to_list(50)
+    # Daily totals (today, yesterday, last 7 days array) — so Sabi can
+    # answer "how are sales today?" without dodging.
+    daily_totals = await db.daily_sales.aggregate([
+        {"$match": {"retailer_id": retailer_id, "date": {"$gte": seven_ago}}},
+        {"$group": {"_id": "$date",
+                    "units": {"$sum": "$units"},
+                    "revenue": {"$sum": "$revenue"},
+                    "transactions": {"$sum": 1}}},
+        {"$sort": {"_id": 1}},
+    ]).to_list(30)
+    by_day = {d["_id"]: d for d in daily_totals}
+    today_totals = by_day.get(today_iso, {"units": 0, "revenue": 0, "transactions": 0})
+    yesterday_totals = by_day.get(yesterday_iso, {"units": 0, "revenue": 0, "transactions": 0})
     products = {p["id"]: p for p in await db.products.find({}, {"_id": 0}).to_list(5000)}
     sales_by_pid = {s["_id"]: s for s in sales}
 
@@ -144,6 +171,27 @@ async def build_retailer_context(retailer_id: str) -> str:
             "region": retailer.get("region", ""),
             "city": retailer.get("city", ""),
             "distributor": (distributor or {}).get("name", ""),
+        },
+        "sales": {
+            "today": {
+                "date": today_iso,
+                "units": int(today_totals.get("units", 0)),
+                "revenue": round(float(today_totals.get("revenue", 0)), 2),
+                "transactions": int(today_totals.get("transactions", 0)),
+            },
+            "yesterday": {
+                "date": yesterday_iso,
+                "units": int(yesterday_totals.get("units", 0)),
+                "revenue": round(float(yesterday_totals.get("revenue", 0)), 2),
+                "transactions": int(yesterday_totals.get("transactions", 0)),
+            },
+            "last_7_days": [
+                {"date": d["_id"],
+                 "units": int(d.get("units", 0)),
+                 "revenue": round(float(d.get("revenue", 0)), 2),
+                 "transactions": int(d.get("transactions", 0))}
+                for d in daily_totals
+            ],
         },
         "inventory": inv_summary,
         "recent_shipments": ship_summary,
