@@ -9,7 +9,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException
 
@@ -104,6 +104,28 @@ async def control_tower(manufacturer_id: Optional[str] = None,
             sid = st.get("shipment_id")
             if sid and sid not in vehicle_by_ref:
                 vehicle_by_ref[sid] = v
+
+    # Resolve each active vehicle's leg (warehouse→distributor,
+    # distributor→wholesaler, etc.) so the map can filter by tier toggle.
+    # We pull every referenced shipment up front and stamp `leg_type` onto
+    # each vehicle — flat string field keeps the frontend filter trivial.
+    ref_ids = [v["ref_id"] for v in vehicles
+               if v.get("ref_id") and v.get("ref_type") == "shipment"]
+    ship_role_by_id: Dict[str, Tuple[str, str]] = {}
+    if ref_ids:
+        async for s in db.shipments.find(
+                {"id": {"$in": ref_ids}},
+                {"_id": 0, "id": 1, "from_role": 1, "to_role": 1}):
+            ship_role_by_id[s["id"]] = (s.get("from_role") or "warehouse",
+                                        s.get("to_role") or "")
+    for v in vehicles:
+        roles = ship_role_by_id.get(v.get("ref_id"))
+        if roles:
+            v["leg_type"] = f"{roles[0]}_to_{roles[1]}"
+            v["from_role"], v["to_role"] = roles
+        else:
+            v["leg_type"] = "other"
+
     horizon = (now - timedelta(days=14)).isoformat()
     raw_shipments = await db.shipments.find(
         {"manufacturer_id": mfr,

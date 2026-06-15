@@ -122,11 +122,36 @@ export const ControlTowerMap = ({
   const hoverInfo = useRef(null); // shared hover tooltip (InfoWindow)
   const didFit = useRef(false);
   const propsRef = useRef({});
-  propsRef.current = { fleet, geofences, warehouses, distributors, retailerClusters, onSelectVehicle };
 
   const [layers, setLayers] = useState({ routes: true, fences: true, distributors: true, retailers: false });
   const toggle = (key) => setLayers((l) => ({ ...l, [key]: !l[key] }));
   const [full, setFull] = useState(false);
+
+  // Leg filter — operators can isolate which tier of the chain they want to
+  // see moving (Warehouse → Distributor, Distributor → Wholesaler,
+  // Wholesaler → Retailer). The trucks themselves carry `leg_type` from
+  // the backend; "all" leaves the canvas untouched.
+  const [legFilter, setLegFilter] = useState("all");
+  const filteredFleet = (fleet || []).filter((v) => {
+    if (legFilter === "all") return true;
+    return v.leg_type === legFilter;
+  });
+  const legCounts = (fleet || []).reduce(
+    (acc, v) => {
+      const k = v.leg_type || "other";
+      acc[k] = (acc[k] || 0) + 1;
+      return acc;
+    },
+    {},
+  );
+  // Keep the propsRef in sync so the persistent Google Maps event listeners
+  // (attached once when each marker is created) read the latest props.
+  useEffect(() => {
+    propsRef.current = {
+      fleet: filteredFleet, geofences, warehouses, distributors,
+      retailerClusters, onSelectVehicle,
+    };
+  });
 
   // Fullscreen: re-render tiles after the container resizes; Esc exits.
   useEffect(() => {
@@ -260,7 +285,7 @@ export const ControlTowerMap = ({
     const map = mapObj.current;
     const seen = new Set();
 
-    (fleet || []).forEach((v) => {
+    filteredFleet.forEach((v) => {
       if (v.lat == null || v.lng == null || !ACTIVE_STATUSES.includes(v.status)) return;
       seen.add(v.id);
       const isSel = v.id === selectedVehicleId;
@@ -320,7 +345,7 @@ export const ControlTowerMap = ({
 
     if (!didFit.current && seen.size) {
       const bounds = new g.LatLngBounds();
-      (fleet || []).forEach((v) => { if (v.lat != null && ACTIVE_STATUSES.includes(v.status)) bounds.extend({ lat: v.lat, lng: v.lng }); });
+      filteredFleet.forEach((v) => { if (v.lat != null && ACTIVE_STATUSES.includes(v.status)) bounds.extend({ lat: v.lat, lng: v.lng }); });
       (propsRef.current.warehouses || []).forEach((w) => { if (w.lat != null) bounds.extend({ lat: w.lat, lng: w.lng }); });
       if (!bounds.isEmpty()) {
         map.fitBounds(bounds, { top: 50, right: 40, bottom: 40, left: 40 });
@@ -329,7 +354,7 @@ export const ControlTowerMap = ({
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapsReady, fleet, selectedVehicleId, layers.routes]);
+  }, [mapsReady, fleet, legFilter, selectedVehicleId, layers.routes]);
 
   // ---- Pan to selection ------------------------------------------------------
   useEffect(() => {
@@ -341,9 +366,9 @@ export const ControlTowerMap = ({
     }
   }, [mapsReady, selectedVehicleId]);
 
-  const moving = (fleet || []).filter((v) => v.status === "in_transit").length;
-  const arrived = (fleet || []).filter((v) => v.status === "arrived").length;
-  const exceptions = (fleet || []).filter((v) =>
+  const moving = filteredFleet.filter((v) => v.status === "in_transit").length;
+  const arrived = filteredFleet.filter((v) => v.status === "arrived").length;
+  const exceptions = filteredFleet.filter((v) =>
     v.status === "breakdown" || v.status === "stopped" || (v.deviation && v.deviation.active)).length;
 
   return (
@@ -353,25 +378,63 @@ export const ControlTowerMap = ({
         : "rounded-xl bg-slate-900/60 border border-slate-800 overflow-hidden min-w-0"}
       data-testid="control-tower-map-card"
     >
-      <div className="px-4 py-2.5 border-b border-slate-800 flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
-          <Crosshair className="h-4 w-4 text-emerald-400" /> Live Network Map
+      <div className="px-4 py-2.5 border-b border-slate-800 space-y-2">
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2 text-sm font-semibold text-slate-100">
+            <Crosshair className="h-4 w-4 text-emerald-400" /> Live Network Map
+          </div>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <LayerChip active={layers.routes} onClick={() => toggle("routes")} label="Routes" testId="map-toggle-routes" />
+            <LayerChip active={layers.fences} onClick={() => toggle("fences")} label="Geofences" testId="map-toggle-fences" />
+            <LayerChip active={layers.distributors} onClick={() => toggle("distributors")} label="Sites" testId="map-toggle-distributors" />
+            <LayerChip active={layers.retailers} onClick={() => toggle("retailers")} label="Retail clusters" testId="map-toggle-retailers" />
+            <button
+              type="button"
+              onClick={() => setFull((f) => !f)}
+              data-testid="map-fullscreen-btn"
+              title={full ? "Exit fullscreen (Esc)" : "Fullscreen monitoring"}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-md border text-[11px] font-medium transition-colors bg-slate-900 border-slate-700 text-slate-300 hover:border-emerald-500/50 hover:text-emerald-300"
+            >
+              {full ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+              {full ? "Exit" : "Expand"}
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <LayerChip active={layers.routes} onClick={() => toggle("routes")} label="Routes" testId="map-toggle-routes" />
-          <LayerChip active={layers.fences} onClick={() => toggle("fences")} label="Geofences" testId="map-toggle-fences" />
-          <LayerChip active={layers.distributors} onClick={() => toggle("distributors")} label="Distributors" testId="map-toggle-distributors" />
-          <LayerChip active={layers.retailers} onClick={() => toggle("retailers")} label="Retailers" testId="map-toggle-retailers" />
-          <button
-            type="button"
-            onClick={() => setFull((f) => !f)}
-            data-testid="map-fullscreen-btn"
-            title={full ? "Exit fullscreen (Esc)" : "Fullscreen monitoring"}
-            className="inline-flex items-center gap-1 px-2 py-1 rounded-md border text-[11px] font-medium transition-colors bg-slate-900 border-slate-700 text-slate-300 hover:border-emerald-500/50 hover:text-emerald-300"
-          >
-            {full ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
-            {full ? "Exit" : "Expand"}
-          </button>
+        <div className="flex items-center gap-1.5 flex-wrap" data-testid="map-leg-filter">
+          <span className="text-[10px] uppercase tracking-widest text-slate-500 mr-1">
+            Show trucks going to →
+          </span>
+          <LegChip
+            active={legFilter === "all"}
+            onClick={() => setLegFilter("all")}
+            label="All"
+            count={(fleet || []).length}
+            testId="map-leg-all"
+          />
+          <LegChip
+            active={legFilter === "warehouse_to_distributor"}
+            onClick={() => setLegFilter("warehouse_to_distributor")}
+            label="Distributors"
+            sub="from warehouses"
+            count={legCounts.warehouse_to_distributor || 0}
+            testId="map-leg-distributors"
+          />
+          <LegChip
+            active={legFilter === "distributor_to_wholesaler"}
+            onClick={() => setLegFilter("distributor_to_wholesaler")}
+            label="Wholesalers"
+            sub="from distributors"
+            count={legCounts.distributor_to_wholesaler || 0}
+            testId="map-leg-wholesalers"
+          />
+          <LegChip
+            active={legFilter === "wholesaler_to_retailer"}
+            onClick={() => setLegFilter("wholesaler_to_retailer")}
+            label="Retailers"
+            sub="from wholesalers"
+            count={legCounts.wholesaler_to_retailer || 0}
+            testId="map-leg-retailers"
+          />
         </div>
       </div>
       {!apiKey ? (
@@ -385,7 +448,7 @@ export const ControlTowerMap = ({
       )}
       {full && mapsReady && (
         <MapWatchlist
-          fleet={fleet || []}
+          fleet={filteredFleet}
           onFocus={(v) => {
             if (mapObj.current && v?.lat != null) {
               mapObj.current.panTo({ lat: v.lat, lng: v.lng });
@@ -404,6 +467,7 @@ export const ControlTowerMap = ({
           <Dot color="#22D3EE" label="Geofence" />
         </div>
         <span className="inline-flex items-center gap-1.5">
+          {legFilter !== "all" && <span className="text-emerald-400">filtered ·</span>}
           {moving} moving · {arrived} delivered · {exceptions} exception{exceptions === 1 ? "" : "s"}
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
         </span>
@@ -411,6 +475,31 @@ export const ControlTowerMap = ({
     </div>
   );
 };
+
+function LegChip({ active, onClick, label, sub, count, testId }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      data-testid={testId}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-[11px] font-medium transition-colors ${
+        active
+          ? "bg-emerald-500/15 border-emerald-500/50 text-emerald-200"
+          : "bg-slate-900 border-slate-700 text-slate-400 hover:border-slate-500 hover:text-slate-200"
+      }`}
+    >
+      <span>{label}</span>
+      {sub && <span className="text-[9.5px] text-slate-500 -ml-1">{sub}</span>}
+      <span
+        className={`text-[10px] tabular-nums px-1.5 rounded ${
+          active ? "bg-emerald-500/20 text-emerald-100" : "bg-slate-800 text-slate-400"
+        }`}
+      >
+        {count}
+      </span>
+    </button>
+  );
+}
 
 function LayerChip({ active, onClick, label, testId }) {
   return (

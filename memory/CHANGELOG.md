@@ -1,4 +1,31 @@
 # CHANGELOG
+## 2026-06-15 — Logistics map · leg-type toggles
+
+User wanted visibility into the upstream legs of the supply chain on the
+Control Tower map. Added a filter row showing:
+- **All**  (every active vehicle)
+- **Distributors** *from warehouses*  (Warehouse → Distributor)
+- **Wholesalers** *from distributors*  (Distributor → Wholesaler)
+- **Retailers** *from wholesalers*  (Wholesaler → Retailer)
+
+Each chip displays a live count and the map collapses to just that leg
+on click. Footer reads `filtered · X moving · Y delivered · Z exception(s)`
+when a non-default filter is active.
+
+### Backend
+- `/api/logistics/control-tower` now joins each vehicle to its referenced
+  shipment and stamps `leg_type` + `from_role`/`to_role` on the response
+  fleet array.
+- One-time backfill: `scripts/backfill_mfr_ids.py` patched 652 orphaned
+  shipments and 119 orphaned vehicles missing `manufacturer_id` (legacy
+  data from the rebuild seeders). Future inserts from the simulator
+  already set manufacturer_id correctly.
+
+### Frontend
+- `ControlTowerMap.jsx`: new `LegChip` component, `legFilter` state,
+  filtered `fleet` + watchlist + footer stats. Default `all`.
+- data-testid: `map-leg-filter`, `map-leg-{all|distributors|wholesalers|retailers}`.
+
 ## 2026-06-14 — Sync Now UX simplified (drop token gate)
 
 - Auth on `/api/admin/sync/*` now uses the same super_admin JWT as the
