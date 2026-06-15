@@ -1,4 +1,51 @@
 # CHANGELOG
+## 2026-06-15 — End-to-end procurement ↔ logistics sync
+
+User reported a wholesaler PO (WPO-2026-00005) in `in_transit` status
+was not visible on the manufacturer's Logistics Command Center under
+the "Wholesalers" toggle — meaning the procurement modules and the
+Control Tower were disconnected.
+
+### Root cause
+- `services/control_tower_sim.py:bridge_wholesaler_shipments` was
+  reading from the empty/legacy `wholesaler_shipments` collection.
+- Real wholesaler procurement writes into `wholesaler_purchase_orders`.
+- Real retailer procurement (incl. Sabi-placed orders) writes into
+  `purchase_orders` with `supplier_type="wholesaler"`.
+- Neither table was being read by any bridge, so no `shipments` +
+  `vehicles` got minted when a PO went `in_transit`.
+- Net effect: the map only saw factory→warehouse and warehouse→distributor
+  trucks (factory-side simulator), and never the legs driven by real
+  procurement.
+
+### Repair
+- Rewrote `bridge_wholesaler_shipments` as a TWO-leg procurement bridge:
+  1. **Distributor → Wholesaler**: scans `wholesaler_purchase_orders`
+     for `status ∈ {allocated, shipped, in_transit}` without a
+     `mirror_shipment_id`. Mints a real `shipments` doc + spawns a
+     vehicle via `_spawn_vehicle()`. Locks the PO with
+     `mirror_shipment_id`.
+  2. **Wholesaler → Retailer**: scans `purchase_orders` for
+     `supplier_type=wholesaler` in the same active statuses. Walks the
+     wholesaler's parent chain to find the manufacturer, then mints
+     shipment+vehicle. Same locking.
+- Emits a `shipment_created` event for both legs so the activity feed
+  picks them up.
+- Bridge already runs every simulator tick, so any new PO from the
+  procurement UI or from Sabi auto-mirrors within seconds.
+
+### Validation
+- WPO-2026-00005 (Apex Distributors → Royal Trading 1, 1,046 units)
+  now appears on the map as truck `TK-843`, status `in_transit`,
+  destined for Crown Bulk Mart 2, classified `distributor_to_wholesaler`.
+- Manufacturer Control Tower fleet count jumped from 195 → 622:
+  · warehouse_to_distributor: 322
+  · wholesaler_to_retailer:   212
+  · manufacturer_to_warehouse: 54
+  · distributor_to_wholesaler: 29
+  · distributor_to_retailer:    5
+- All four toggle filters now show populated truck counts.
+
 ## 2026-06-15 — Sabi · true copilot (orders that actually happen)
 
 User report (screenshot): "Place order for Royco 10 units" → Sabi

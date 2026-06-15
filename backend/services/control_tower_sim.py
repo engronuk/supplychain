@@ -355,69 +355,136 @@ async def ensure_wholesaler_dispatch(rng: random.Random) -> int:
 
 
 async def bridge_wholesaler_shipments() -> Dict[str, int]:
-    """Mirror dispatched wholesaler→distributor shipments into the main
-    `shipments` ledger so the control tower tracks them — truck, GPS,
-    geofences, deviation detection, events, notifications. Delivery flows
-    back to the wholesaler ledger in `_complete_delivery`."""
-    out = {"bridged": 0, "expired": 0}
-    rows = await db.wholesaler_shipments.find(
-        {"status": {"$in": ["loaded", "in_transit"]},
-         "mirror_shipment_id": {"$exists": False}},
-        {"_id": 0}).sort("created_at", -1).to_list(500)
-    cutoff = (datetime.now(timezone.utc)
-              - timedelta(hours=WS_STALE_HOURS)).isoformat()
+    """Sync the real procurement tables into the live logistics ledger.
+
+    Iterates two procurement collections that the rest of the app writes to
+    when wholesalers and retailers place orders:
+
+      • ``wholesaler_purchase_orders`` — Dist → Wholesaler leg.
+      • ``purchase_orders``           — Wholesaler → Retailer leg
+                                        (only when supplier_type == wholesaler).
+
+    For each PO that has transitioned to ``allocated`` / ``shipped`` /
+    ``in_transit`` and does **not** yet have a mirror ``shipments`` doc,
+    we mint a real shipment + vehicle so the truck shows up on the
+    Control Tower live map (Distributors / Wholesalers / Retailers
+    toggles).  Idempotent — uses ``mirror_shipment_id`` as the lock.
+    """
+    out = {"bridged_dist_whlsr": 0, "bridged_whlsr_retail": 0}
+    rng = random.Random()
     now = now_iso()
-    for i, ws in enumerate(rows):
-        started = (ws.get("in_transit_at") or ws.get("loaded_at")
-                   or ws.get("created_at") or "")
-        # Old seeded backlog: close quietly, but keep the newest few as live
-        # trucks so the leg is visible immediately.
-        if started < cutoff and i >= 4:
-            await db.wholesaler_shipments.update_one({"id": ws["id"]}, {
-                "$set": {"status": "delivered", "delivered_at": now,
-                         "updated_at": now, "mirror_shipment_id": "expired"},
-                "$push": {"status_history": {
-                    "status": "delivered", "at": now, "by": "system",
-                    "note": "Auto-closed by control tower (stale backlog)"}}})
-            out["expired"] += 1
+    ACTIVE = {"allocated", "shipped", "in_transit"}
+
+    # ------------------------- Dist → Wholesaler --------------------------
+    async for po in db.wholesaler_purchase_orders.find(
+        {"status": {"$in": list(ACTIVE)},
+         "mirror_shipment_id": {"$exists": False}},
+        {"_id": 0},
+    ):
+        supplier_id = po.get("supplier_id")
+        if not supplier_id or po.get("supplier_type") != "distributor":
             continue
         dist = await db.distributors.find_one(
-            {"id": ws.get("distributor_id")},
-            {"_id": 0, "manufacturer_id": 1, "name": 1})
+            {"id": supplier_id}, {"_id": 0, "manufacturer_id": 1, "name": 1, "city": 1, "region": 1})
         if not dist or not dist.get("manufacturer_id"):
-            await db.wholesaler_shipments.update_one(
-                {"id": ws["id"]},
-                {"$set": {"mirror_shipment_id": "unresolved"}})
             continue
         mfr = dist["manufacturer_id"]
         sid = str(uuid.uuid4())
-        tracking = ws.get("shipment_number") or sid[:8].upper()
+        tracking = po.get("po_number") or sid[:8].upper()
+        items = [{k: it.get(k) for k in ("product_id", "product_name", "sku", "quantity")}
+                 for it in (po.get("items") or [])]
         await db.shipments.insert_one({
             "id": sid, "manufacturer_id": mfr,
-            "from_role": "wholesaler", "from_id": ws.get("wholesaler_id"),
-            "to_role": "distributor", "to_id": ws.get("distributor_id"),
-            "items": [{k: it.get(k) for k in
-                       ("product_id", "product_name", "sku", "quantity")}
-                      for it in (ws.get("items") or [])],
-            "tracking_code": tracking,
-            "status": "in_transit", "source": "wholesaler",
-            "wholesaler_shipment_id": ws["id"],
+            "from_role": "distributor", "from_id": supplier_id,
+            "to_role": "wholesaler", "to_id": po.get("wholesaler_id"),
+            "items": items, "tracking_code": tracking,
+            "status": "in_transit", "source": "procurement",
+            "wholesaler_purchase_order_id": po["id"],
+            "po_number": po.get("po_number"),
+            "total_amount": po.get("total_amount"),
             "created_at": now,
-            "dispatched_at": ws.get("in_transit_at") or now,
+            "dispatched_at": po.get("shipped_at") or now,
         })
-        ws_update: Dict[str, Any] = {"mirror_shipment_id": sid,
-                                     "updated_at": now}
-        if ws.get("status") == "loaded":
-            ws_update["status"] = "in_transit"
-            ws_update["in_transit_at"] = now
-        await db.wholesaler_shipments.update_one(
-            {"id": ws["id"]}, {"$set": ws_update})
+        await db.wholesaler_purchase_orders.update_one(
+            {"id": po["id"]},
+            {"$set": {"mirror_shipment_id": sid, "updated_at": now}},
+        )
+        ship_doc = {
+            "id": sid, "manufacturer_id": mfr, "items": items,
+            "from_id": supplier_id, "to_id": po.get("wholesaler_id"),
+            "tracking_code": tracking,
+        }
+        await _spawn_vehicle(ship_doc, rng)
         await emit(mfr, "shipment_created",
-                   f"Wholesaler dispatch {tracking} → {dist.get('name')}",
-                   f"{int(ws.get('total_units') or 0):,} units · "
-                   "wholesaler → distributor leg",
+                   f"PO {tracking} → {po.get('organization_id') or 'wholesaler'}",
+                   f"{sum(int(i.get('quantity') or 0) for i in items):,} units · "
+                   "distributor → wholesaler leg",
                    shipment_id=sid, ref_code=tracking)
-        out["bridged"] += 1
+        out["bridged_dist_whlsr"] += 1
+
+    # ------------------------- Wholesaler → Retailer ----------------------
+    async for po in db.purchase_orders.find(
+        {"status": {"$in": list(ACTIVE)},
+         "supplier_type": "wholesaler",
+         "mirror_shipment_id": {"$exists": False}},
+        {"_id": 0},
+    ):
+        whlsr_id = po.get("distributor_id")  # legacy field name = supplier
+        if not whlsr_id:
+            continue
+        whlsr = await db.organizations.find_one(
+            {"id": whlsr_id},
+            {"_id": 0, "organization_name": 1, "parent_organization_id": 1, "city": 1, "region": 1})
+        if not whlsr:
+            continue
+        # Walk parent chain to find manufacturer.
+        mfr = None
+        parent_id = whlsr.get("parent_organization_id")
+        while parent_id:
+            parent = await db.organizations.find_one(
+                {"id": parent_id},
+                {"_id": 0, "organization_type": 1, "parent_organization_id": 1, "id": 1})
+            if not parent:
+                break
+            if parent.get("organization_type") == "manufacturer":
+                mfr = parent_id
+                break
+            parent_id = parent.get("parent_organization_id")
+        if not mfr:
+            continue
+        sid = str(uuid.uuid4())
+        tracking = po.get("po_number") or sid[:8].upper()
+        items = [{k: it.get(k) for k in ("product_id", "product_name", "sku", "quantity")}
+                 for it in (po.get("items") or [])]
+        await db.shipments.insert_one({
+            "id": sid, "manufacturer_id": mfr,
+            "from_role": "wholesaler", "from_id": whlsr_id,
+            "to_role": "retailer", "to_id": po.get("retailer_id"),
+            "items": items, "tracking_code": tracking,
+            "status": "in_transit", "source": "procurement",
+            "purchase_order_id": po["id"],
+            "po_number": po.get("po_number"),
+            "total_amount": po.get("total_amount"),
+            "created_at": now,
+            "dispatched_at": now,
+        })
+        await db.purchase_orders.update_one(
+            {"id": po["id"]},
+            {"$set": {"mirror_shipment_id": sid, "updated_at": now}},
+        )
+        ship_doc = {
+            "id": sid, "manufacturer_id": mfr, "items": items,
+            "from_id": whlsr_id, "to_id": po.get("retailer_id"),
+            "tracking_code": tracking,
+        }
+        await _spawn_vehicle(ship_doc, rng)
+        await emit(mfr, "shipment_created",
+                   f"PO {tracking} → retailer",
+                   f"{sum(int(i.get('quantity') or 0) for i in items):,} units · "
+                   "wholesaler → retailer leg",
+                   shipment_id=sid, ref_code=tracking)
+        out["bridged_whlsr_retail"] += 1
+
     return out
 
 
