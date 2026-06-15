@@ -1,4 +1,57 @@
 # CHANGELOG
+## 2026-06-15 — Sabi · true copilot (orders that actually happen)
+
+User report (screenshot): "Place order for Royco 10 units" → Sabi
+replied "Order placed" but the JSON action block leaked into the bubble,
+no toast appeared, and nothing showed up on the procurement page.
+
+### Three root causes
+1. **JSON leaked into the spoken reply.** The backend's regex only
+   matched ```` ```json … ``` ```` fenced blocks; Gemini sometimes
+   returned the JSON bare. So `action` came back as `None`, the frontend
+   never called `/execute`, and the user saw the raw `{...}` in the chat.
+2. **Reorder went to the wrong table.** `/execute` created a legacy
+   `requests` doc with `distributor_id` (which is null in the 5-tier
+   model — retailers reach distributors via wholesalers). The
+   procurement page reads `purchase_orders`, so the order was
+   invisible.
+3. **Product matcher was too loose.** "Royco Classic 100s" collapsed
+   onto "Lipton Yellow Label 100s" because they share the token "100s".
+
+### Repairs
+- `routes/assistant.py`:
+  - JSON extraction now tries three patterns (fenced-with-lang,
+    fenced-bare, inline-`{"action": …}`) and strips them all from the
+    spoken reply. Belt-and-braces regex cleans any leftover ``` fences.
+  - Reorder execute path rewritten: creates a real `PurchaseOrder` doc
+    with proper `po_number`, `supplier_type="wholesaler"`,
+    `total_amount`, `status_history`. Notifies the wholesaler. Returns
+    `po_id`, `po_number`, `total`, `resolved`, `unresolved` so the UI
+    can speak naturally.
+  - Smarter product matcher: brand-token-anchored — the first token of
+    the user's request must overlap the candidate product's tokens, so
+    "Royco" never matches "Lipton".
+- `services/retailer.py`:
+  - System prompt tightened: "Never narrate the JSON. Wrap it strictly
+    in ```json ... ``` at the end. Speak naturally in 1-2 sentences."
+  - Daily-sales scope added to the context (today, yesterday, last 7 days).
+- `components/RetailerAssistantBubble.tsx`:
+  - Client-side `sanitizeReply()` strips any JSON leftovers the backend
+    missed. Defence in depth.
+  - On `/execute` success the toast surfaces the actual PO number +
+    total ("PO PO-2026-00004 placed · ₦15,350"). A confirmation turn
+    is appended to the chat with the PO number so the operator has a
+    permanent record without scanning the toast.
+  - Unresolved products surface a specific "Couldn't find: X" error
+    instead of the generic one.
+
+### Validation
+- "Royco Classic 100s" → PO-2026-00003 · ₦22,000 ✓
+- Multi-line "Royco + Knorr Beef" → both resolved correctly ✓
+- "Coca Cola" (not in catalog) → 400 with unresolved list ✓
+- All Sabi-placed POs visible on Procurement → Purchase Orders ✓
+- Wholesaler receives a notification on PO submit ✓
+
 ## 2026-06-15 — Retailer Dashboard + Inventory Command Center fix (P0)
 
 User report: retailer dashboard and retailer inventory command center

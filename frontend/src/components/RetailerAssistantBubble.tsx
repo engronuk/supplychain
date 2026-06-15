@@ -43,6 +43,25 @@ const SUGGESTIONS = [
   "Show me my pending shipments",
 ];
 
+/**
+ * Strip any JSON action block (fenced or bare) that the LLM may have leaked
+ * into the spoken reply. The backend extracts the action separately, so the
+ * user should never see the JSON in the chat bubble.
+ */
+function sanitizeReply(text: string): string {
+  let cleaned = text;
+  // 1) fenced ```json ... ``` and ``` ... ```
+  cleaned = cleaned.replace(/```(?:json)?\s*\{[\s\S]*?\}\s*```/g, "");
+  // 2) bare {"action": ...} block — including nested braces / arrays.
+  cleaned = cleaned.replace(
+    /\{\s*"action"\s*:\s*"[^"]+"\s*(?:,\s*"[^"]+"\s*:\s*(?:"[^"]*"|\d+|\[[^\]]*\]|\{[^}]*\}))*\s*\}/g,
+    "",
+  );
+  // 3) stray empty fences
+  cleaned = cleaned.replace(/```(?:json)?\s*```/g, "");
+  return cleaned.trim() || "Got it.";
+}
+
 export default function RetailerAssistantBubble({ onUiAction, onRefresh }: Props) {
   const { session } = useSession();
   const [open, setOpen] = useState(false);
@@ -122,9 +141,10 @@ export default function RetailerAssistantBubble({ onUiAction, onRefresh }: Props
         `/retailer/${retailerId}/assistant`,
         { message: trimmed, history },
       );
+      const cleanReply = sanitizeReply(data.reply || "(no response)");
       const assistantTurn: ChatTurn = {
         role: "assistant",
-        content: data.reply || "(no response)",
+        content: cleanReply,
         ts: Date.now(),
         action: data.action || undefined,
       };
@@ -141,16 +161,32 @@ export default function RetailerAssistantBubble({ onUiAction, onRefresh }: Props
               `/retailer/${retailerId}/assistant/execute`,
               { action: a },
             );
-            if (res.data?.ok) {
-              toast.success(
-                `Reorder placed (${res.data.items_count} item${res.data.items_count === 1 ? "" : "s"})`
-              );
+            if (res.data?.ok && res.data?.po_number) {
+              const total = res.data.total
+                ? `₦${Number(res.data.total).toLocaleString()}`
+                : "";
+              toast.success(`PO ${res.data.po_number} placed${total ? ` · ${total}` : ""}`, {
+                description: `${res.data.items_count} item(s) sent to your ${res.data.supplier_type}. Track it on the Procurement page.`,
+              });
+              // Append a confirmation turn so the user sees the PO number
+              // inline in the chat (not just as a toast that vanishes).
+              setTurns((arr) => [
+                ...arr,
+                {
+                  role: "assistant",
+                  content: `✅ Done — PO **${res.data.po_number}** for ${res.data.items_count} item(s)${total ? ` (${total})` : ""} is on its way. Check the Procurement page to track it.`,
+                  ts: Date.now(),
+                  action: { action: "reorder_confirmed", po_number: res.data.po_number, po_id: res.data.po_id },
+                },
+              ]);
               onRefresh && onRefresh();
+            } else if (res.data?.unresolved?.length) {
+              toast.error(`Couldn't find: ${res.data.unresolved.join(", ")}. Try Smart Reorder.`);
             } else {
-              toast.error("Couldn't place that reorder — try Smart Reorder.");
+              toast.error(res.data?.error || "Couldn't place that reorder — try Smart Reorder.");
             }
-          } catch {
-            toast.error("Couldn't place that reorder.");
+          } catch (err: any) {
+            toast.error(err?.response?.data?.detail || "Couldn't place that reorder.");
           }
         } else if (
           a.action === "open_smart_reorder" ||
