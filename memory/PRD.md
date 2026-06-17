@@ -147,5 +147,17 @@ visibility (Manufacturer → Warehouse → Distributor → Wholesaler → Retail
   discriminator and ship_po now emits `wholesaler → retailer` shipments. New
   endpoints: `/api/procurement/retailer/{id}/suppliers` and
   `/api/distributor/{id}/incoming-wholesaler-pos`.
+- **P0+P1 Manufacturer→Retailer remediation sprint (✅ SHIPPED 2026-06-17)** —
+  inventory now credits at every tier on delivery (was warehouse-only); tier
+  rollups discover retailers via parent chain (was empty); wholesaler
+  workspace correctly serves retailers (was "distributors"); PO statuses
+  flip to delivered on shipment receipt; live map auto-archives trucks
+  >12h post-delivery (was 664 stale "arrived" markers); new bulk-ack and
+  archive endpoints; logistics events auto-resolve; dashboard snapshots
+  auto-refresh when stale (was "Updated 2d ago"); shipment line items now
+  carry full unit_price/gross/discount/net financials. Regression
+  `/app/backend/tests/test_p0p1_sprint.py` — 15/15 PASS. Audit
+  `/app/test_reports/audit_inventory.json` — zero inventory leaks, zero
+  stale POs.
 
 See `CHANGELOG.md` for dated implementation history and `ROADMAP.md` for the prioritized backlog.

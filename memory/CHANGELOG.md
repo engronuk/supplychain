@@ -1,4 +1,112 @@
 # CHANGELOG
+
+## 2026-06-17 — P0 + P1 Remediation Sprint (Manufacturer → Retailer)
+
+### Root causes
+
+1. **Inventory deliveries never credited destination tiers.**
+   `_complete_delivery` and `_deliver_stop` (services/control_tower_sim.py)
+   only credited stock when `to_role == "warehouse"`. Goods routed to
+   distributor / wholesaler / retailer marked the shipment `received` but
+   skipped the inventory ledger entirely, so the live `tier_inventory`
+   counter showed retailer = 0 across the entire network.
+2. **`_tenant_ids` couldn't find retailers.** It filtered `db.retailers`
+   on `manufacturer_id`, but seeding stores the parent chain only in
+   `lineage_path` / `wholesaler_id` / `distributor_id`. Result: every
+   downstream rollup for retailer tier returned 0.
+3. **Wholesaler dashboard hardcoded `outgoing_shipments = 0`** and listed
+   downstream nodes as **distributors** instead of retailers — wrong tier
+   in the 5-tier model.
+4. **POs never closed on delivery.** No code path flipped
+   `purchase_orders` or `wholesaler_purchase_orders` to `delivered` when
+   their shipment arrived, so the procurement timeline stayed open
+   forever.
+5. **Live map cluttered with ~664 stationary `arrived` trucks.** No
+   archival policy, so post-delivery trucks lingered for days.
+6. **167 unacked critical events.** Remediation events (breakdown_resolved
+   etc.) were emitted but never auto-acked the originating alerts.
+7. **Snapshot pattern stuck at "Updated 2d ago"** — `read_or_compute`
+   returned whatever was stored, no staleness check, no background
+   rebuild.
+8. **POS spotlight cohort included 170 retailers** (the entire demo
+   roster was `is_demo=True`), so the 50% bias was effectively no bias —
+   demo dashboards showed ₦0 today.
+9. **Shipment line items missing financial metadata.** No `unit_price`,
+   `gross_value`, `discount`, `net_value` on shipped items → analytics
+   couldn't roll up.
+
+### Fixes
+
+* New generic `_receive_at_owner(owner_type, owner_id, items, ref_id)` in
+  `services/control_tower_sim.py` — credits inventory at any tier, writes
+  an `inventory_movements` ledger row, increments destination quantity.
+  Wired into `_complete_delivery` and `_deliver_stop` for both shipment
+  refs and multi-stop routes.
+* New `_close_purchase_orders_for_shipment(sh)` — flips originating
+  `purchase_orders` / `wholesaler_purchase_orders` to `delivered` with a
+  status-history entry.
+* `_tenant_ids` (routes/control_tower.py) now walks the parent chain
+  (`lineage_path`, wholesaler/distributor FKs, `metadata.manufacturer_id`)
+  so all 168 retailers per manufacturer are visible to the rollups.
+* `routes/wholesaler.py` rebuilt customer base to **retailers under
+  this wholesaler**, queries real outgoing shipments, KPI exposed as
+  `active_retailers`, AI insight reworded.
+* New `POST /api/logistics/events/bulk-ack` (accepts ids / severity /
+  all_unacked), `POST /api/logistics/vehicles/archive` (configurable
+  cutoff hours), `GET /api/logistics/vehicles/archived`. Control tower
+  endpoint auto-archives arrived trucks > 12h on every read; KPIs now
+  include `fleet_active`, `fleet_total`, `fleet_archived`,
+  `delivered_today`.
+* `services/logistics_events.py` — `_auto_resolve` map auto-acks the
+  matching critical alerts when a `*_resolved` or `delivery_completed`
+  event fires on the same vehicle.
+* `services/snapshots.py::read_or_compute` now accepts
+  `stale_after_minutes` (default 15) and schedules a background rebuild
+  when the cached envelope is stale — dashboards trend toward freshness
+  on each visit.
+* Simulator spotlight narrowed to the `*-rtl-0001` cohort and bias
+  raised from 50% → 70%, so demo dashboards always have today's sales.
+* `_enrich_items_with_financials` stamps every shipment line item with
+  `unit_price`, `gross_value`, `discount`, `net_value` + shipment-level
+  rollups.
+* `frontend/src/components/Layout.jsx` sidebar label,
+  `views/WholesalerDashboard.jsx` KPI card and underlying field renamed
+  to **Retailer Network / Active Retailers**.
+* `routes/retailer_os.py` pending-deliveries query now matches shipments
+  addressed by either legacy `retailer_id` OR new `to_role`/`to_id`.
+
+### Backfills run
+
+* `backend/scripts/backfill_inventory_credits.py` — credited inventory
+  for 1189 historical shipments, closed 330 stale POs, archived 682
+  trucks, auto-acked 1091 stale events, stamped `manufacturer_id` on
+  168 retailers.
+* `backend/scripts/backfill_shipment_financials.py` — added
+  `unit_price`/`gross_value`/`discount`/`net_value` to **4791** legacy
+  shipment line items.
+* `backend/scripts/audit_inventory.py` — invariant audit, output at
+  `/app/test_reports/audit_inventory.json`.
+
+### Evidence
+
+* **Logistics**: `fleet_active 30/819` (was 696/696 stationary),
+  `fleet_archived 789`, `unacked_critical 35→3`, `delivered_today 110`.
+* **Tier inventory**: warehouse 1.37M, distributor 981k, wholesaler
+  533k, **retailer 292k (was 0)**.
+* **Retailer dashboard (mfr-0001-rtl-0001)**: Today's Sales **₦321,850**
+  (was ₦0), Pending Deliveries 1, Inventory 1,919 units.
+* **Wholesaler dashboard**: Outgoing Shipments **3** (was 0), Active
+  Retailers **4** (was "Active Distributors 2"), Turnover **0.15x**.
+* **Distributor dashboard**: Network Revenue 90D **₦83M** (was ₦0),
+  Active Wholesalers **3**, Inventory **83,221**.
+* **Manufacturer dashboard**: "Updated 9m ago" (was "Updated 2d ago").
+* **Audit**: 0 inventory leaks, 0 stale POs, 4794 shipment lines, 99.94%
+  with full financial metadata.
+* Testing agent (iteration_30): 15/15 backend + 4/4 frontend visual
+  assertions pass; new regression suite at
+  `/app/backend/tests/test_p0p1_sprint.py`.
+
+
 ## 2026-06-15 — End-to-end procurement ↔ logistics sync
 
 User reported a wholesaler PO (WPO-2026-00005) in `in_transit` status
