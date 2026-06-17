@@ -1,0 +1,21 @@
+{
+  "checks": {
+    "tier_inventory_units": {
+      "warehouse": 1374021,
+      "distributor": 981409,
+      "wholesaler": 533235,
+      "retailer": 292191
+    },
+    "delivered_shipments": 2073,
+    "shipments_missing_movement": 0,
+    "stale_open_pos": 0,
+    "shipment_lines_total": 4794,
+    "shipment_lines_missing_financials": 3,
+    "unacked_critical_events": 32
+  },
+  "errors": [],
+  "warnings": [
+    "3/4794 shipments have line items missing financial metadata"
+  ],
+  "passed": true
+}

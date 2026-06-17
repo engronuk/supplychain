@@ -29,9 +29,32 @@ async def _tenant_ids(mfr: str) -> Dict[str, List[str]]:
     who = [o["id"] async for o in db.organizations.find(
         {"organization_type": "wholesaler", "parent_organization_id": {"$in": dist}},
         {"_id": 0, "id": 1})]
-    rtl = [r["id"] async for r in db.retailers.find(
-        {"manufacturer_id": mfr}, {"_id": 0, "id": 1})]
-    return {"warehouse": wh, "distributor": dist, "wholesaler": who, "retailer": rtl}
+    # Retailers — the rebuild does not stamp `manufacturer_id` directly onto
+    # db.retailers; instead the parent chain is encoded in `lineage_path`
+    # (and the wholesaler / distributor foreign keys). Resolve via that
+    # parent chain so the 5-tier view always finds them.
+    rtl_set = set()
+    async for r in db.retailers.find(
+        {"$or": [
+            {"manufacturer_id": mfr},
+            {"wholesaler_id": {"$in": who}},
+            {"distributor_id": {"$in": dist}},
+        ]},
+        {"_id": 0, "id": 1},
+    ):
+        rtl_set.add(r["id"])
+    # Belt-and-braces: also pull from organizations by metadata.manufacturer_id.
+    async for o in db.organizations.find(
+        {"organization_type": "retailer",
+         "$or": [
+             {"metadata.manufacturer_id": mfr},
+             {"parent_organization_id": {"$in": who + dist}},
+         ]},
+        {"_id": 0, "id": 1},
+    ):
+        rtl_set.add(o["id"])
+    return {"warehouse": wh, "distributor": dist, "wholesaler": who,
+            "retailer": sorted(rtl_set)}
 
 
 async def _units_by_owner(owner_type: str, ids: List[str]) -> Dict[str, Dict[str, float]]:
@@ -79,19 +102,35 @@ async def control_tower(manufacturer_id: Optional[str] = None,
     ids = await _tenant_ids(mfr)
 
     # ---- Fleet -------------------------------------------------------------
-    # Pull active vehicles directly (no arbitrary 100-doc cap) so the map and
-    # the "Fleet X/Y active" counter always agree. `arrived` is the
-    # post-delivery linger state — trucks stay on the canvas for a few minutes
-    # so an operator can see the completed delivery before the marker fades.
+    # Active fleet excludes long-arrived (archived) trucks so the map and
+    # KPI counter agree on what's *operational* right now. An "arrived"
+    # truck lingers on the canvas for a short window so an operator can see
+    # the completed delivery, then we auto-archive (status="archived")
+    # so the map doesn't accumulate stationary markers indefinitely.
+    archive_cutoff_hours = 12
+    cutoff_iso = (now - timedelta(hours=archive_cutoff_hours)).isoformat()
+    # Auto-archive arrived trucks past the cutoff (idempotent, fire-and-forget).
+    await db.vehicles.update_many(
+        {"manufacturer_id": mfr, "status": "arrived",
+         "delivered_at": {"$lt": cutoff_iso}},
+        {"$set": {"status": "archived", "archived_at": now.isoformat()}},
+    )
+
     active_statuses = ["in_transit", "stopped", "breakdown", "arrived"]
     vehicles = await db.vehicles.find(
         {"manufacturer_id": mfr,
          "status": {"$in": active_statuses}},
         {"_id": 0},
     ).to_list(2000)
-    # `fleet_total` reflects the manufacturer's full provisioned fleet.
     fleet_total = await db.vehicles.count_documents({"manufacturer_id": mfr})
-    active = [v for v in vehicles if v.get("status") in ("in_transit", "stopped", "breakdown", "arrived")]
+    fleet_archived = await db.vehicles.count_documents(
+        {"manufacturer_id": mfr, "status": "archived"})
+    today_start_iso = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    fleet_delivered_today = await db.vehicles.count_documents({
+        "manufacturer_id": mfr,
+        "delivered_at": {"$gte": today_start_iso},
+    })
+    active = [v for v in vehicles if v.get("status") in ("in_transit", "stopped", "breakdown")]
     deviations_active = sum(1 for v in active if (v.get("deviation") or {}).get("active"))
     breakdowns_active = sum(1 for v in active if v.get("status") == "breakdown")
     stops_active = sum(1 for v in active if v.get("status") == "stopped")
@@ -344,6 +383,8 @@ async def control_tower(manufacturer_id: Optional[str] = None,
             "unacked_critical": unacked_critical,
             "fleet_active": len(active),
             "fleet_total": fleet_total,
+            "fleet_archived": fleet_archived,
+            "delivered_today": fleet_delivered_today,
         },
         "fleet": vehicles,
         "shipments": shipments_live,
@@ -446,6 +487,61 @@ async def ack_event(event_id: str,
     if not res.matched_count:
         raise HTTPException(404, "Event not found")
     return {"acknowledged": True}
+
+
+@router.post("/logistics/events/bulk-ack")
+async def bulk_ack_events(payload: Dict[str, Any],
+                          user: Dict[str, Any] = Depends(get_current_user)):
+    """Acknowledge multiple events in one call. Accepts:
+      • {"ids": [...]}  — explicit list of event ids
+      • {"severity": "critical"}  — every unacked event matching severity
+      • {"all_unacked": true}     — every unacked event for tenant
+    Tenant-scoped to the caller's manufacturer.
+    """
+    mfr = await _scope_manufacturer(user, None) if user.get("role") != "super_admin" else None
+    q: Dict[str, Any] = {"acknowledged": False}
+    if mfr:
+        q["manufacturer_id"] = mfr
+    ids = payload.get("ids") or []
+    if ids:
+        q["id"] = {"$in": ids}
+    elif payload.get("severity"):
+        q["severity"] = payload["severity"]
+    elif not payload.get("all_unacked"):
+        raise HTTPException(400, "Provide ids, severity, or all_unacked=true")
+    res = await db.logistics_events.update_many(
+        q, {"$set": {"acknowledged": True, "acknowledged_at": now_iso(),
+                     "acknowledged_by": (user or {}).get("email")}})
+    return {"acknowledged": res.modified_count}
+
+
+@router.post("/logistics/vehicles/archive")
+async def archive_vehicles(payload: Optional[Dict[str, Any]] = None,
+                           user: Dict[str, Any] = Depends(get_current_user)):
+    """Move arrived trucks older than `cutoff_hours` into the archive (kept
+    in the same collection with status='archived' for history/reporting)."""
+    mfr = await _scope_manufacturer(user, None) if user.get("role") != "super_admin" else None
+    cutoff_hours = int((payload or {}).get("cutoff_hours") or 12)
+    cutoff_iso = (datetime.now(timezone.utc) - timedelta(hours=cutoff_hours)).isoformat()
+    q: Dict[str, Any] = {"status": "arrived",
+                         "delivered_at": {"$lt": cutoff_iso}}
+    if mfr:
+        q["manufacturer_id"] = mfr
+    res = await db.vehicles.update_many(
+        q, {"$set": {"status": "archived", "archived_at": now_iso()}})
+    return {"archived": res.modified_count, "cutoff_hours": cutoff_hours}
+
+
+@router.get("/logistics/vehicles/archived")
+async def list_archived_vehicles(manufacturer_id: Optional[str] = None,
+                                 limit: int = 100,
+                                 user: Dict[str, Any] = Depends(get_current_user)):
+    """List recently archived (delivered + retired from map) trucks for history."""
+    mfr = await _scope_manufacturer(user, manufacturer_id)
+    vehicles = await db.vehicles.find(
+        {"manufacturer_id": mfr, "status": "archived"}, {"_id": 0},
+    ).sort("archived_at", -1).to_list(min(limit, 500))
+    return {"vehicles": vehicles, "count": len(vehicles)}
 
 
 # ===========================================================================

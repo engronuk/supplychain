@@ -24,11 +24,19 @@ async def retailer_dashboard(retailer_id: str):
     total_units = sum(int(i["quantity"]) for i in inv)
     low = [i for i in inv if i["urgency"] in ("warning", "critical")]
     critical = [i for i in inv if i["urgency"] == "critical"]
+    # Pending deliveries: include both legacy `retailer_id` shipments and
+    # new control-tower shipments addressed via `to_id`/`to_role`.
+    retailer_query = {
+        "$or": [
+            {"retailer_id": retailer_id},
+            {"to_role": "retailer", "to_id": retailer_id},
+        ]
+    }
     pending = await db.shipments.count_documents(
-        {"retailer_id": retailer_id, "status": {"$in": ["pending", "in_transit"]}}
+        {**retailer_query, "status": {"$in": ["pending", "in_transit", "shipped", "dispatched"]}}
     )
     shipments = await db.shipments.find(
-        {"retailer_id": retailer_id}, {"_id": 0}
+        retailer_query, {"_id": 0}
     ).sort("created_at", -1).to_list(8)
     distributors = {d["id"]: d for d in await db.distributors.find({}, {"_id": 0}).to_list(2000)}
     products = {p["id"]: p for p in await db.products.find({}, {"_id": 0}).to_list(2000)}

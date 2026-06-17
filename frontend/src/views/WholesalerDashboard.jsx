@@ -77,10 +77,10 @@ export default function WholesalerDashboard() {
           value={fmtNumber(k.outgoing_shipments.value)}
         />
         <KpiCard
-          testid="kpi-active-distributors"
+          testid="kpi-active-retailers"
           icon={Network}
-          label="Active Distributors"
-          value={fmtNumber(k.active_distributors.value)}
+          label="Active Retailers"
+          value={fmtNumber((k.active_retailers || k.active_distributors).value)}
         />
         <KpiCard
           testid="kpi-inventory-turnover"

@@ -108,32 +108,21 @@ async def wholesaler_overview(wholesaler_id: str,
     ).to_list(2000)
     product_by_id = {p["id"]: p for p in products}
 
-    # ---- Distributors in the same region (soft-link "customer base") ------
-    distributors_in_region = await db.organizations.find(
-        {
-            "organization_type": "distributor",
-            "region": region,
-            **({"parent_organization_id": {"$ne": None}} if region else {}),
-        },
-        {"_id": 0, "id": 1, "organization_name": 1, "organization_code": 1,
-         "region": 1, "city": 1},
-    ).to_list(500) if region else []
-    # Filter by tenant via a SINGLE bulk lookup against the legacy mirror.
+    # ---- Customer base: RETAILERS downstream of this wholesaler ----------
+    # (Strict 5-tier model: Wholesaler → Retailer.)
     customers: List[dict] = []
-    if distributors_in_region:
-        ids = [d["id"] for d in distributors_in_region]
-        legacy_mfr: dict = {}
-        async for ld in db.distributors.find(
-            {"id": {"$in": ids}}, {"_id": 0, "id": 1, "manufacturer_id": 1},
-        ):
-            legacy_mfr[ld["id"]] = ld.get("manufacturer_id", "")
-        for d in distributors_in_region:
-            mfr = legacy_mfr.get(d["id"])
-            # If we have a legacy mirror, enforce tenant; otherwise accept
-            # the small-tenant pattern (no manufacturer mirror).
-            if mfr and tenant_id and mfr != tenant_id:
-                continue
-            customers.append(d)
+    async for r in db.retailers.find(
+        {"wholesaler_id": wholesaler_id},
+        {"_id": 0, "id": 1, "name": 1, "code": 1,
+         "region": 1, "city": 1},
+    ):
+        customers.append({
+            "id": r["id"],
+            "organization_name": r.get("name") or "",
+            "organization_code": r.get("code") or "",
+            "region": r.get("region") or "",
+            "city": r.get("city") or "",
+        })
 
     # ---- Inventory --------------------------------------------------------
     inventory = await db.inventory.find(
@@ -175,8 +164,17 @@ async def wholesaler_overview(wholesaler_id: str,
     pending_pos = sum(1 for p in pos if p.get("status") in ("draft", "submitted", "approved"))
     incoming_shipments = sum(1 for p in pos if p.get("status") in ("allocated", "shipped"))
 
-    # ---- Outgoing shipments (placeholder Phase 2 — count zero for now) ----
-    outgoing_shipments = 0
+    # ---- Outgoing shipments (wholesaler → retailer): real time from
+    # ----   db.shipments (procurement bridge writes them as from_id=this).
+    outgoing_shipments = await db.shipments.count_documents({
+        "from_role": "wholesaler", "from_id": wholesaler_id,
+        "status": {"$in": ["in_transit", "shipped", "dispatched"]},
+    })
+    incoming_shipments_live = await db.shipments.count_documents({
+        "to_role": "wholesaler", "to_id": wholesaler_id,
+        "status": {"$in": ["in_transit", "shipped", "dispatched"]},
+    })
+    incoming_shipments = max(incoming_shipments, incoming_shipments_live)
 
     # ---- Inventory turnover (last 90d throughput / avg inventory) ----------
     ninety_ago = (datetime.now(timezone.utc) - timedelta(days=90)).isoformat()
@@ -257,8 +255,8 @@ async def wholesaler_overview(wholesaler_id: str,
     if customers:
         insights.append({
             "type": "network",
-            "title": f"Serving {len(customers)} distributor(s)",
-            "body": f"You are the regional hub for {len(customers)} distributor(s) in "
+            "title": f"Serving {len(customers)} retailer(s)",
+            "body": f"You are the regional hub for {len(customers)} retailer(s) in "
                     f"{region or 'your zone'}. Track their replenishment cadence.",
             "tone": "positive",
         })
@@ -278,6 +276,7 @@ async def wholesaler_overview(wholesaler_id: str,
             "incoming_shipments": {"value": incoming_shipments},
             "outgoing_shipments": {"value": outgoing_shipments},
             "active_distributors": {"value": len(customers)},
+            "active_retailers":    {"value": len(customers)},
             "inventory_turnover": {"value": turnover},
             "stockout_risks":    {"value": len(risks)},
         },

@@ -67,7 +67,7 @@ function navForRole(role) {
     // Phase 3 nav — Procurement (upstream POs) + dedicated Distributor
     // Orders + Shipments, plus Analytics and the new Intelligence Center.
     base.push({ to: "/procurement", label: "Procurement", icon: ShoppingCart });
-    base.push({ to: "/network", label: "Distributor Network", icon: Network });
+    base.push({ to: "/network", label: "Retailer Network", icon: Network });
     base.push({ to: "/wholesaler/orders", label: "Customer Orders", icon: ClipboardList });
     base.push({ to: "/wholesaler/shipments", label: "Shipments", icon: Truck });
     base.push({ to: "/analytics", label: "Analytics", icon: BarChart3 });

@@ -95,7 +95,47 @@ async def emit(
         await _fanout_notifications(event)
     except Exception:
         logger.exception("[events] notification fan-out failed for %s", event_type)
+    try:
+        await _auto_resolve(event)
+    except Exception:
+        logger.exception("[events] auto-resolve failed for %s", event_type)
     return event
+
+
+# Mapping: a resolution event auto-acks every prior unacked alert of these
+# event types for the same vehicle/shipment. Keeps the alert pile tidy.
+_RESOLVES: Dict[str, tuple] = {
+    "breakdown_resolved":   ("vehicle_breakdown",),
+    "stop_resolved":        ("unauthorized_stop",),
+    "deviation_resolved":   ("route_deviation",),
+    "delivery_completed":   ("vehicle_breakdown", "unauthorized_stop",
+                             "route_deviation", "delay_detected",
+                             "delay_predicted"),
+    "route_completed":      ("delay_detected", "delay_predicted"),
+}
+
+
+async def _auto_resolve(event: Dict[str, Any]) -> None:
+    targets = _RESOLVES.get(event["event_type"])
+    if not targets:
+        return
+    q: Dict[str, Any] = {
+        "manufacturer_id": event["manufacturer_id"],
+        "event_type": {"$in": list(targets)},
+        "acknowledged": False,
+    }
+    if event.get("vehicle_id"):
+        q["vehicle_id"] = event["vehicle_id"]
+    elif event.get("shipment_id"):
+        q["shipment_id"] = event["shipment_id"]
+    else:
+        return
+    await db.logistics_events.update_many(
+        q, {"$set": {"acknowledged": True,
+                     "acknowledged_at": now_iso(),
+                     "acknowledged_by": "auto-resolve",
+                     "auto_resolved": True,
+                     "resolved_by_event_id": event["id"]}})
 
 
 # ---------------------------------------------------------------------------

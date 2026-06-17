@@ -499,13 +499,18 @@ async def run_cycle(participants: List[dict], counts: Dict[str, int],
     retailers = _retailers(participants)
     distributors = _distributors(participants)
 
-    # Spotlight retailers — the demo login accounts. Bias retail sales toward
-    # them so "Today's Sales" on the demo dashboards is always alive instead
-    # of activity being spread invisibly thin across hundreds of shops.
+    # Spotlight retailers — the *primary* demo login accounts (the first
+    # retailer-per-manufacturer in the seeded set, conventionally `*-rtl-0001`).
+    # We bias retail sales toward them so "Today's Sales" on the demo
+    # dashboards is always alive instead of activity being spread invisibly
+    # thin across hundreds of shops. Restricting to the rtl-0001 cohort keeps
+    # the bias meaningful even when every retailer is technically `is_demo`.
     spotlight: List[dict] = []
     try:
         demo_users = await db.users.find(
-            {"role": "retailer", "is_demo": True},
+            {"role": "retailer",
+             "$or": [{"is_primary_demo": True},
+                     {"email": {"$regex": "-rtl-0001@"}}]},
             {"_id": 0, "entity_id": 1},
         ).to_list(50)
         demo_ids = {u.get("entity_id") for u in demo_users}
@@ -525,7 +530,7 @@ async def run_cycle(participants: List[dict], counts: Dict[str, int],
     for _ in range(counts.get("retail_sales", 0)):
         if not retailers:
             break
-        pool = spotlight if (spotlight and rng.random() < 0.5) else retailers
+        pool = spotlight if (spotlight and rng.random() < 0.7) else retailers
         await _safe(generate_retail_sale(rng.choice(pool), rng),
                      "retail_sales")
 

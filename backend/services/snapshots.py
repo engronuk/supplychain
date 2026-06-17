@@ -113,8 +113,13 @@ async def read_or_compute(
     kind: str,
     manufacturer_id: str,
     producer: Callable[[], Awaitable[dict]],
+    stale_after_minutes: int = 15,
 ) -> dict:
     """Return the latest snapshot envelope; never blocks on cold compute.
+
+    Stale snapshots (older than ``stale_after_minutes``) trigger an async
+    rebuild on the next request so the dashboard always trends toward
+    freshness without the user waiting for the heavy compute.
 
     Response envelope:
         { ...payload, "_snapshot": { "as_of": ISO, "kind": kind,
@@ -123,13 +128,31 @@ async def read_or_compute(
     snap = await get_snapshot(kind, manufacturer_id)
     if snap:
         payload = snap.get("payload") or {}
+        computed_at = snap.get("computed_at")
+        is_stale = False
+        try:
+            from datetime import timedelta
+            then = datetime.fromisoformat((computed_at or "").replace("Z", "+00:00"))
+            age = datetime.now(timezone.utc) - then
+            is_stale = age > timedelta(minutes=stale_after_minutes)
+        except Exception:
+            is_stale = True
+        if is_stale:
+            # Schedule a background rebuild — keep returning stale data so
+            # the request is instant.
+            try:
+                loop = asyncio.get_event_loop()
+                loop.create_task(_build_in_background(kind, manufacturer_id, producer))
+            except Exception:
+                logger.exception("stale-refresh schedule failed for %s:%s",
+                                 kind, manufacturer_id)
         return {
             **payload,
             "_snapshot": {
-                "as_of": snap.get("computed_at"),
+                "as_of": computed_at,
                 "kind": kind,
-                "fresh": False,
-                "computing": False,
+                "fresh": not is_stale,
+                "computing": is_stale,
             },
         }
     # Cold path — kick off compute in background, return a placeholder.

@@ -240,6 +240,59 @@ def _offset_position(lat: float, lng: float, rng: random.Random,
     return (lat + deg * math.cos(bearing), lng + deg * math.sin(bearing))
 
 
+async def _enrich_items_with_financials(items: List[Dict[str, Any]],
+                                        manufacturer_id: Optional[str] = None,
+                                        po_items: Optional[List[Dict[str, Any]]] = None,
+                                        ) -> tuple[List[Dict[str, Any]], float, float, float]:
+    """Stamp `unit_price`, `gross_value`, `discount`, `net_value` on every
+    shipment line item — required for downstream analytics (turnover,
+    revenue rollups, distributor revenue, retailer revenue). Looks up the
+    product master to find unit_price if not already on the PO line.
+
+    Returns (enriched_items, gross_total, discount_total, net_total).
+    """
+    if not items:
+        return [], 0.0, 0.0, 0.0
+    po_price_map: Dict[str, Dict[str, float]] = {}
+    for pi in (po_items or []):
+        pid = pi.get("product_id")
+        if pid:
+            po_price_map[pid] = {
+                "unit_price": float(pi.get("unit_price") or 0),
+                "discount":   float(pi.get("discount") or 0),
+            }
+    pids = [it.get("product_id") for it in items if it.get("product_id")]
+    prod_map: Dict[str, float] = {}
+    if pids:
+        async for p in db.products.find(
+            {"id": {"$in": pids}}, {"_id": 0, "id": 1, "unit_price": 1}):
+            prod_map[p["id"]] = float(p.get("unit_price") or 0)
+    enriched: List[Dict[str, Any]] = []
+    gross = disc = net = 0.0
+    for it in items:
+        out = dict(it)
+        pid = out.get("product_id")
+        qty = int(out.get("quantity") or 0)
+        unit_price = float(out.get("unit_price")
+                           or po_price_map.get(pid, {}).get("unit_price")
+                           or prod_map.get(pid)
+                           or 0)
+        discount = float(out.get("discount")
+                         or po_price_map.get(pid, {}).get("discount")
+                         or 0)
+        gross_value = round(unit_price * qty, 2)
+        net_value = round(gross_value - discount, 2)
+        out["unit_price"] = unit_price
+        out["gross_value"] = gross_value
+        out["discount"] = discount
+        out["net_value"] = net_value
+        enriched.append(out)
+        gross += gross_value
+        disc += discount
+        net += net_value
+    return enriched, round(gross, 2), round(disc, 2), round(net, 2)
+
+
 # ===========================================================================
 # Network-leg generators — first mile + wholesaler tier
 # ===========================================================================
@@ -272,6 +325,7 @@ async def ensure_factory_replenishment(rng: random.Random) -> int:
         items = [{"product_id": p["id"], "product_name": p.get("name"),
                   "sku": p.get("sku"), "quantity": rng.randint(200, 800)}
                  for p in rng.sample(prods, k=min(len(prods), rng.randint(2, 4)))]
+        items, gross_v, disc_v, net_v = await _enrich_items_with_financials(items, mfr)
         units = sum(i["quantity"] for i in items)
         sid = str(uuid.uuid4())
         tracking = f"FAC-{uuid.uuid4().hex[:6].upper()}"
@@ -282,6 +336,7 @@ async def ensure_factory_replenishment(rng: random.Random) -> int:
             "to_role": "warehouse", "to_id": wh["id"],
             "items": items, "tracking_code": tracking,
             "status": "in_transit", "source": "factory_replenishment",
+            "gross_value": gross_v, "discount_value": disc_v, "net_value": net_v,
             "created_at": now, "dispatched_at": now,
         })
         await emit(mfr, "shipment_created",
@@ -393,6 +448,8 @@ async def bridge_wholesaler_shipments() -> Dict[str, int]:
         tracking = po.get("po_number") or sid[:8].upper()
         items = [{k: it.get(k) for k in ("product_id", "product_name", "sku", "quantity")}
                  for it in (po.get("items") or [])]
+        items, gross_v, disc_v, net_v = await _enrich_items_with_financials(
+            items, mfr, po_items=po.get("items"))
         await db.shipments.insert_one({
             "id": sid, "manufacturer_id": mfr,
             "from_role": "distributor", "from_id": supplier_id,
@@ -401,7 +458,8 @@ async def bridge_wholesaler_shipments() -> Dict[str, int]:
             "status": "in_transit", "source": "procurement",
             "wholesaler_purchase_order_id": po["id"],
             "po_number": po.get("po_number"),
-            "total_amount": po.get("total_amount"),
+            "total_amount": po.get("total_amount") or net_v,
+            "gross_value": gross_v, "discount_value": disc_v, "net_value": net_v,
             "created_at": now,
             "dispatched_at": po.get("shipped_at") or now,
         })
@@ -456,6 +514,8 @@ async def bridge_wholesaler_shipments() -> Dict[str, int]:
         tracking = po.get("po_number") or sid[:8].upper()
         items = [{k: it.get(k) for k in ("product_id", "product_name", "sku", "quantity")}
                  for it in (po.get("items") or [])]
+        items, gross_v, disc_v, net_v = await _enrich_items_with_financials(
+            items, mfr, po_items=po.get("items"))
         await db.shipments.insert_one({
             "id": sid, "manufacturer_id": mfr,
             "from_role": "wholesaler", "from_id": whlsr_id,
@@ -464,7 +524,8 @@ async def bridge_wholesaler_shipments() -> Dict[str, int]:
             "status": "in_transit", "source": "procurement",
             "purchase_order_id": po["id"],
             "po_number": po.get("po_number"),
-            "total_amount": po.get("total_amount"),
+            "total_amount": po.get("total_amount") or net_v,
+            "gross_value": gross_v, "discount_value": disc_v, "net_value": net_v,
             "created_at": now,
             "dispatched_at": now,
         })
@@ -492,29 +553,91 @@ async def _receive_at_warehouse(mfr: str, wh_id: str,
                                 items: List[Dict[str, Any]],
                                 ref_id: str) -> None:
     """Book a first-mile arrival into the warehouse's on-hand inventory."""
+    await _receive_at_owner(mfr, "warehouse", wh_id, items, ref_id,
+                            movement_kind="factory_receipt")
+
+
+async def _receive_at_owner(mfr: str, owner_type: str, owner_id: str,
+                            items: List[Dict[str, Any]],
+                            ref_id: str,
+                            movement_kind: str = "shipment_receipt") -> None:
+    """Credit inventory at any downstream owner (warehouse / distributor /
+    wholesaler / retailer) when a shipment is received. Writes inventory
+    rows (with sensible default reorder level per tier), increments quantity,
+    and adds an immutable ledger row so analytics rollups can pick the
+    activity up."""
+    default_reorder = {
+        "warehouse": 1000, "distributor": 500,
+        "wholesaler": 200, "retailer": 50,
+    }.get(owner_type, 100)
     for it in items:
         qty = int(it.get("quantity") or 0)
         pid = it.get("product_id")
         if qty <= 0 or not pid:
             continue
         row = await db.inventory.find_one(
-            {"owner_type": "warehouse", "owner_id": wh_id, "product_id": pid},
-            {"_id": 0, "id": 1, "quantity": 1})
+            {"owner_type": owner_type, "owner_id": owner_id, "product_id": pid},
+            {"_id": 0, "id": 1, "quantity": 1, "in_transit": 1})
+        now = now_iso()
         if row:
+            new_qty = int(row.get("quantity") or 0) + qty
+            new_in_transit = max(0, int(row.get("in_transit") or 0) - qty)
             await db.inventory.update_one({"id": row["id"]}, {"$set": {
-                "quantity": int(row.get("quantity") or 0) + qty,
-                "updated_at": now_iso(), "last_movement_at": now_iso()}})
+                "quantity": new_qty,
+                "in_transit": new_in_transit,
+                "updated_at": now, "last_movement_at": now}})
         else:
             await db.inventory.insert_one({
-                "id": str(uuid.uuid4()), "owner_type": "warehouse",
-                "owner_id": wh_id, "product_id": pid,
-                "quantity": qty, "in_transit": 0, "reorder_level": 100,
-                "created_at": now_iso(), "updated_at": now_iso()})
+                "id": str(uuid.uuid4()), "owner_type": owner_type,
+                "owner_id": owner_id, "product_id": pid,
+                "quantity": qty, "in_transit": 0,
+                "reorder_level": default_reorder,
+                "created_at": now, "updated_at": now,
+                "last_movement_at": now,
+                "manufacturer_id": mfr,
+            })
         await db.inventory_movements.insert_one({
-            "id": str(uuid.uuid4()), "owner_type": "warehouse",
-            "owner_id": wh_id, "product_id": pid, "delta": qty,
-            "kind": "factory_receipt", "ref_id": ref_id,
-            "manufacturer_id": mfr, "created_at": now_iso()})
+            "id": str(uuid.uuid4()), "owner_type": owner_type,
+            "owner_id": owner_id, "product_id": pid, "delta": qty,
+            "kind": movement_kind, "ref_id": ref_id,
+            "manufacturer_id": mfr, "created_at": now})
+
+
+async def _close_purchase_orders_for_shipment(sh: Dict[str, Any]) -> None:
+    """When a shipment is received, flip the originating PO to 'delivered'
+    and add the milestone to its status_history so the procurement timeline
+    reflects the final state. Idempotent — only operates on POs that are
+    still in transit/shipped/allocated."""
+    if not sh:
+        return
+    now = now_iso()
+    sid = sh.get("id")
+    active = {"allocated", "shipped", "in_transit"}
+    # Retailer-side POs (Sabi + retailer procurement).
+    po_id = sh.get("purchase_order_id")
+    if po_id:
+        po = await db.purchase_orders.find_one({"id": po_id}, {"_id": 0, "status": 1})
+        if po and po.get("status") in active:
+            await db.purchase_orders.update_one(
+                {"id": po_id},
+                {"$set": {"status": "delivered", "delivered_at": now,
+                          "updated_at": now},
+                 "$push": {"status_history": {
+                     "status": "delivered", "at": now, "by": "control-tower",
+                     "note": f"Delivery confirmed via shipment {sid}"}}})
+    # Wholesaler-side POs (Distributor → Wholesaler).
+    wpo_id = sh.get("wholesaler_purchase_order_id")
+    if wpo_id:
+        wpo = await db.wholesaler_purchase_orders.find_one(
+            {"id": wpo_id}, {"_id": 0, "status": 1})
+        if wpo and wpo.get("status") in active:
+            await db.wholesaler_purchase_orders.update_one(
+                {"id": wpo_id},
+                {"$set": {"status": "delivered", "delivered_at": now,
+                          "updated_at": now},
+                 "$push": {"status_history": {
+                     "status": "delivered", "at": now, "by": "control-tower",
+                     "note": f"Delivery confirmed via shipment {sid}"}}})
 
 
 async def _complete_delivery(v: Dict[str, Any]) -> None:
@@ -523,8 +646,9 @@ async def _complete_delivery(v: Dict[str, Any]) -> None:
     if v.get("ref_type") == "shipment" and v.get("ref_id"):
         sh = await db.shipments.find_one(
             {"id": v["ref_id"]},
-            {"_id": 0, "to_role": 1, "to_id": 1, "items": 1,
-             "wholesaler_shipment_id": 1})
+            {"_id": 0, "id": 1, "to_role": 1, "to_id": 1, "items": 1,
+             "wholesaler_shipment_id": 1, "purchase_order_id": 1,
+             "wholesaler_purchase_order_id": 1})
         await db.shipments.update_one(
             {"id": v["ref_id"], "status": "in_transit"},
             {"$set": {"status": "received", "received_at": now}})
@@ -532,13 +656,26 @@ async def _complete_delivery(v: Dict[str, Any]) -> None:
             {"shipment_id": v["ref_id"], "status": "dispatched"},
             {"$set": {"status": "delivered", "delivered_at": now}})
         if sh:
-            if sh.get("to_role") == "warehouse" and sh.get("to_id"):
-                # First-mile arrival: goods land in warehouse inventory.
+            # Credit destination inventory at any tier (warehouse / distributor /
+            # wholesaler / retailer). This is what makes the 5-tier picture real.
+            to_role = sh.get("to_role")
+            to_id = sh.get("to_id")
+            items = sh.get("items") or []
+            if to_role in ("warehouse", "distributor", "wholesaler", "retailer") and to_id:
                 try:
-                    await _receive_at_warehouse(
-                        mfr, sh["to_id"], sh.get("items") or [], v["ref_id"])
+                    movement_kind = ("factory_receipt" if to_role == "warehouse"
+                                     else "shipment_receipt")
+                    await _receive_at_owner(
+                        mfr, to_role, to_id, items, v["ref_id"],
+                        movement_kind=movement_kind)
                 except Exception:
-                    logger.exception("[tower] warehouse receipt failed")
+                    logger.exception("[tower] inventory credit failed for %s/%s",
+                                     to_role, to_id)
+            # Close any originating purchase order (procurement → delivered).
+            try:
+                await _close_purchase_orders_for_shipment(sh)
+            except Exception:
+                logger.exception("[tower] PO close failed")
             if sh.get("wholesaler_shipment_id"):
                 # Wholesaler→distributor leg: close out the wholesaler ledger.
                 await db.wholesaler_shipments.update_one(
@@ -571,12 +708,33 @@ async def _deliver_stop(v: Dict[str, Any], st: Dict[str, Any]) -> None:
     now = now_iso()
     sid = st.get("shipment_id")
     if sid:
+        sh = await db.shipments.find_one(
+            {"id": sid},
+            {"_id": 0, "id": 1, "to_role": 1, "to_id": 1, "items": 1,
+             "purchase_order_id": 1, "wholesaler_purchase_order_id": 1})
         await db.shipments.update_one(
             {"id": sid, "status": {"$in": ["in_transit", "delayed"]}},
             {"$set": {"status": "received", "received_at": now}})
         await db.distributor_orders.update_one(
             {"shipment_id": sid, "status": "dispatched"},
             {"$set": {"status": "delivered", "delivered_at": now}})
+        if sh:
+            to_role = sh.get("to_role")
+            to_id = sh.get("to_id")
+            items = sh.get("items") or []
+            if to_role in ("warehouse", "distributor", "wholesaler", "retailer") and to_id:
+                try:
+                    movement_kind = ("factory_receipt" if to_role == "warehouse"
+                                     else "shipment_receipt")
+                    await _receive_at_owner(
+                        mfr, to_role, to_id, items, sid,
+                        movement_kind=movement_kind)
+                except Exception:
+                    logger.exception("[tower] stop inventory credit failed")
+            try:
+                await _close_purchase_orders_for_shipment(sh)
+            except Exception:
+                logger.exception("[tower] stop PO close failed")
     await emit(mfr, "delivery_completed",
                f"Truck {v['code']} delivered stop {st.get('seq')} at {st.get('dest_name')}",
                f"Route {v.get('shipment_code') or ''} · {(st.get('units') or 0):,} units".strip(),
