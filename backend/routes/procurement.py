@@ -402,7 +402,46 @@ async def get_purchase_order(po_id: str):
     if not po:
         raise HTTPException(404, "Purchase order not found")
     distributors, retailers, products, wholesalers = await _load_lookups()
-    return await _denorm_po(po, distributors, retailers, products, wholesalers)
+    enriched = await _denorm_po(po, distributors, retailers, products, wholesalers)
+    # Attach the linked shipment + live vehicle so the lifecycle timeline can
+    # show TK-XXX · X% en route · ETA without an extra round-trip.
+    enriched["shipment"] = None
+    enriched["vehicle"] = None
+    ship = await db.shipments.find_one(
+        {"$or": [
+            {"purchase_order_id": po_id},
+            {"id": po.get("mirror_shipment_id")},
+        ]},
+        {"_id": 0},
+    )
+    if ship:
+        enriched["shipment"] = {
+            "id": ship.get("id"),
+            "status": ship.get("status"),
+            "from_role": ship.get("from_role"),
+            "to_role": ship.get("to_role"),
+            "tracking_code": ship.get("tracking_code"),
+            "dispatched_at": ship.get("dispatched_at"),
+            "delivered_at": ship.get("delivered_at"),
+        }
+        v = await db.vehicles.find_one(
+            {"ref_id": ship["id"]},
+            {"_id": 0, "id": 1, "code": 1, "plate": 1, "driver_name": 1,
+             "driver_phone": 1, "status": 1, "route_progress": 1,
+             "eta_minutes": 1, "lat": 1, "lng": 1, "speed_kmh": 1,
+             "dest_name": 1, "origin_name": 1, "route_km": 1, "units": 1,
+             "updated_at": 1},
+        )
+        if v:
+            # Convert ETA minutes → readable absolute time guess.
+            from datetime import datetime, timezone, timedelta
+            eta_iso = None
+            if v.get("status") == "in_transit" and v.get("eta_minutes"):
+                remain = max(0, int(v["eta_minutes"]) * (1 - float(v.get("route_progress") or 0)))
+                eta_iso = (datetime.now(timezone.utc) + timedelta(minutes=remain)).isoformat()
+            v["eta_iso"] = eta_iso
+            enriched["vehicle"] = v
+    return enriched
 
 
 @router.post("/procurement/purchase-orders", response_model=PurchaseOrder)

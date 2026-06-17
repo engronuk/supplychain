@@ -317,13 +317,23 @@ function LifecycleTimeline({ po }) {
     : LIFECYCLE;
   const events = po.status_history || [];
   const lastIdx = flow.indexOf(po.status);
+  const v = po.vehicle || null;
+  const ship = po.shipment || null;
+  const progressPct = v?.route_progress != null
+    ? Math.round(Math.min(1, Math.max(0, Number(v.route_progress))) * 100)
+    : null;
+  const etaTxt = v?.eta_iso ? new Date(v.eta_iso).toLocaleString(undefined, {
+    hour: "2-digit", minute: "2-digit", day: "2-digit", month: "short",
+  }) : null;
   return (
     <ol className="relative">
       {flow.map((stage, idx) => {
         const reached = events.find((e) => e.status === stage);
         const active = idx <= lastIdx;
+        const isShipStage = stage === "shipped";
+        const isDeliveryStage = stage === "delivered";
         return (
-          <li key={stage} className="flex items-start gap-3 pb-3">
+          <li key={stage} className="flex items-start gap-3 pb-3" data-testid={`timeline-stage-${stage}`}>
             <div className="flex flex-col items-center">
               <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold border-2 ${
                 active
@@ -336,12 +346,56 @@ function LifecycleTimeline({ po }) {
                 <div className={`w-0.5 flex-1 mt-1 ${active ? "bg-emerald-500" : "bg-slate-200"}`} style={{ minHeight: 18 }} />
               )}
             </div>
-            <div className="flex-1 pb-2">
-              <div className="flex items-center gap-2">
+            <div className="flex-1 pb-2 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
                 <POStatusBadge status={stage} />
                 {reached && <span className="text-[11px] text-slate-500">{fmtDT(reached.at)}</span>}
               </div>
               {reached?.note && <div className="text-[12px] text-slate-500 mt-1 italic">{reached.note}</div>}
+
+              {/* Live truck snapshot — attached to the "shipped" stage so the
+                  operator sees TK-XXX · X% en route · ETA without leaving. */}
+              {isShipStage && v && active && (
+                <div className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50/60 p-2.5 text-[12px] space-y-1.5"
+                     data-testid="timeline-vehicle">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="inline-flex items-center gap-1.5 font-semibold text-emerald-900">
+                      <Truck className="h-3.5 w-3.5" />
+                      Truck {v.code}
+                      {v.plate && <span className="text-emerald-700 font-normal">· {v.plate}</span>}
+                    </div>
+                    {progressPct != null && v.status === "in_transit" && (
+                      <span className="text-emerald-700 tabular-nums font-medium">{progressPct}% en route</span>
+                    )}
+                    {v.status === "arrived" && (
+                      <span className="text-emerald-700 font-medium inline-flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3" /> Delivered
+                      </span>
+                    )}
+                  </div>
+                  {v.status === "in_transit" && progressPct != null && (
+                    <div className="h-1.5 rounded-full bg-emerald-100 overflow-hidden">
+                      <div className="h-full bg-emerald-500 transition-all" style={{ width: `${progressPct}%` }} />
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-slate-700">
+                    {v.driver_name && <div><span className="text-slate-500">Driver:</span> {v.driver_name}</div>}
+                    {v.dest_name && <div className="truncate"><span className="text-slate-500">To:</span> {v.dest_name}</div>}
+                    {v.units != null && <div><span className="text-slate-500">Units:</span> {Number(v.units).toLocaleString()}</div>}
+                    {v.route_km != null && <div><span className="text-slate-500">Route:</span> {Math.round(v.route_km)} km</div>}
+                    {etaTxt && v.status === "in_transit" && <div className="col-span-2"><span className="text-slate-500">ETA:</span> <span className="font-medium">{etaTxt}</span></div>}
+                  </div>
+                  {ship?.tracking_code && (
+                    <div className="text-[11px] text-slate-500">Tracking: <span className="font-mono">{ship.tracking_code}</span></div>
+                  )}
+                </div>
+              )}
+              {isDeliveryStage && active && ship?.delivered_at && (
+                <div className="text-[12px] text-emerald-700 mt-1 inline-flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3" />
+                  Confirmed at {fmtDT(ship.delivered_at)}
+                </div>
+              )}
             </div>
           </li>
         );
