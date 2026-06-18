@@ -823,7 +823,10 @@ async def tick() -> Dict[str, int]:
         stats["factory_legs"] = await ensure_factory_replenishment(rng)
         stats["wholesaler_legs"] = await ensure_wholesaler_dispatch(rng)
         bridged = await bridge_wholesaler_shipments()
-        stats["ws_bridged"] = bridged["bridged"]
+        stats["ws_bridged_dist_whlsr"] = bridged.get("bridged_dist_whlsr", 0)
+        stats["ws_bridged_whlsr_retail"] = bridged.get("bridged_whlsr_retail", 0)
+        stats["ws_bridged"] = (stats["ws_bridged_dist_whlsr"]
+                               + stats["ws_bridged_whlsr_retail"])
     except Exception:
         logger.exception("[tower] network leg generators failed")
     stats["spawned"] = await ensure_fleet(rng)
