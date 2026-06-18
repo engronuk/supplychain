@@ -652,6 +652,150 @@ async def manufacturer_activity_pulse(manufacturer_id: str, window_minutes: int 
 
 
 # ============================================================================
+# NETWORK PULSE — live ticker of recent cross-tier movements
+# ============================================================================
+@router.get("/manufacturer/{manufacturer_id}/network-pulse")
+async def manufacturer_network_pulse(manufacturer_id: str,
+                                     limit: int = 10,
+                                     since_iso: str | None = None):
+    """A live feed of the most recent cross-tier inventory movements, each
+    decorated with humanised "12 units Maggi 50g received at Royal Trading 1
+    from Apex Distributors" text. Sourced from `inventory_movements` (the
+    same ledger every delivery now writes) so it stays in lock-step with
+    the rest of the system.
+
+    Args:
+      limit:    max items to return (default 10, capped at 50)
+      since_iso: optional ISO timestamp — only return events strictly newer
+                 than this. The dashboard uses this to long-poll without
+                 re-fetching the entire window.
+
+    Response:
+      {
+        "events": [ { id, occurred_at, kind, units, product,
+                       to: {role,name}, from: {role,name},
+                       summary } ],
+        "as_of": ISO8601
+      }
+    """
+    limit = max(1, min(int(limit or 10), 50))
+
+    # Tier ids — same parent-chain resolution _tenant_ids uses.
+    wh_ids = [w["id"] async for w in db.organizations.find(
+        {"organization_type": "warehouse",
+         "parent_organization_id": manufacturer_id},
+        {"_id": 0, "id": 1})]
+    dist_ids = [d["id"] async for d in db.distributors.find(
+        {"manufacturer_id": manufacturer_id}, {"_id": 0, "id": 1})]
+    who_ids = [o["id"] async for o in db.organizations.find(
+        {"organization_type": "wholesaler",
+         "parent_organization_id": {"$in": dist_ids}},
+        {"_id": 0, "id": 1})]
+    rtl_set: set[str] = set()
+    async for r in db.retailers.find(
+        {"$or": [{"manufacturer_id": manufacturer_id},
+                 {"wholesaler_id": {"$in": who_ids}},
+                 {"distributor_id": {"$in": dist_ids}}]},
+        {"_id": 0, "id": 1},
+    ):
+        rtl_set.add(r["id"])
+    all_owner_ids = wh_ids + dist_ids + who_ids + list(rtl_set)
+    if not all_owner_ids:
+        return {"events": [], "as_of": now_iso()}
+
+    q: Dict[str, object] = {
+        "kind": {"$in": ["shipment_receipt", "factory_receipt"]},
+        "owner_id": {"$in": all_owner_ids},
+        "delta": {"$gt": 0},
+    }
+    if since_iso:
+        q["created_at"] = {"$gt": since_iso}
+    movements = await db.inventory_movements.find(q, {"_id": 0}) \
+        .sort("created_at", -1).to_list(limit)
+    if not movements:
+        return {"events": [], "as_of": now_iso()}
+
+    # Hydrate product, shipment, org names in one round-trip each.
+    pids = list({m.get("product_id") for m in movements if m.get("product_id")})
+    sids = list({m.get("ref_id") for m in movements if m.get("ref_id")})
+    prod_map = {p["id"]: p async for p in db.products.find(
+        {"id": {"$in": pids}},
+        {"_id": 0, "id": 1, "name": 1, "sku": 1, "package_size": 1})}
+    ship_map: Dict[str, Dict] = {}
+    async for s in db.shipments.find(
+        {"id": {"$in": sids}},
+        {"_id": 0, "id": 1, "from_role": 1, "from_id": 1,
+         "to_role": 1, "to_id": 1, "tracking_code": 1}):
+        ship_map[s["id"]] = s
+
+    org_ids = {m["owner_id"] for m in movements}
+    for s in ship_map.values():
+        if s.get("from_id"):
+            org_ids.add(s["from_id"])
+        if s.get("to_id"):
+            org_ids.add(s["to_id"])
+    org_ids.discard(manufacturer_id)
+
+    name_map: Dict[str, str] = {}
+    async for o in db.organizations.find(
+        {"id": {"$in": list(org_ids)}},
+        {"_id": 0, "id": 1, "organization_name": 1, "name": 1}):
+        name_map[o["id"]] = o.get("organization_name") or o.get("name") or ""
+    # Retailers live in db.retailers too.
+    async for r in db.retailers.find(
+        {"id": {"$in": list(org_ids)}}, {"_id": 0, "id": 1, "name": 1}):
+        name_map.setdefault(r["id"], r.get("name") or "")
+    # Manufacturer label.
+    mfr_org = await db.organizations.find_one(
+        {"id": manufacturer_id},
+        {"_id": 0, "organization_name": 1, "name": 1})
+    name_map[manufacturer_id] = ((mfr_org or {}).get("organization_name")
+                                 or (mfr_org or {}).get("name") or "Factory")
+
+    role_label = {"warehouse": "Warehouse", "distributor": "Distributor",
+                  "wholesaler": "Wholesaler", "retailer": "Retailer",
+                  "manufacturer": "Factory"}
+
+    events: List[Dict] = []
+    for m in movements:
+        prod = prod_map.get(m.get("product_id")) or {}
+        sh = ship_map.get(m.get("ref_id")) or {}
+        from_role = sh.get("from_role")
+        from_name = name_map.get(sh.get("from_id"), "")
+        to_role = m.get("owner_type") or sh.get("to_role")
+        to_name = name_map.get(m.get("owner_id"), "")
+        units = int(m.get("delta") or 0)
+        prod_name = prod.get("name") or "units"
+        pkg = prod.get("package_size") or ""
+        prod_label = f"{prod_name} {pkg}".strip()
+
+        if from_role and from_name:
+            summary = (f"{units:,} units of {prod_label} received at "
+                       f"{to_name or role_label.get(to_role, to_role)} "
+                       f"from {from_name}")
+        else:
+            summary = (f"{units:,} units of {prod_label} arrived at "
+                       f"{to_name or role_label.get(to_role, to_role)}")
+
+        events.append({
+            "id": m.get("id"),
+            "occurred_at": m.get("created_at"),
+            "kind": m.get("kind"),
+            "units": units,
+            "product": {"id": prod.get("id"),
+                        "name": prod.get("name"),
+                        "sku": prod.get("sku"),
+                        "package_size": prod.get("package_size")},
+            "from": {"role": from_role, "name": from_name} if from_role else None,
+            "to":   {"role": to_role,   "name": to_name},
+            "tracking_code": sh.get("tracking_code"),
+            "summary": summary,
+        })
+    return {"events": events, "as_of": now_iso()}
+
+
+
+# ============================================================================
 @router.get("/manufacturer/{manufacturer_id}/products")
 async def manufacturer_products(manufacturer_id: str):
     """Enriched product catalog for the manufacturer's Inventory module.

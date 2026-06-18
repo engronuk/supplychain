@@ -1,5 +1,33 @@
 # CHANGELOG
 
+## 2026-06-18 — Network Pulse live ticker (manufacturer dashboard)
+
+A "concrete" follow-on to the P0/P1 remediation: now that every delivery
+writes an `inventory_movements` row at the correct tier, surface those
+moments on the executive dashboard so the network feels alive without
+leaving the page.
+
+### Added
+- `GET /api/manufacturer/{id}/network-pulse?limit=10&since_iso=...` —
+  returns the most recent cross-tier movements (`shipment_receipt` /
+  `factory_receipt`), each pre-decorated with a humanised summary
+  ("65 units of Knorr Beef Cubes 50s received at Horizon Trade
+  Partners (Port Harcourt) from Unilever Lagos Warehouse") plus the
+  source / destination role + name, units, product, and tracking code.
+  Supports long-polling via `since_iso` cursor.
+- `frontend/src/components/NetworkPulse.jsx` — auto-polls every 15s,
+  flashes new arrivals in emerald, shows tier icons per movement,
+  scroll-locked to the last 10. Drops into the manufacturer dashboard
+  directly under the Activity Pulse strip.
+
+### Evidence
+- Endpoint returns 10 events with full summary text + names resolved
+  across `organizations`, `retailers`, `products` collections.
+- UI screenshot: 10 live rows visible, "1m ago" relative timestamps,
+  tracking codes (`SHP-SIM-…`, `FAC-…`), tier-coloured destination icons.
+
+
+
 ## 2026-06-17 — P0 + P1 Remediation Sprint (Manufacturer → Retailer)
 
 ### Root causes
