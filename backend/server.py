@@ -37,6 +37,7 @@ from routes import (
     notifications,
     organizations,
     procurement,
+    public_docs,
     retailer_inventory,
     product_detail,
     product_intelligence,
@@ -109,6 +110,7 @@ for r in (
     wms.router,
     admin_simulator.router,
     admin_sync.router,
+    public_docs.router,
 ):
     api_router.include_router(r)
 
