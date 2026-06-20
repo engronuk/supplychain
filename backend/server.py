@@ -61,6 +61,7 @@ from services.migrations import ensure_indexes
 from services.seed import seed_from_csv
 from services.seed_batches import seed_batches
 from services.seed_demo_users import seed_demo_users
+from services.seed_test_driver import seed_test_driver
 from services.seed_distributor_orders import seed_distributor_orders
 from services.seed_procurement import seed_procurement
 from services.migrate_organizations import migrate_organizations
@@ -204,6 +205,18 @@ async def _background_bootstrap():
         logger.info("canonical_rebuild_v1 marker present — skipping demo seeders.")
 
     if is_production or canonical:
+        # The Track A test driver seed must ALSO run in production /
+        # canonical mode — it's a tiny, idempotent, P0 unblocker for the
+        # mobile-app validation team. Cheap (≤ 2 reads + ≤ 2 writes),
+        # guarded by DEMO_PASSWORD env, and leaves existing rows alone.
+        try:
+            result = await seed_test_driver()
+            if result.get("driver") in ("created", "repaired") or \
+                    result.get("user") in ("created", "repaired"):
+                logger.info("Test driver seed: %s", result)
+        except Exception:
+            logger.exception("Test driver seed failed (continuing)")
+
         try:
             start_scheduler()
         except Exception:
@@ -243,6 +256,16 @@ async def _background_bootstrap():
             logger.info("Demo users seeded: %s", result)
     except Exception:
         logger.exception("Demo user seed failed (continuing)")
+
+    # Idempotent Track A test driver — ensures the canonical end-to-end test
+    # driver (DRV-W0-11542) exists and can log in with DEMO_PASSWORD without
+    # going through the invitation/claim flow. Safe every boot.
+    try:
+        result = await seed_test_driver()
+        if result.get("driver") in ("created", "repaired") or result.get("user") in ("created", "repaired"):
+            logger.info("Test driver seed: %s", result)
+    except Exception:
+        logger.exception("Test driver seed failed (continuing)")
 
     # Idempotent batch seed — ensures every product has 3 traceable batches.
     try:
