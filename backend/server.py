@@ -12,6 +12,7 @@ from core import client, db, logger
 from routes import (
     admin_simulator,
     admin_sync,
+    admin_track_a,
     analytics,
     assistant,
     auth,
@@ -115,6 +116,7 @@ for r in (
     wms.router,
     admin_simulator.router,
     admin_sync.router,
+    admin_track_a.router,
     public_docs.router,
 ):
     api_router.include_router(r)

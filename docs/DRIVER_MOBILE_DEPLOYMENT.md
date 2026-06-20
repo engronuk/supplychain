@@ -70,6 +70,48 @@ Both rows are created/repaired on every backend boot by
 dispatcher hits `POST /api/shipments/{id}/assign` with the driver_id +
 vehicle_id pair returned by `GET /api/drivers` and `GET /api/vehicles`.
 
+### One-call test-shipment factory
+
+Spin up a fresh `ready_for_dispatch` shipment wired to the test driver +
+vehicle in a single call (auth: super_admin or manufacturer admin):
+
+```bash
+TOKEN=$(curl -s $BASE/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"unilever@tradekonekt.io","password":"TradeKonekt2026!"}' \
+  | python3 -c "import sys,json;print(json.load(sys.stdin)['access_token'])")
+
+curl -s -X POST $BASE/api/_admin/seed-track-a-shipment \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+```
+
+Response:
+
+```json
+{
+  "shipment": { "id": "<new shipment id>", "status": "ready_for_dispatch", ... },
+  "next_steps": {
+    "assign": "POST /api/shipments/<id>/assign with body {driver_id, vehicle_id}",
+    "driver_id": "<uuid>",
+    "driver_code": "DRV-W0-11542",
+    "vehicle_id": "<uuid>",
+    "vehicle_code": "TK-W0-V001",
+    "destination": { "distributor_id": "<uuid>", "name": "...", "region": "Lagos" }
+  }
+}
+```
+
+Optional body fields:
+- `to_distributor_id` — explicit destination (must belong to the same
+  manufacturer)
+- `items` — list of `{"sku" | "product_id", "quantity"}` overrides
+- `notes` — free-text shown in dispatch UI
+
+Every call mints a **new** shipment — not idempotent on purpose so QA can
+run repeated dry-runs.
+
 ---
 
 ## 4. Driver-scoped endpoints (token role must be `driver`)
