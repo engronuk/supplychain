@@ -230,10 +230,129 @@ async def migrate_vehicles() -> Dict[str, int]:
     return counter
 
 
+async def normalize_drifted_statuses() -> Dict[str, int]:
+    """Re-apply ``SHIPMENT_STATUS_MAP`` to v2 docs whose ``status`` slipped back
+    to a legacy value (e.g. legacy callers writing ``received`` on a v2 doc).
+
+    Only canonical 8-state values are kept untouched; anything else is mapped
+    via :data:`SHIPMENT_STATUS_MAP`. Drift on canonical values is a no-op.
+    """
+    canonical = {"created", "ready_for_dispatch", "assigned", "loaded",
+                 "in_transit", "arrived", "delivered", "cancelled"}
+    counter = {"scanned": 0, "rewritten": 0}
+    now = now_iso()
+
+    cursor = db.shipments.find(
+        {"schema_version": 2, "status": {"$nin": list(canonical)}},
+        {"_id": 0, "id": 1, "status": 1, "received_at": 1, "dispatched_at": 1},
+    )
+    async for shp in cursor:
+        counter["scanned"] += 1
+        legacy = (shp.get("status") or "").lower()
+        new_status = SHIPMENT_STATUS_MAP.get(legacy, "created")
+        update = {
+            "status": new_status,
+            "updated_at": now,
+        }
+        if new_status == "delivered" and not shp.get("delivered_at"):
+            update["delivered_at"] = shp.get("received_at") or now
+        await db.shipments.update_one(
+            {"id": shp["id"]},
+            {"$set": update,
+             "$push": {"status_history": {
+                 "from_status": legacy or None,
+                 "to_status": new_status,
+                 "at": now,
+                 "by_role": "system",
+                 "notes": "Drift correction (v2 cascade)",
+             }}},
+        )
+        counter["rewritten"] += 1
+    return counter
+
+
+async def cascade_terminal_associations() -> Dict[str, int]:
+    """Free up drivers/vehicles whose linked shipment is terminal (delivered/cancelled).
+
+    The initial v2 migration backfilled shipments to ``delivered`` but did not
+    cascade the status update to the drivers/vehicles still pointing at those
+    shipments. Re-running this is idempotent — once associations are cleared,
+    subsequent passes are no-ops.
+    """
+    counter = {
+        "drivers_scanned": 0,
+        "drivers_freed": 0,
+        "vehicles_scanned": 0,
+        "vehicles_freed": 0,
+    }
+    now = now_iso()
+
+    # ---- 1. Build a set of terminal shipment ids in batches --------------
+    terminal_ids: set[str] = set()
+    cursor = db.shipments.find(
+        {"status": {"$in": ["delivered", "cancelled"]}},
+        {"_id": 0, "id": 1},
+    )
+    async for doc in cursor:
+        sid = doc.get("id")
+        if sid:
+            terminal_ids.add(sid)
+
+    if not terminal_ids:
+        return counter
+
+    # ---- 2. Cascade drivers ---------------------------------------------
+    drv_cursor = db.drivers.find(
+        {"assigned_shipment_id": {"$in": list(terminal_ids)}},
+        {"_id": 0, "id": 1, "status": 1, "assigned_shipment_id": 1},
+    )
+    async for d in drv_cursor:
+        counter["drivers_scanned"] += 1
+        await db.drivers.update_one(
+            {"id": d["id"]},
+            {"$set": {
+                "status": "available",
+                "assigned_shipment_id": None,
+                "assigned_vehicle_id": None,
+                "updated_at": now,
+            }},
+        )
+        counter["drivers_freed"] += 1
+
+    # ---- 3. Cascade vehicles --------------------------------------------
+    veh_cursor = db.vehicles.find(
+        {"current_shipment_id": {"$in": list(terminal_ids)}},
+        {"_id": 0, "id": 1, "status": 1, "current_shipment_id": 1},
+    )
+    async for v in veh_cursor:
+        counter["vehicles_scanned"] += 1
+        # Preserve `maintenance` / `offline` if explicitly set by an admin —
+        # but if status is offline *only* because of the legacy migration
+        # (we wrote that ourselves) we still want to release the shipment
+        # ref. Set status back to `available` for offline rows that still
+        # carry a stale shipment id; leave `maintenance` rows alone status-wise.
+        new_status = "available" if v.get("status") != "maintenance" else "maintenance"
+        await db.vehicles.update_one(
+            {"id": v["id"]},
+            {"$set": {
+                "status": new_status,
+                "current_shipment_id": None,
+                "current_driver_id": None,
+                "current_route_id": None,
+                "updated_at": now,
+            }},
+        )
+        counter["vehicles_freed"] += 1
+
+    return counter
+
+
 async def migrate() -> Dict[str, Dict[str, int]]:
     return {
         "shipments": await migrate_shipments(),
         "vehicles": await migrate_vehicles(),
+        "drift": await normalize_drifted_statuses(),
+        "cascade": await cascade_terminal_associations(),
     }
 
 

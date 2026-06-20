@@ -162,6 +162,17 @@ visibility (Manufacturer → Warehouse → Distributor → Wholesaler → Retail
   testing-agent + 15 manual E2E). Full readiness report at
   `/app/docs/TRACK_A_READINESS_REPORT.md` and at
   `/api/public-docs/track-a-readiness`. Driver Mobile App W0 gate: ✅ OPEN.
+- **Track A Cascade Migration Fix (✅ SHIPPED 2026-06-20)** —
+  Extended `migrate_logistics_v2.py` with two new idempotent passes:
+  (1) `normalize_drifted_statuses()` rewrites v2 shipments whose status
+  drifted back to legacy values (e.g. legacy `wms`/`manufacturer` callers
+  writing `received` on a v2 doc) → mapped to canonical 8-state. 268 docs
+  normalized. (2) `cascade_terminal_associations()` finds drivers/vehicles
+  whose `assigned_shipment_id` / `current_shipment_id` points to a terminal
+  shipment (`delivered`/`cancelled`) and resets them to `available` with
+  cleared associations. 1,384 vehicles freed across two passes. Preview DB
+  verified clean — 0 stuck drivers/vehicles, 0 drift remaining. Driver
+  `DRV-W0-11542` now `available` and ready for new assignments.
 - **Manufacturer Mobile Docs Handover (✅ SHIPPED 2026-06-19)** —
   Completed the third and final mobile-app handover package. New artefacts:
   `/app/docs/MANUFACTURER_MOBILE_UX_PLAN.md` (IA + 5-tab plan + P0/P1/P2 cut)
