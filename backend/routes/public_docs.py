@@ -32,6 +32,10 @@ _PUBLIC_DOCS: dict[str, str] = {
     "driver-api-spec":             "/app/docs/DRIVER_API_SPEC.md",
     "fleet-management-spec":       "/app/docs/FLEET_MANAGEMENT_SPEC.md",
     "track-a-readiness":           "/app/docs/TRACK_A_READINESS_REPORT.md",
+    "driver-mobile-brief":         "/app/docs/DRIVER_MOBILE_BUILD_BRIEF.md",
+    "driver-mobile-ux":            "/app/docs/DRIVER_MOBILE_UX_PLAN.md",
+    "driver-functional":           "/app/docs/DRIVER_WORKSPACE_FUNCTIONAL_SPEC.md",
+    "driver-api-validation":       "/app/memory/driver_api_validation.md",
 }
 
 

@@ -147,6 +147,12 @@ visibility (Manufacturer → Warehouse → Distributor → Wholesaler → Retail
   discriminator and ship_po now emits `wholesaler → retailer` shipments. New
   endpoints: `/api/procurement/retailer/{id}/suppliers` and
   `/api/distributor/{id}/incoming-wholesaler-pos`.
+- **Driver Mobile App W0 Discovery (✅ SHIPPED 2026-06-20)** —
+  Four W0 docs created (functional spec + UX plan + build brief + API
+  validation), exposed via `/api/public-docs/driver-*`. 17/17 endpoints
+  verified green; no-tab IA with a single state-aware mega-button covers
+  the entire 8-state lifecycle. P0 cut: 15 features. Driver Mobile Agent
+  has everything needed to begin the build.
 - **Track A — Logistics Foundation Layer (✅ SHIPPED 2026-06-20)** —
   43 new endpoints across Shipment lifecycle (8-state machine), Driver entity,
   Vehicle fleet registry, and OTP-based Proof of Delivery. Driver added to
