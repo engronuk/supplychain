@@ -37,6 +37,7 @@ _PUBLIC_DOCS: dict[str, str] = {
     "driver-functional":           "/app/docs/DRIVER_WORKSPACE_FUNCTIONAL_SPEC.md",
     "driver-api-validation":       "/app/memory/driver_api_validation.md",
     "driver-mobile-deployment":    "/app/docs/DRIVER_MOBILE_DEPLOYMENT.md",
+    "fleet-functional-spec":       "/app/docs/FLEET_MANAGEMENT_FUNCTIONAL_SPEC.md",
 }
 
 
