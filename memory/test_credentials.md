@@ -5,6 +5,14 @@
 The canonical rebuild stamps a login for **every entity** in the hierarchy
 (plus a per-role admin shortcut). Total active accounts: **235**.
 
+### Driver accounts (Track A — created via `POST /api/drivers`)
+
+| Email | Role | Employer | Notes |
+|---|---|---|---|
+| `tunde.e2e+26511@tradekonekt.io` | driver | Unilever Nigeria (manufacturer) | Created by E2E test on 2026-06-20; password `TradeKonekt2026!` |
+
+To create new drivers, call `POST /api/drivers` with a manufacturer / distributor / wholesaler JWT. The response includes a one-shot `_initial_password` field (currently always `TradeKonekt2026!`) and the driver must change it on first login (`users.must_change_password=true`).
+
 ## Production admin sync (deploy-time use only)
 
 **`ADMIN_SYNC_TOKEN`** (in `backend/.env`) — protects `/api/admin/sync/*`.

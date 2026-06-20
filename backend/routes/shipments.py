@@ -228,6 +228,14 @@ async def assign_shipment(
     body: Dict[str, Any] = Body(...),
     user: Dict[str, Any] = Depends(require_auth),
 ):
+    # Role check first — never leak driver/vehicle existence to non-dispatchers
+    if user.get("role") not in ("manufacturer", "distributor", "wholesaler", "super_admin"):
+        raise HTTPException(403, {
+            "code": "FORBIDDEN_ROLE",
+            "role": user.get("role"),
+            "allowed_roles": ["manufacturer", "distributor", "wholesaler", "super_admin"],
+        })
+
     driver_id = body.get("driver_id")
     vehicle_id = body.get("vehicle_id")
     route_id = body.get("route_id")

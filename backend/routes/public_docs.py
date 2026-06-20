@@ -31,6 +31,7 @@ _PUBLIC_DOCS: dict[str, str] = {
     "otp-pod-architecture":        "/app/docs/OTP_POD_ARCHITECTURE.md",
     "driver-api-spec":             "/app/docs/DRIVER_API_SPEC.md",
     "fleet-management-spec":       "/app/docs/FLEET_MANAGEMENT_SPEC.md",
+    "track-a-readiness":           "/app/docs/TRACK_A_READINESS_REPORT.md",
 }
 
 

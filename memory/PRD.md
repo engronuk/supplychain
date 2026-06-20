@@ -147,6 +147,15 @@ visibility (Manufacturer → Warehouse → Distributor → Wholesaler → Retail
   discriminator and ship_po now emits `wholesaler → retailer` shipments. New
   endpoints: `/api/procurement/retailer/{id}/suppliers` and
   `/api/distributor/{id}/incoming-wholesaler-pos`.
+- **Track A — Logistics Foundation Layer (✅ SHIPPED 2026-06-20)** —
+  43 new endpoints across Shipment lifecycle (8-state machine), Driver entity,
+  Vehicle fleet registry, and OTP-based Proof of Delivery. Driver added to
+  `VALID_ROLES`. Backfilled 3,740 shipments + 3,257 vehicles to schema v2 via
+  idempotent migration. Tenant security retrofitted on `/api/notifications`
+  (was unauthenticated — closed OTP leak). 35/35 tests passing (20 from
+  testing-agent + 15 manual E2E). Full readiness report at
+  `/app/docs/TRACK_A_READINESS_REPORT.md` and at
+  `/api/public-docs/track-a-readiness`. Driver Mobile App W0 gate: ✅ OPEN.
 - **Manufacturer Mobile Docs Handover (✅ SHIPPED 2026-06-19)** —
   Completed the third and final mobile-app handover package. New artefacts:
   `/app/docs/MANUFACTURER_MOBILE_UX_PLAN.md` (IA + 5-tab plan + P0/P1/P2 cut)
