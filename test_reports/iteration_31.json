@@ -1,0 +1,45 @@
+{
+  "summary": "Track A Logistics Foundation Layer — comprehensive backend validation. 20/20 tests passed (100%). Covers full 8-state shipment lifecycle, driver/vehicle CRUD with uniqueness guards, OTP proof-of-delivery (issue → wrong → brute-force lockout → correct delivery), role guards, tenant isolation, deprecated PATCH /status (410), timeline endpoint, driver-self endpoints, migration verification (schema_version=2) and backwards-compat list reads.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "POST /api/shipments/{id}/assign",
+        "issue": "Role guard is evaluated AFTER driver/vehicle state pre-checks. A driver-token caller can receive 409 'Driver state is …' instead of the cleaner 403 'FORBIDDEN_ROLE'. Functionally still blocks the action (driver cannot assign), but leaks internal driver state to non-dispatcher callers. Recommend moving the dispatcher-role check (manufacturer/distributor/wholesaler/super_admin) to the top of the handler — before driver/vehicle DB lookups."
+      },
+      {
+        "endpoint": "GET /api/notifications",
+        "issue": "Endpoint is UNAUTHENTICATED — no Depends(get_current_user). Anyone with network access can list any org's delivery_code notifications by guessing (target_type, target_id). For the OTP-as-in-app-only design, this is a HIGH-severity data exposure. Add auth dependency and enforce target_id == user.entity_id (or super_admin)."
+      }
+    ]
+  },
+  "frontend_issues": { "ui_bugs": [], "integration_issues": [], "design_issues": [] },
+  "test_report_links": [
+    "/app/backend/tests/test_track_a_logistics.py",
+    "/app/test_reports/pytest/track_a_logistics.xml"
+  ],
+  "action_items": [
+    "(security) Add authentication to GET /api/notifications and enforce tenant scoping so that one tenant cannot read another tenant's delivery_code notifications.",
+    "(quality) Reorder /api/shipments/{id}/assign — perform role/dispatcher check before driver/vehicle DB lookups so non-dispatcher callers reliably receive 403 instead of 404/409 leaks."
+  ],
+  "critical_code_review_comments": [
+    "services/otp.py uses bcrypt for a 4-digit code with 5-attempt lockout — solid. But the audit collection's `attempt_value_hint` is hard-coded to None; consider removing the field rather than persisting a useless key.",
+    "shipment_lifecycle.transition() ALLOWED_TRANSITIONS allows legacy `shipped` → `delivered` (skipping in_transit/arrived). If business rules require strict 8-state walk, this should be tightened.",
+    "_notify_receiver inserts BOTH per-user and a bare org-level notification — could double-fire to dashboards. Consider one of the two.",
+    "routes/shipments.py _scope_query: when caller is driver, falls back to entity_id if driver_id missing. Consistent — but JWT payload should always carry driver_id for that role; consider rejecting tokens missing it.",
+    "vehicles.py POST /vehicles passes year/colour/insurance/etc via Vehicle pydantic; ensure VehicleCreate validates year range and registration_number format."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_track_a_logistics.py"
+  ],
+  "success_rate": { "backend": "100% (20/20)", "frontend": "n/a — skipped per request" },
+  "test_credentials": "All seeded TradeKonekt accounts share password TradeKonekt2026!. Newly created drivers receive the same initial_password via the create-driver response and must change it on first login (must_change_password=true is set on the User record).",
+  "seed_data_creation": "Per-test-run created: 2 drivers (TEST-EMP-<rand>, TEST-D2-<rand>), 2 vehicles (TEST-<rand>, TST2-<rand>) under MFR-0001 (Unilever). Multiple shipments created and cycled through the lifecycle. Cleanup not implemented — these will accumulate; consider adding a TEST_-prefix cleanup fixture if rerun frequently.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Track A endpoints are stable. Re-run /app/backend/tests/test_track_a_logistics.py to regress. If main agent fixes the GET /api/notifications auth leak, add a positive test that an unauthenticated GET returns 401 and a cross-tenant authenticated GET returns 403/empty. Also add a test that the assign-role-guard fires before resource-state checks (driver token + non-existent driver_id should return 403, not 404).",
+  "rca_of_the_issue": {
+    "notifications_auth_leak": "routes/notifications.py declares `list_notifications(target_type, target_id)` with NO Depends(get_current_user). Anyone hitting the public URL with valid target_type/target_id query params can read every delivery_code, completely bypassing the 'OTP in-app only' security posture. Fix: add `user: Dict = Depends(get_current_user)` and verify user.entity_id matches target_id (or user.role == 'super_admin').",
+    "assign_role_guard_ordering": "routes/shipments.py::assign_shipment validates driver state and ownership BEFORE invoking shipment_lifecycle.transition() (which holds the role guard). Result: a driver-token caller hitting /assign on a fresh shipment returns 409 'Driver state is on_trip…' rather than 403. Fix: hoist `if role not in {manufacturer, distributor, wholesaler, super_admin}: raise 403` to the top of the handler."
+  }
+}

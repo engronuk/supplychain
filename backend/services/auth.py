@@ -241,4 +241,4 @@ async def _walk_to_manufacturer(org_id: str, max_hops: int = 8) -> str:
     return ""
 
 
-VALID_ROLES: List[str] = ["super_admin", "manufacturer", "distributor", "retailer"]
+VALID_ROLES: List[str] = ["super_admin", "manufacturer", "distributor", "retailer", "wholesaler", "driver"]

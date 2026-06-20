@@ -39,7 +39,17 @@ db = client[os.environ["DB_NAME"]]
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("tradekonekt")
 
-ShipmentStatus = Literal["pending", "in_transit", "received"]
+ShipmentStatus = Literal[
+    "created", "ready_for_dispatch", "assigned", "loaded",
+    "in_transit", "arrived", "delivered", "cancelled",
+    # Legacy values still present in production data until backfill migration v2
+    # completes. They are kept here so the type checker doesn't reject them on
+    # read; new writes MUST use the 8-state canonical set above.
+    "pending", "received", "shipped",
+]
+VehicleStatus = Literal["available", "loading", "in_transit", "maintenance", "offline"]
+DriverStatus  = Literal["available", "assigned", "on_trip", "offline"]
+VehicleType   = Literal["truck", "van", "pickup", "trailer", "motorcycle"]
 RequestStatus = Literal["pending", "approved", "rejected", "fulfilled"]
 POStatus = Literal[
     "draft", "submitted", "approved", "processing",

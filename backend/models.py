@@ -6,7 +6,10 @@ from typing import List, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from core import PartyRole, RequestStatus, ShipmentStatus, new_id, now_iso
+from core import (
+    PartyRole, RequestStatus, ShipmentStatus, VehicleStatus, DriverStatus,
+    VehicleType, new_id, now_iso,
+)
 
 
 class Manufacturer(BaseModel):
@@ -85,31 +88,104 @@ class InventoryPricingUpdate(BaseModel):
 
 
 class ShipmentLine(BaseModel):
+    model_config = ConfigDict(extra="ignore")
     product_id: str
     quantity: int
+    unit_price: Optional[float] = None
+    gross_value: Optional[float] = None
+    discount: Optional[float] = None
+    net_value: Optional[float] = None
+    product_name: Optional[str] = None
+    sku: Optional[str] = None
+
+
+class ShipmentTransition(BaseModel):
+    """One row in the append-only `Shipment.status_history` array."""
+    model_config = ConfigDict(extra="ignore")
+    from_status: Optional[ShipmentStatus] = None
+    to_status: ShipmentStatus
+    at: str = Field(default_factory=now_iso)
+    by_user_id: Optional[str] = None
+    by_role: Optional[str] = None
+    reason: Optional[str] = None
+    notes: Optional[str] = None
+    driver_id: Optional[str] = None
+    vehicle_id: Optional[str] = None
 
 
 class Shipment(BaseModel):
     model_config = ConfigDict(extra="ignore")
+    # identity
     id: str = Field(default_factory=new_id)
+    tracking_code: str = Field(default_factory=lambda: "SHP-" + uuid.uuid4().hex[:8].upper())
+    shipment_number: Optional[str] = None
+
+    # parties
     from_role: PartyRole
     from_id: str
     to_role: PartyRole
     to_id: str
-    # Denormalized convenience fields for back-compat with existing UI/queries:
+
+    # denorm 5-tier lookup keys
     distributor_id: str = ""
     retailer_id: str = ""
     manufacturer_id: str = ""
-    # Unified ownership (Phase 1+2 — mirrors from_id, the dispatcher).
+    wholesaler_id: str = ""
     organization_id: str = ""
+
+    # NEW: primary tenant key for security guards (the dispatching org)
+    owner_org_id: str = ""
+    owner_org_type: Optional[PartyRole] = None
+
+    # items
     items: List[ShipmentLine]
-    status: ShipmentStatus = "pending"
-    tracking_code: str = Field(default_factory=lambda: "SHP-" + uuid.uuid4().hex[:8].upper())
-    notes: Optional[str] = None
+    total_units: Optional[int] = None
+    total_value: Optional[float] = None
+
+    # state
+    status: ShipmentStatus = "created"
+    status_history: List[ShipmentTransition] = []
+
+    # lifecycle timestamps
     created_at: str = Field(default_factory=now_iso)
+    ready_at: Optional[str] = None
+    assigned_at: Optional[str] = None
+    loaded_at: Optional[str] = None
     dispatched_at: Optional[str] = None
-    received_at: Optional[str] = None
+    arrived_at: Optional[str] = None
+    delivered_at: Optional[str] = None
+    cancelled_at: Optional[str] = None
+    cancelled_reason: Optional[str] = None
+
+    # dispatch attachments
+    driver_id: Optional[str] = None
+    vehicle_id: Optional[str] = None
+    route_id: Optional[str] = None
+    dispatched_by_user_id: Optional[str] = None
+
+    # OTP delivery verification (see OTP_POD_ARCHITECTURE.md)
+    delivery_code: Optional[str] = None              # bcrypt hash, never returned via API
+    delivery_code_generated_at: Optional[str] = None
+    delivery_code_expires_at: Optional[str] = None
+    delivery_code_attempts: int = 0
+    delivery_code_locked_until: Optional[str] = None
+    delivery_code_verified_at: Optional[str] = None
+    delivered_by: Optional[str] = None
+
+    # geo / ETA
+    origin_city: Optional[str] = None
+    destination_city: Optional[str] = None
+    eta_minutes: Optional[int] = None
+
+    # provenance
+    source: Literal["manual", "simulator", "route_planner", "procurement", "mobile"] = "manual"
     request_id: Optional[str] = None
+    po_id: Optional[str] = None
+    notes: Optional[str] = None
+
+    received_at: Optional[str] = None                # kept for back-compat with legacy reads
+    updated_at: str = Field(default_factory=now_iso)
+    schema_version: int = 2
 
 
 class ShipmentCreate(BaseModel):
@@ -119,10 +195,147 @@ class ShipmentCreate(BaseModel):
     to_id: str
     items: List[ShipmentLine]
     notes: Optional[str] = None
+    po_id: Optional[str] = None
 
 
 class ShipmentStatusUpdate(BaseModel):
+    """Legacy — retained so existing imports don't break. POST to the new
+    lifecycle endpoints instead of patching `status` directly."""
     status: ShipmentStatus
+
+
+# --- Driver -------------------------------------------------------------------
+class Driver(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=new_id)
+    employee_number: str
+    first_name: str
+    last_name: str
+    full_name: str = ""
+    phone: str
+    email: str
+    licence_number: Optional[str] = None
+    licence_class: Optional[str] = None
+    licence_expiry: Optional[str] = None
+
+    employer_org_id: str
+    employer_org_type: Literal["manufacturer", "distributor", "wholesaler"]
+    home_warehouse_id: Optional[str] = None
+
+    status: DriverStatus = "offline"
+    assigned_vehicle_id: Optional[str] = None
+    assigned_shipment_id: Optional[str] = None
+
+    user_id: Optional[str] = None
+    invited_at: Optional[str] = None
+    claimed_at: Optional[str] = None
+    last_login_at: Optional[str] = None
+
+    deliveries_30d: int = 0
+    on_time_pct_30d: Optional[float] = None
+    avg_pod_time_min: Optional[float] = None
+    last_seen_at: Optional[str] = None
+
+    is_active: bool = True
+    deactivated_at: Optional[str] = None
+    deactivation_reason: Optional[str] = None
+    created_at: str = Field(default_factory=now_iso)
+    updated_at: str = Field(default_factory=now_iso)
+    schema_version: int = 1
+
+
+class DriverCreate(BaseModel):
+    employee_number: str
+    first_name: str
+    last_name: str
+    phone: str
+    email: str
+    licence_number: Optional[str] = None
+    licence_class: Optional[str] = None
+    licence_expiry: Optional[str] = None
+    home_warehouse_id: Optional[str] = None
+
+
+class DriverUpdate(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    licence_number: Optional[str] = None
+    licence_class: Optional[str] = None
+    licence_expiry: Optional[str] = None
+    home_warehouse_id: Optional[str] = None
+
+
+# --- Vehicle ------------------------------------------------------------------
+class Vehicle(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=new_id)
+    vehicle_code: str
+    registration_number: str
+    vehicle_type: VehicleType = "truck"
+    make: Optional[str] = None
+    model: Optional[str] = None
+    year: Optional[int] = None
+    colour: Optional[str] = None
+
+    capacity_units: int
+    capacity_weight_kg: float
+
+    owner_org_id: str
+    owner_org_type: Literal["manufacturer", "distributor", "wholesaler"]
+    home_warehouse_id: Optional[str] = None
+
+    status: VehicleStatus = "available"
+    current_driver_id: Optional[str] = None
+    current_shipment_id: Optional[str] = None
+    current_route_id: Optional[str] = None
+
+    odometer_km: float = 0
+    fuel_pct: Optional[float] = None
+    last_lat: Optional[float] = None
+    last_lng: Optional[float] = None
+    last_position_at: Optional[str] = None
+    last_service_at: Optional[str] = None
+    next_service_due_km: Optional[float] = None
+
+    insurance_expiry: Optional[str] = None
+    roadworthiness_expiry: Optional[str] = None
+
+    is_active: bool = True
+    decommissioned_at: Optional[str] = None
+    source: Literal["manual", "simulator"] = "manual"
+    created_at: str = Field(default_factory=now_iso)
+    updated_at: str = Field(default_factory=now_iso)
+    schema_version: int = 1
+
+
+class VehicleCreate(BaseModel):
+    registration_number: str
+    vehicle_type: VehicleType = "truck"
+    make: Optional[str] = None
+    model: Optional[str] = None
+    year: Optional[int] = None
+    colour: Optional[str] = None
+    capacity_units: int
+    capacity_weight_kg: float
+    home_warehouse_id: Optional[str] = None
+    insurance_expiry: Optional[str] = None
+    roadworthiness_expiry: Optional[str] = None
+
+
+class VehicleUpdate(BaseModel):
+    registration_number: Optional[str] = None
+    vehicle_type: Optional[VehicleType] = None
+    make: Optional[str] = None
+    model: Optional[str] = None
+    year: Optional[int] = None
+    colour: Optional[str] = None
+    capacity_units: Optional[int] = None
+    capacity_weight_kg: Optional[float] = None
+    home_warehouse_id: Optional[str] = None
+    insurance_expiry: Optional[str] = None
+    roadworthiness_expiry: Optional[str] = None
 
 
 class RequestLine(BaseModel):
