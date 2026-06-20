@@ -347,12 +347,63 @@ async def cascade_terminal_associations() -> Dict[str, int]:
     return counter
 
 
+async def backfill_assigned_driver_field() -> Dict[str, int]:
+    """Ensure every v2 vehicle has the new ``assigned_driver_id`` field
+    (default-driver pairing, introduced in Phase B). Idempotent.
+    """
+    counter = {"updated": 0}
+    result = await db.vehicles.update_many(
+        {"assigned_driver_id": {"$exists": False}},
+        {"$set": {"assigned_driver_id": None, "updated_at": now_iso()}},
+    )
+    counter["updated"] = getattr(result, "modified_count", 0)
+    return counter
+
+
+async def normalize_track_a_vehicle_statuses() -> Dict[str, int]:
+    """One-time + idempotent: reset Track A vehicle rows that the simulator
+    accidentally stamped with non-enum statuses (e.g. ``arrived``,
+    ``stopped``, ``breakdown``, ``archived``) before the Phase B sim guard
+    landed. Canonical Track A enum: available, loading, in_transit,
+    maintenance, offline.
+    """
+    counter = {"scanned": 0, "fixed": 0}
+    canonical = ["available", "loading", "in_transit", "maintenance", "offline"]
+    cursor = db.vehicles.find(
+        {"source": {"$in": ["manual", "seed"]},
+         "status": {"$nin": canonical}},
+        {"_id": 0, "id": 1, "status": 1, "current_shipment_id": 1},
+    )
+    async for v in cursor:
+        counter["scanned"] += 1
+        # if the linked shipment is delivered/cancelled, free everything;
+        # otherwise just snap status to "available".
+        update: Dict[str, Any] = {
+            "status": "available",
+            "updated_at": now_iso(),
+        }
+        sid = v.get("current_shipment_id")
+        if sid:
+            linked = await db.shipments.find_one(
+                {"id": sid}, {"_id": 0, "status": 1},
+            )
+            if not linked or linked.get("status") in ("delivered", "cancelled"):
+                update["current_shipment_id"] = None
+                update["current_driver_id"] = None
+                update["current_route_id"] = None
+        await db.vehicles.update_one({"id": v["id"]}, {"$set": update})
+        counter["fixed"] += 1
+    return counter
+
+
 async def migrate() -> Dict[str, Dict[str, int]]:
     return {
         "shipments": await migrate_shipments(),
         "vehicles": await migrate_vehicles(),
         "drift": await normalize_drifted_statuses(),
         "cascade": await cascade_terminal_associations(),
+        "assigned_driver_backfill": await backfill_assigned_driver_field(),
+        "track_a_vehicle_statuses": await normalize_track_a_vehicle_statuses(),
     }
 
 

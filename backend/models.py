@@ -290,6 +290,7 @@ class Vehicle(BaseModel):
     current_driver_id: Optional[str] = None
     current_shipment_id: Optional[str] = None
     current_route_id: Optional[str] = None
+    assigned_driver_id: Optional[str] = None  # default driver pairing
 
     odometer_km: float = 0
     fuel_pct: Optional[float] = None

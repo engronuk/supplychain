@@ -866,7 +866,12 @@ async def tick() -> Dict[str, int]:
     fences = await db.geofences.find({}, {"_id": 0}).to_list(200)
 
     async for v in db.vehicles.find(
-            {"status": {"$in": ["in_transit", "stopped", "breakdown"]}}, {"_id": 0}):
+            {"status": {"$in": ["in_transit", "stopped", "breakdown"]},
+             # Phase B sim guard: never touch Track A entities. The
+             # control-tower simulator owns its own `source: "simulator"`
+             # fleet; Track A vehicles (source: "manual"/"seed") are driven
+             # by real driver actions through the 8-state lifecycle.
+             "source": "simulator"}, {"_id": 0}):
         try:
             # Track A vehicles use ``vehicle_code``; legacy sim vehicles use
             # ``code``. Normalise once so the 20+ downstream f-strings can
