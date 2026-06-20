@@ -868,6 +868,11 @@ async def tick() -> Dict[str, int]:
     async for v in db.vehicles.find(
             {"status": {"$in": ["in_transit", "stopped", "breakdown"]}}, {"_id": 0}):
         try:
+            # Track A vehicles use ``vehicle_code``; legacy sim vehicles use
+            # ``code``. Normalise once so the 20+ downstream f-strings can
+            # safely use ``v['code']`` without crashing on a KeyError.
+            if not v.get("code"):
+                v["code"] = v.get("vehicle_code") or (v.get("id") or "")[:8] or "—"
             mfr = v.get("manufacturer_id")
             update: Dict[str, Any] = {"updated_at": now_iso()}
 
