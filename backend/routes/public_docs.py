@@ -27,6 +27,10 @@ _PUBLIC_DOCS: dict[str, str] = {
     "distributor-mobile-ux":       "/app/docs/DISTRIBUTOR_MOBILE_UX_PLAN.md",
     "distributor-api-validation":  "/app/memory/distributor_api_validation.md",
     "logistics-validation-audit":  "/app/docs/LOGISTICS_VALIDATION_AUDIT.md",
+    "logistics-foundation-design": "/app/docs/LOGISTICS_FOUNDATION_DESIGN.md",
+    "otp-pod-architecture":        "/app/docs/OTP_POD_ARCHITECTURE.md",
+    "driver-api-spec":             "/app/docs/DRIVER_API_SPEC.md",
+    "fleet-management-spec":       "/app/docs/FLEET_MANAGEMENT_SPEC.md",
 }
 
 
