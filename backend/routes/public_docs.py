@@ -13,11 +13,15 @@ router = APIRouter()
 # Whitelisted public docs. Keys are URL slugs, values are absolute paths
 # inside this pod. Anything not in this map → 404.
 _PUBLIC_DOCS: dict[str, str] = {
-    "wholesaler-mobile-brief":   "/app/docs/WHOLESALER_MOBILE_BUILD_BRIEF.md",
-    "wholesaler-functional":     "/app/docs/WHOLESALER_WORKSPACE_FUNCTIONAL_SPEC.md",
-    "wholesaler-mobile-ux":      "/app/docs/WHOLESALER_MOBILE_UX_PLAN.md",
-    "wholesaler-api-validation": "/app/memory/wholesaler_api_validation.md",
-    "retailer-functional":       "/app/docs/RETAILER_WORKSPACE_FUNCTIONAL_SPEC.md",
+    "wholesaler-mobile-brief":     "/app/docs/WHOLESALER_MOBILE_BUILD_BRIEF.md",
+    "wholesaler-functional":       "/app/docs/WHOLESALER_WORKSPACE_FUNCTIONAL_SPEC.md",
+    "wholesaler-mobile-ux":        "/app/docs/WHOLESALER_MOBILE_UX_PLAN.md",
+    "wholesaler-api-validation":   "/app/memory/wholesaler_api_validation.md",
+    "retailer-functional":         "/app/docs/RETAILER_WORKSPACE_FUNCTIONAL_SPEC.md",
+    "manufacturer-mobile-brief":   "/app/docs/MANUFACTURER_MOBILE_BUILD_BRIEF.md",
+    "manufacturer-functional":     "/app/docs/MANUFACTURER_WORKSPACE_FUNCTIONAL_SPEC.md",
+    "manufacturer-mobile-ux":      "/app/docs/MANUFACTURER_MOBILE_UX_PLAN.md",
+    "manufacturer-api-validation": "/app/memory/manufacturer_api_validation.md",
 }
 
 

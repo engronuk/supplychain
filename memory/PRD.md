@@ -147,6 +147,15 @@ visibility (Manufacturer → Warehouse → Distributor → Wholesaler → Retail
   discriminator and ship_po now emits `wholesaler → retailer` shipments. New
   endpoints: `/api/procurement/retailer/{id}/suppliers` and
   `/api/distributor/{id}/incoming-wholesaler-pos`.
+- **Manufacturer Mobile Docs Handover (✅ SHIPPED 2026-06-19)** —
+  Completed the third and final mobile-app handover package. New artefacts:
+  `/app/docs/MANUFACTURER_MOBILE_UX_PLAN.md` (IA + 5-tab plan + P0/P1/P2 cut)
+  and `/app/docs/MANUFACTURER_MOBILE_BUILD_BRIEF.md` (32 KB self-contained
+  brief: 24 P0 screens, 13-endpoint smoke test, state machines, testid map,
+  error landmines). All four manufacturer docs whitelisted in
+  `/app/backend/routes/public_docs.py` — slugs `manufacturer-mobile-brief`,
+  `manufacturer-functional`, `manufacturer-mobile-ux`,
+  `manufacturer-api-validation` (each verified HTTP 200 via curl).
 - **P0+P1 Manufacturer→Retailer remediation sprint (✅ SHIPPED 2026-06-17)** —
   inventory now credits at every tier on delivery (was warehouse-only); tier
   rollups discover retailers via parent chain (was empty); wholesaler
