@@ -22,6 +22,10 @@ _PUBLIC_DOCS: dict[str, str] = {
     "manufacturer-functional":     "/app/docs/MANUFACTURER_WORKSPACE_FUNCTIONAL_SPEC.md",
     "manufacturer-mobile-ux":      "/app/docs/MANUFACTURER_MOBILE_UX_PLAN.md",
     "manufacturer-api-validation": "/app/memory/manufacturer_api_validation.md",
+    "distributor-mobile-brief":    "/app/docs/DISTRIBUTOR_MOBILE_BUILD_BRIEF.md",
+    "distributor-functional":      "/app/docs/DISTRIBUTOR_WORKSPACE_FUNCTIONAL_SPEC.md",
+    "distributor-mobile-ux":       "/app/docs/DISTRIBUTOR_MOBILE_UX_PLAN.md",
+    "distributor-api-validation":  "/app/memory/distributor_api_validation.md",
 }
 
 
