@@ -58,6 +58,18 @@ Content-Type: application/json
 - driver_code: `DRV-W0-11542`
 - Password (universal): `TradeKonekt2026!`
 
+### Starter vehicle (auto-seeded in the driver's fleet)
+- vehicle_code: `TK-W0-V001`
+- registration_number: `LAG-W0-001`
+- make/model: Mercedes-Benz Actros 2645
+- capacity: 1,000 units / 15,000 kg
+- status: `available`
+
+Both rows are created/repaired on every backend boot by
+`services/seed_test_driver.py`. To assign this vehicle on a shipment, the
+dispatcher hits `POST /api/shipments/{id}/assign` with the driver_id +
+vehicle_id pair returned by `GET /api/drivers` and `GET /api/vehicles`.
+
 ---
 
 ## 4. Driver-scoped endpoints (token role must be `driver`)

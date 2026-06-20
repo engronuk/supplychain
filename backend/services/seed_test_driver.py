@@ -39,6 +39,18 @@ TEST_DRIVER_PHONE = "+2348038888888"
 TEST_DRIVER_LICENCE = "FRSC-W0-001"
 TEST_DRIVER_LICENCE_CLASS = "E"
 
+# Starter vehicle paired with the test driver. Stable values so the seed is
+# idempotent across boots — collision-detected by ``(owner_org_id,
+# registration_number)`` which is the unique constraint in routes/vehicles.py.
+TEST_VEHICLE_REGISTRATION = "LAG-W0-001"
+TEST_VEHICLE_CODE = "TK-W0-V001"
+TEST_VEHICLE_MAKE = "Mercedes-Benz"
+TEST_VEHICLE_MODEL = "Actros 2645"
+TEST_VEHICLE_YEAR = 2022
+TEST_VEHICLE_COLOUR = "White"
+TEST_VEHICLE_CAPACITY_UNITS = 1000
+TEST_VEHICLE_CAPACITY_KG = 15000.0
+
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -177,4 +189,94 @@ async def seed_test_driver() -> dict:
         "manufacturer": mfr.get("name"),
         "driver": driver_action,
         "user": user_action,
+        "vehicle": await _seed_test_vehicle(mfr["id"], drv),
     }
+
+
+async def _seed_test_vehicle(owner_org_id: str, drv: dict) -> str:
+    """Ensure a starter vehicle exists for the test driver. Idempotent.
+
+    The vehicle is *not* pre-bound to the driver — the canonical 8-state
+    lifecycle binds driver + vehicle together on ``POST
+    /api/shipments/{id}/assign``. We only need the row to exist with
+    ``status="available"`` in the same fleet so the assign endpoint will
+    accept it. If it's already there and currently `available` we leave it
+    alone; if it's been left in a non-terminal busy state pointing at a
+    delivered/cancelled shipment, we free it (defensive cleanup that
+    mirrors the v2 cascade migration).
+    """
+    now = _now_iso()
+
+    veh = await db.vehicles.find_one(
+        {"owner_org_id": owner_org_id,
+         "registration_number": TEST_VEHICLE_REGISTRATION},
+        {"_id": 0},
+    )
+
+    if not veh:
+        veh_doc = {
+            "id": new_id(),
+            "vehicle_code": TEST_VEHICLE_CODE,
+            "registration_number": TEST_VEHICLE_REGISTRATION,
+            "vehicle_type": "truck",
+            "make": TEST_VEHICLE_MAKE,
+            "model": TEST_VEHICLE_MODEL,
+            "year": TEST_VEHICLE_YEAR,
+            "colour": TEST_VEHICLE_COLOUR,
+            "capacity_units": TEST_VEHICLE_CAPACITY_UNITS,
+            "capacity_weight_kg": TEST_VEHICLE_CAPACITY_KG,
+            "owner_org_id": owner_org_id,
+            "owner_org_type": "manufacturer",
+            "home_warehouse_id": None,
+            "status": "available",
+            "current_driver_id": None,
+            "current_shipment_id": None,
+            "current_route_id": None,
+            "odometer_km": 0,
+            "fuel_pct": 100.0,
+            "last_lat": None,
+            "last_lng": None,
+            "last_position_at": None,
+            "last_service_at": None,
+            "next_service_due_km": None,
+            "insurance_expiry": None,
+            "roadworthiness_expiry": None,
+            "is_active": True,
+            "decommissioned_at": None,
+            "source": "seed",
+            "created_at": now,
+            "updated_at": now,
+            "schema_version": 2,
+        }
+        await db.vehicles.insert_one(veh_doc)
+        return "created"
+
+    # Already exists — repair only if it's wedged on a terminal shipment.
+    needs_repair = False
+    if veh.get("current_shipment_id"):
+        linked = await db.shipments.find_one(
+            {"id": veh["current_shipment_id"]},
+            {"_id": 0, "status": 1},
+        )
+        if not linked or linked.get("status") in ("delivered", "cancelled"):
+            needs_repair = True
+    if veh.get("status") not in ("available", "maintenance", "in_transit",
+                                  "loading", "offline"):
+        needs_repair = True
+    if not veh.get("is_active"):
+        needs_repair = True
+
+    if needs_repair:
+        await db.vehicles.update_one(
+            {"id": veh["id"]},
+            {"$set": {
+                "status": "available",
+                "current_shipment_id": None,
+                "current_driver_id": None,
+                "current_route_id": None,
+                "is_active": True,
+                "updated_at": now,
+            }},
+        )
+        return "repaired"
+    return "exists"

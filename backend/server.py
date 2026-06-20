@@ -212,7 +212,8 @@ async def _background_bootstrap():
         try:
             result = await seed_test_driver()
             if result.get("driver") in ("created", "repaired") or \
-                    result.get("user") in ("created", "repaired"):
+                    result.get("user") in ("created", "repaired") or \
+                    result.get("vehicle") in ("created", "repaired"):
                 logger.info("Test driver seed: %s", result)
         except Exception:
             logger.exception("Test driver seed failed (continuing)")
