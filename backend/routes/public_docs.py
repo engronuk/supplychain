@@ -41,6 +41,7 @@ _PUBLIC_DOCS: dict[str, str] = {
     "phase-b-b1-b2-validation":    "/app/docs/PHASE_B_B1_B2_VALIDATION_REPORT.md",
     "phase-b3-validation":         "/app/docs/PHASE_B3_VALIDATION_REPORT.md",
     "fleet-ux-architecture":       "/app/docs/FLEET_UX_ARCHITECTURE.md",
+    "phase-b4-fleet-dashboard":    "/app/docs/PHASE_B4_FLEET_DASHBOARD_VALIDATION.md",
 }
 
 

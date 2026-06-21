@@ -42,6 +42,8 @@ import WholesalerDistributorDetail from "@/views/WholesalerDistributorDetail";
 import WholesalerAnalytics from "@/views/WholesalerAnalytics";
 import WholesalerIntelligenceCenter from "@/views/WholesalerIntelligenceCenter";
 import WMSLayout from "@/views/wms/WMSLayout";
+import FleetLayout from "@/views/fleet/FleetLayout";
+import FleetDashboard from "@/views/fleet/FleetDashboard";
 import WMSDashboardPage from "@/views/wms/DashboardPage";
 import { InventoryListPage, InventoryDetailPage } from "@/views/wms/InventoryPages";
 import { ReceivingPage, DispatchPage } from "@/views/wms/ReceivingDispatch";
@@ -143,6 +145,16 @@ function App() {
             </Route>
             <Route element={<Protected><Layout /></Protected>}>
               <Route path="/dashboard" element={<RoleDashboard />} />
+              <Route path="/fleet" element={<FleetLayout />}>
+                <Route index element={<Navigate to="/fleet/dashboard" replace />} />
+                <Route path="dashboard" element={<FleetDashboard />} />
+                <Route path="drivers" element={<div data-testid="fleet-drivers-placeholder">Drivers — coming in B5</div>} />
+                <Route path="vehicles" element={<div data-testid="fleet-vehicles-placeholder">Vehicles — coming in B6</div>} />
+                <Route path="dispatch" element={<div data-testid="fleet-dispatch-placeholder">Dispatch Console — coming in B7</div>} />
+                <Route path="compliance" element={<div data-testid="fleet-compliance-placeholder">Compliance Centre — coming next</div>} />
+                <Route path="command-centre" element={<div data-testid="fleet-command-placeholder">Command Centre v2 — final phase</div>} />
+                <Route path="analytics" element={<div data-testid="fleet-analytics-placeholder">Fleet Analytics — P1</div>} />
+              </Route>
               <Route path="/product-intelligence" element={<ProductIntelligenceCenter />} />
               <Route path="/inventory" element={<InventoryView />} />
               {/* Shipments module has been merged into Procurement. */}
