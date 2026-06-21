@@ -23,6 +23,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from core import db, now_iso
 from services.auth import get_current_user as require_auth
+from services.fleet_compliance import tenant_compliance_summary
 
 
 router = APIRouter()
@@ -494,8 +495,11 @@ async def fleet_overview(
     ]):
         shp_status_map[r["_id"] or "unknown"] = r["n"]
 
-    # Compliance — expiries within 30 days
+    # Compliance — unified bucket counters powered by job_compliance_check.
     now = _now()
+    compliance = await tenant_compliance_summary(tenant)
+    # Back-compat: keep the granular "X due in 30 days" counters next to
+    # the new four-bucket shape so downstream code is not broken.
     soon_iso = (now + timedelta(days=30)).isoformat()
     today_iso = now.isoformat()
 
@@ -584,7 +588,8 @@ async def fleet_overview(
             "cancelled": shp_status_map.get("cancelled", 0),
         },
         "compliance": {
-            "licences_due_30d": licences_due,
+            **compliance,                               # critical, warning, expiring_30d, expired, counts
+            "licences_due_30d": licences_due,           # legacy granular counters
             "insurance_due_30d": insurance_due,
             "roadworthiness_due_30d": roadworthiness_due,
         },

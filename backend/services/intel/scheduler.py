@@ -38,6 +38,11 @@ from services.intel.forecasts import compute_stock_exhaustion
 from services.intel.narrator import generate_exec_summary, generate_feed
 from services.intel.recommendations import generate_recommendations
 from services.intel.retailer_health import score_retailers
+from services.fleet_compliance import (
+    job_compliance_check as _job_compliance_check,
+    job_driver_kpis as _job_driver_kpis,
+    job_vehicle_kpis as _job_vehicle_kpis,
+)
 
 scheduler = AsyncIOScheduler(timezone="UTC")
 
@@ -71,6 +76,19 @@ async def job_forecasts():
             await compute_stock_exhaustion(tid)
         except Exception:
             logger.exception("forecast job failed for %s", tid)
+
+
+def _wrap(name, fn):
+    """Wrap a fleet job so a single failure doesn't kill the scheduler.
+    Logs the structured counter on success."""
+    async def runner():
+        try:
+            result = await fn()
+            logger.info("[%s] %s", name, result)
+        except Exception:
+            logger.exception("[%s] job failed", name)
+    return runner
+
 
 
 async def job_vehicle_motion():
@@ -224,6 +242,31 @@ def start_scheduler():
         job_vehicle_motion, IntervalTrigger(minutes=2), id="vehicle_motion",
         max_instances=1, coalesce=True,
         next_run_time=now + timedelta(minutes=1),
+    )
+
+    # ---- Phase B3: Fleet KPI + Compliance jobs ----------------------
+    # Driver KPI rollup — every 15 min. Lightweight: a few aggregates per
+    # driver. Idempotent; no-op for drivers with no shipments.
+    scheduler.add_job(
+        _wrap("fleet_driver_kpis", _job_driver_kpis),
+        IntervalTrigger(minutes=15), id="fleet_driver_kpis",
+        max_instances=1, coalesce=True,
+        next_run_time=now + timedelta(minutes=4),
+    )
+    # Vehicle KPI rollup — every 15 min, staggered 1 min after the driver job.
+    scheduler.add_job(
+        _wrap("fleet_vehicle_kpis", _job_vehicle_kpis),
+        IntervalTrigger(minutes=15), id="fleet_vehicle_kpis",
+        max_instances=1, coalesce=True,
+        next_run_time=now + timedelta(minutes=5),
+    )
+    # Compliance check — daily 03:00 UTC. Severity scoring +
+    # severity-transition notifications.
+    scheduler.add_job(
+        _wrap("fleet_compliance", _job_compliance_check),
+        CronTrigger(hour=3, minute=0), id="fleet_compliance",
+        max_instances=1, coalesce=True,
+        next_run_time=now + timedelta(minutes=2),  # first pass shortly after boot
     )
 
     scheduler.start()
