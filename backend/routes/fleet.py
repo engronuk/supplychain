@@ -675,3 +675,114 @@ async def clear_default_driver(
     )
     return {"ok": True, "vehicle_id": vehicle_id, "assigned_driver_id": None,
             "at": now}
+
+
+# ---------------------------------------------------------------------------
+# 7. Compliance Centre — log + acknowledge endpoints (Phase 5)
+# ---------------------------------------------------------------------------
+@router.get("/fleet/compliance/board", response_model=Dict[str, Any])
+async def fleet_compliance_board(
+    user: Dict[str, Any] = Depends(require_auth),
+    org_id: Optional[str] = Query(None),
+):
+    """Per-tenant severity board: drivers + vehicles grouped by worst severity.
+    Each row carries the minimum identifiers needed for the UI plus the
+    underlying expiring checks so the page can render badges without a
+    second fetch.
+    """
+    tenant = _resolve_tenant(user, org_id)
+
+    drv_f: Dict[str, Any] = {"is_active": True}
+    veh_f: Dict[str, Any] = {"is_active": True, "source": {"$in": ["manual", "seed"]}}
+    if tenant:
+        drv_f["employer_org_id"] = tenant
+        veh_f["owner_org_id"] = tenant
+
+    drivers: List[Dict[str, Any]] = []
+    async for d in db.drivers.find(drv_f, {
+        "_id": 0, "id": 1, "employee_number": 1, "full_name": 1, "phone": 1,
+        "licence_expiry": 1, "status": 1, "compliance": 1, "compliance_severity": 1,
+    }):
+        drivers.append(d)
+
+    vehicles: List[Dict[str, Any]] = []
+    async for v in db.vehicles.find(veh_f, {
+        "_id": 0, "id": 1, "vehicle_code": 1, "registration_number": 1,
+        "insurance_expiry": 1, "roadworthiness_expiry": 1, "registration_expiry": 1,
+        "status": 1, "compliance": 1, "compliance_severity": 1,
+    }):
+        vehicles.append(v)
+
+    # Build aggregated bucket counts (mirror /fleet/overview)
+    bucket = {s: {"drivers": 0, "vehicles": 0}
+              for s in ("expired", "critical", "high", "warning", "info", "ok")}
+    for d in drivers:
+        sev = d.get("compliance_severity") or "ok"
+        bucket.setdefault(sev, {"drivers": 0, "vehicles": 0})["drivers"] += 1
+    for v in vehicles:
+        sev = v.get("compliance_severity") or "ok"
+        bucket.setdefault(sev, {"drivers": 0, "vehicles": 0})["vehicles"] += 1
+
+    return {
+        "tenant_id": tenant or "global",
+        "generated_at": now_iso(),
+        "buckets": bucket,
+        "drivers": drivers,
+        "vehicles": vehicles,
+    }
+
+
+@router.get("/fleet/compliance/log", response_model=List[Dict[str, Any]])
+async def fleet_compliance_log(
+    user: Dict[str, Any] = Depends(require_auth),
+    org_id: Optional[str] = Query(None),
+    limit: int = Query(100, ge=1, le=500),
+    entity_type: Optional[str] = Query(None),
+    only_unacked: bool = Query(False),
+):
+    """Severity-transition history written by the daily compliance job."""
+    tenant = _resolve_tenant(user, org_id)
+    q: Dict[str, Any] = {}
+    if tenant:
+        q["tenant_id"] = tenant
+    if entity_type in ("driver", "vehicle"):
+        q["entity_type"] = entity_type
+    if only_unacked:
+        q["acknowledged_at"] = {"$exists": False}
+    rows = await db.fleet_compliance_log.find(q, {"_id": 0}) \
+        .sort("created_at", -1).limit(limit).to_list(limit)
+    return rows
+
+
+@router.post("/fleet/compliance/log/{log_id}/ack", response_model=Dict[str, Any])
+async def acknowledge_compliance_event(
+    log_id: str,
+    body: Dict[str, Any] = None,
+    user: Dict[str, Any] = Depends(require_auth),
+):
+    """Mark a single severity-transition row as acknowledged. The dispatcher
+    must include a short note (audited)."""
+    if user.get("role") not in ALLOWED_DISPATCHER_ROLES:
+        raise HTTPException(403, "Only dispatchers can acknowledge compliance events")
+    note = (body or {}).get("note", "").strip()
+    if len(note) < 5:
+        raise HTTPException(422, "Ack note must be at least 5 characters")
+
+    log = await db.fleet_compliance_log.find_one({"id": log_id}, {"_id": 0})
+    if not log:
+        raise HTTPException(404, "Log entry not found")
+    tenant = _resolve_tenant(user, log.get("tenant_id"))
+    if tenant and tenant != log.get("tenant_id"):
+        raise HTTPException(403, "Log entry does not belong to this tenant")
+
+    now = now_iso()
+    await db.fleet_compliance_log.update_one(
+        {"id": log_id},
+        {"$set": {
+            "acknowledged_at": now,
+            "acknowledged_by_user_id": user.get("id"),
+            "acknowledged_note": note,
+        }},
+    )
+    return {"ok": True, "log_id": log_id, "acknowledged_at": now}
+

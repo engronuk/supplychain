@@ -145,6 +145,69 @@ export default function DispatchConsole() {
     return data.vehicles.filter((v) => (v.capacity_units || 0) >= units);
   }, [selectedShipment, data.vehicles]);
 
+  // Auto-suggest: rank drivers + vehicles for the selected shipment.
+  // Driver score (lower = better): active_shipments × 100  −  on_time_pct_30d  −  default_vehicle_match × 50
+  // Vehicle score (lower = better): |capacity_units − ship.units| / capacity_units (best-fit) − default_driver_present × 0.2
+  const suggestion = useMemo(() => {
+    if (!selectedShipment) return null;
+    const units = selectedShipment.total_units || 0;
+
+    const rankedVehicles = [...eligibleVehicles]
+      .map((v) => {
+        const slack = (v.capacity_units || 1) - units;
+        const slackRatio = slack / (v.capacity_units || 1);
+        const score = slackRatio - (v.assigned_driver_id ? 0.2 : 0);
+        return { ...v, _score: score };
+      })
+      .sort((a, b) => a._score - b._score);
+
+    const rankedDrivers = [...data.drivers]
+      .map((d) => {
+        const defaultVehicleMatch = rankedVehicles.some(
+          (v) => v.assigned_driver_id === d.id,
+        );
+        const score =
+          (d.active_trip_count || 0) * 100 -
+          (d.on_time_pct_30d || 0) -
+          (defaultVehicleMatch ? 50 : 0);
+        return { ...d, _score: score, _defaultVehicleMatch: defaultVehicleMatch };
+      })
+      .sort((a, b) => a._score - b._score);
+
+    const topDriver = rankedDrivers[0];
+    // Prefer the vehicle paired by default with the top driver, if it fits.
+    const pairedVehicle = topDriver
+      ? rankedVehicles.find((v) => v.assigned_driver_id === topDriver.id)
+      : null;
+    const topVehicle = pairedVehicle || rankedVehicles[0] || null;
+
+    const reasons = [];
+    if (topDriver) {
+      if ((topDriver.active_trip_count || 0) === 0) reasons.push("driver is idle");
+      else reasons.push(`driver has ${topDriver.active_trip_count} active trip${topDriver.active_trip_count === 1 ? "" : "s"}`);
+      if (topDriver.on_time_pct_30d != null) reasons.push(`${topDriver.on_time_pct_30d}% on-time (30d)`);
+      if (topDriver._defaultVehicleMatch) reasons.push("paired with the best-fit vehicle");
+    }
+    if (topVehicle) {
+      const cap = topVehicle.capacity_units || 0;
+      const usePct = cap ? Math.round((units / cap) * 100) : 0;
+      reasons.push(`${usePct}% capacity used (${units}/${cap})`);
+    }
+
+    return {
+      driver_id: topDriver?.id || "",
+      vehicle_id: topVehicle?.id || "",
+      driver_name: topDriver?.full_name,
+      vehicle_code: topVehicle?.vehicle_code,
+      reasons,
+    };
+  }, [selectedShipment, eligibleVehicles, data.drivers]);
+
+  const applySuggestion = () => {
+    if (!suggestion) return;
+    setForm({ driver: suggestion.driver_id, vehicle: suggestion.vehicle_id });
+  };
+
   const assign = async () => {
     if (!selected || !form.driver || !form.vehicle) return;
     setAssigning(true); setError(null);
@@ -305,6 +368,31 @@ export default function DispatchConsole() {
                   <div className="font-medium text-slate-900">{selectedShipment.id.slice(0,8)}</div>
                   <div className="text-xs text-slate-500">{selectedShipment.total_units} units · ₦{(selectedShipment.total_value || 0).toLocaleString()}</div>
                 </div>
+
+                {suggestion && (suggestion.driver_id || suggestion.vehicle_id) && (
+                  <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-3" data-testid="auto-suggest-card">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="text-xs font-semibold uppercase tracking-wider text-indigo-700">Suggested</div>
+                        <div className="mt-1 text-sm text-slate-900">
+                          <span className="font-medium">{suggestion.driver_name || "—"}</span>
+                          {suggestion.vehicle_code && <> · <span className="font-medium">{suggestion.vehicle_code}</span></>}
+                        </div>
+                        {suggestion.reasons.length > 0 && (
+                          <ul className="mt-1 text-xs text-slate-600 list-disc pl-4">
+                            {suggestion.reasons.map((r, i) => <li key={i}>{r}</li>)}
+                          </ul>
+                        )}
+                      </div>
+                      <button
+                        onClick={applySuggestion}
+                        data-testid="auto-suggest-apply"
+                        className="shrink-0 rounded-full bg-indigo-600 px-3 py-1 text-xs font-medium text-white hover:bg-indigo-700"
+                      >Use</button>
+                    </div>
+                  </div>
+                )}
+
                 {error && <div className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700" data-testid="assign-error">{String(error)}</div>}
                 <label className="block">
                   <span className="text-xs font-medium text-slate-600">Driver</span>
