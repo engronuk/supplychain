@@ -53,12 +53,17 @@ async def list_vehicles(
     status: Optional[str] = None,
     owner_org_id: Optional[str] = None,
     driver_id: Optional[str] = None,
+    include_simulator: bool = False,
 ):
     q = _scope_filter(user, owner_org_id)
     if status:
         q["status"] = status
     if driver_id:
         q["current_driver_id"] = driver_id
+    # Default: hide legacy simulator vehicles from operator-facing listings.
+    # Pass include_simulator=true to opt in (Command Centre v2 union view).
+    if not include_simulator:
+        q["source"] = {"$in": ["manual", "seed"]}
     rows = await db.vehicles.find(q, {"_id": 0}).sort("created_at", -1).limit(500).to_list(500)
     return rows
 
