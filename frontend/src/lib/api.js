@@ -14,10 +14,32 @@ let _accessToken = null;
 export function setAccessToken(token) { _accessToken = token || null; }
 export function getAccessToken() { return _accessToken; }
 
+// ---- active tenant store (multi-tenant distributors / wholesalers) ----
+// In-memory mirror of localStorage("tk.active_tenant_id"). Updated by
+// TenantContext when the user picks a manufacturer scope. Sent as
+// `X-Active-Tenant-Id` on every request so the backend can override the
+// caller's entity_id / manufacturer_id for the scope of that call.
+let _activeTenantId = null;
+try {
+  _activeTenantId = localStorage.getItem("tk.active_tenant_id") || null;
+} catch (e) { void e; /* SSR / disabled storage */ }
+export function setActiveTenantId(id) {
+  _activeTenantId = id || null;
+  try {
+    if (id) localStorage.setItem("tk.active_tenant_id", id);
+    else localStorage.removeItem("tk.active_tenant_id");
+  } catch (e) { void e; }
+}
+export function getActiveTenantId() { return _activeTenantId; }
+
 api.interceptors.request.use((config) => {
   if (_accessToken) {
     config.headers = config.headers || {};
     config.headers.Authorization = `Bearer ${_accessToken}`;
+  }
+  if (_activeTenantId) {
+    config.headers = config.headers || {};
+    config.headers["X-Active-Tenant-Id"] = _activeTenantId;
   }
   return config;
 });
@@ -32,7 +54,7 @@ api.interceptors.response.use(
     if (status === 401 && !isAuthCall) {
       // Surface as a normal axios error; ProtectedRoute will handle redirect.
       _accessToken = null;
-      try { localStorage.removeItem("tk.access_token"); } catch {}
+      try { localStorage.removeItem("tk.access_token"); } catch (e) { void e; }
       if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
         window.location.replace("/login?expired=1");
       }

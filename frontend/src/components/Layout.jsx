@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "@/context/SessionContext";
 import NotificationsPopover from "@/components/NotificationsPopover";
 import RetailerAssistantBubble from "@/components/RetailerAssistantBubble";
+import { TenantPill } from "@/components/TenantSelector";
 import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard,
@@ -207,6 +208,11 @@ export default function Layout() {
                 {entityName}
               </div>
             </div>
+          </div>
+          {/* Multi-tenant pill — visible only for distributor/wholesaler
+              users whose business_group spans multiple manufacturers. */}
+          <div className={collapsed ? "md:hidden mt-2" : "mt-2"}>
+            <TenantPill />
           </div>
         </div>
 

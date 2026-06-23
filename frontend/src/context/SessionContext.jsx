@@ -7,13 +7,13 @@ const TOKEN_KEY = "tk.access_token";
 const ORIGINAL_KEY = "tk.original_token";  // super-admin token stashed during impersonation
 
 function readLocal(key) {
-  try { return localStorage.getItem(key) || null; } catch { return null; }
+  try { return localStorage.getItem(key) || null; } catch (e) { void e; return null; }
 }
 function writeLocal(key, val) {
   try {
     if (val == null) localStorage.removeItem(key);
     else localStorage.setItem(key, val);
-  } catch {}
+  } catch (e) { void e; }
 }
 
 export function SessionProvider({ children }) {
@@ -22,6 +22,17 @@ export function SessionProvider({ children }) {
   const [entity, setEntity] = useState(null);
   const [bootstrapping, setBootstrapping] = useState(true);
   const [impersonator, setImpersonator] = useState(null);
+  // Multi-tenant override — when the user picks a different manufacturer
+  // scope from the TenantSelector, the chosen entity_id is stashed here so
+  // `session.entity.id` (read by 20+ surface components) reflects the new
+  // tenant on the next render. No per-component change required.
+  const [activeTenantOverride, _setActiveTenantOverride] = useState(() => {
+    try { return localStorage.getItem("tk.active_tenant_id") || null; }
+    catch (e) { void e; return null; }
+  });
+  const setActiveTenantOverride = useCallback((entityId) => {
+    _setActiveTenantOverride(entityId || null);
+  }, []);
 
   const refreshMe = useCallback(async () => {
     try {
@@ -72,7 +83,7 @@ export function SessionProvider({ children }) {
   }, [refreshMe]);
 
   const signOut = useCallback(async () => {
-    try { await AuthApi.logout(); } catch {}
+    try { await AuthApi.logout(); } catch (e) { void e; }
     writeLocal(TOKEN_KEY, null);
     writeLocal(ORIGINAL_KEY, null);
     setAccessToken(null);
@@ -105,15 +116,21 @@ export function SessionProvider({ children }) {
   }, [refreshMe]);
 
   // Back-compat shim: legacy code reads `session.role` and `session.entity`.
+  // `session.entity.id` is overridden to the active tenant when the user
+  // has picked a manufacturer scope from the TenantSelector.
   const session = useMemo(() => {
     if (!user) return null;
+    const baseEntity = entity || { id: user.entity_id, name: user.name || "" };
+    const effectiveEntity = activeTenantOverride
+      ? { ...baseEntity, id: activeTenantOverride }
+      : baseEntity;
     return {
       role: user.role,
-      entity: entity || { id: user.entity_id, name: user.name || "" },
+      entity: effectiveEntity,
       user,
       tenant_id: tenantId,
     };
-  }, [user, entity, tenantId]);
+  }, [user, entity, tenantId, activeTenantOverride]);
 
   return (
     <SessionContext.Provider
@@ -124,6 +141,8 @@ export function SessionProvider({ children }) {
         tenantId,
         bootstrapping,
         impersonator,
+        activeTenantOverride,
+        setActiveTenantOverride,
         signIn,
         signOut,
         impersonate,

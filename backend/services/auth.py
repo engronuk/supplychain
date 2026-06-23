@@ -113,7 +113,21 @@ def public_user(user: Dict[str, Any]) -> Dict[str, Any]:
 
 # ---------------- auth dependency ----------------
 async def get_current_user(request: Request) -> Dict[str, Any]:
-    """Decode Bearer token (or access_token cookie) → fresh user document."""
+    """Decode Bearer token (or access_token cookie) → fresh user document.
+
+    If the request carries ``X-Active-Tenant-Id``, **and** the caller is a
+    multi-tenant distributor/wholesaler whose ``business_group_id`` lists
+    that entity_id as a member, the returned user dict is **rewritten** to
+    point at the chosen tenant — i.e. ``entity_id``,
+    ``manufacturer_id`` and (where relevant) ``distributor_id`` reflect
+    the picked tenant. Endpoints that read these fields therefore scope
+    automatically without any per-route plumbing.
+
+    Security: the override is rejected with **403** if ``X-Active-Tenant-Id``
+    is not in the caller's membership list. There is never a path where a
+    user can scope to a tenant they do not belong to just by spoofing the
+    header.
+    """
     token: Optional[str] = None
     auth = request.headers.get("Authorization", "")
     if auth.startswith("Bearer "):
@@ -132,6 +146,31 @@ async def get_current_user(request: Request) -> Dict[str, Any]:
         raise HTTPException(401, "User not found")
     if user.get("status") == "locked":
         raise HTTPException(403, "Account locked. Contact your administrator.")
+
+    # Multi-tenant scope override (X-Active-Tenant-Id) -------------------
+    active_entity_id = request.headers.get("X-Active-Tenant-Id")
+    if active_entity_id and user.get("role") in ("distributor", "wholesaler"):
+        if active_entity_id != user.get("entity_id"):
+            # Lazy import — avoids circular dependency on routes/me.py
+            from services.business_groups import memberships_for_user, find_membership
+            memberships = await memberships_for_user(user)
+            match = find_membership(memberships, active_entity_id)
+            if not match:
+                raise HTTPException(403, {
+                    "code": "NOT_A_MEMBER",
+                    "entity_id": active_entity_id,
+                    "msg": "X-Active-Tenant-Id is not in your business group's memberships.",
+                })
+            user = {
+                **user,
+                "entity_id": match["entity_id"],
+                "manufacturer_id": match.get("manufacturer_id"),
+                "distributor_id": (match["entity_id"]
+                                   if match.get("entity_role") == "distributor"
+                                   else user.get("distributor_id")),
+                "_active_tenant": match,
+            }
+
     return user
 
 

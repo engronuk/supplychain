@@ -43,6 +43,7 @@ from routes import (
     organizations,
     procurement,
     public_docs,
+    me,
     retailer_inventory,
     product_detail,
     product_intelligence,
@@ -73,6 +74,7 @@ from services.seed_fleet_production import seed_fleet_production
 from services.seed_active_shipments import seed_active_shipments
 from services.seed_distributor_driver_logins import seed_distributor_driver_logins
 from services.backfill_wholesalers import backfill_wholesalers
+from services.business_groups import backfill_business_groups
 from services.seed_distributor_orders import seed_distributor_orders
 from services.seed_procurement import seed_procurement
 from services.migrate_organizations import migrate_organizations
@@ -129,6 +131,7 @@ for r in (
     admin_sync.router,
     admin_track_a.router,
     public_docs.router,
+    me.router,
     search.router,
     integrations.router,
     distributor_reports.router,
@@ -280,6 +283,16 @@ async def _background_bootstrap():
         except Exception:
             logger.exception("Wholesaler backfill failed (continuing)")
 
+        # Multi-tenant memberships: backfill business_group_id on
+        # distributors / wholesalers / users so a single login can show
+        # multiple manufacturer scopes (2026-06-23).
+        try:
+            bg = await backfill_business_groups()
+            if any(bg.values()):
+                logger.info("Business-group backfill: %s", bg)
+        except Exception:
+            logger.exception("Business-group backfill failed (continuing)")
+
         try:
             ship_result = await seed_active_shipments()
             if sum(ship_result.get("totals", {}).values()):
@@ -364,6 +377,14 @@ async def _background_bootstrap():
             logger.info("Wholesaler backfill at boot: %s", bf)
     except Exception:
         logger.exception("Wholesaler backfill failed (continuing)")
+
+    # Multi-tenant memberships: backfill business_group_id.
+    try:
+        bg = await backfill_business_groups()
+        if any(bg.values()):
+            logger.info("Business-group backfill: %s", bg)
+    except Exception:
+        logger.exception("Business-group backfill failed (continuing)")
 
     # Idempotent active-shipments demo seed — live trips per distributor.
     try:

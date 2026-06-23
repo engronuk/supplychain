@@ -1,6 +1,8 @@
 import "@/App.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { SessionProvider, useSession } from "@/context/SessionContext";
+import { TenantProvider } from "@/context/TenantContext";
+import { TenantSelectorModal } from "@/components/TenantSelector";
 import LandingPage from "@/components/LandingPage";
 import LoginPage from "@/views/LoginPage";
 import Layout from "@/components/Layout";
@@ -123,6 +125,7 @@ function PublicHome() {
 function App() {
   return (
     <SessionProvider>
+      <TenantProvider>
       <BootGate>
         <BrowserRouter>
           <Routes>
@@ -203,6 +206,8 @@ function App() {
           </Routes>
         </BrowserRouter>
       </BootGate>
+      <TenantSelectorModal />
+      </TenantProvider>
       <Toaster richColors position="top-right" />
     </SessionProvider>
   );

@@ -147,6 +147,47 @@ visibility (Manufacturer → Warehouse → Distributor → Wholesaler → Retail
   discriminator and ship_po now emits `wholesaler → retailer` shipments. New
   endpoints: `/api/procurement/retailer/{id}/suppliers` and
   `/api/distributor/{id}/incoming-wholesaler-pos`.
+- **Multi-Tenant Login Switcher (✅ SHIPPED 2026-06-23)** —
+  A real distributor or wholesaler that serves multiple manufacturers
+  can now login once and choose which manufacturer's data to view.
+
+  Scales to N manufacturers without code changes — adding a new
+  manufacturer for the same business creates a new `distributors`/
+  `wholesalers` row sharing the same `business_group_id`, which
+  automatically surfaces in the picker.
+
+  Implementation:
+
+  * **`business_group_id`** — deterministic UUID-5 derived from
+    `(role, name, city, state)`. Same real-world business → same id,
+    regardless of how many manufacturers onboard it. Backfilled across
+    `distributors` (12 rows), `wholesalers` (36 rows) and `users`
+    (52 rows) at every backend boot.
+  * **`GET /api/me/tenants`** — returns `{active, tenants[], multi_tenant}`
+    for the calling user; manufacturer-scoped rows in the user's
+    business_group are listed with `manufacturer_id`, `manufacturer_name`,
+    `entity_id`, `entity_name`, `entity_city`, `is_default`.
+  * **`POST /api/me/active-tenant`** — server-side validation that the
+    chosen entity is in the user's membership list (security guard
+    against header spoofing).
+  * **`X-Active-Tenant-Id` header** — auth middleware reads it on every
+    request and rewrites `user.entity_id` + `user.manufacturer_id` to
+    the chosen tenant scope ONLY if it's in the caller's membership
+    list (random id → 403). Endpoints that read `user.entity_id` /
+    `user.manufacturer_id` therefore scope automatically without
+    per-route plumbing.
+  * **`TenantProvider` + axios interceptor** — frontend persists the
+    chosen `entity_id` in `localStorage("tk.active_tenant_id")` and
+    sends it as the header on every request. Modal-style selector
+    auto-opens on first multi-tenant login; sidebar `TenantPill`
+    shows the active scope + click-to-switch.
+
+  Verified end-to-end: Apex Distributors (`mfr-0001-dst-0001`) sees
+  2 tenants (Unilever + FMN), `/api/fleet/overview` returns the
+  picked tenant's data, security spoof → 403. Same for wholesaler
+  login `unilever.wholesaler@tradekonekt.io` which sees Royal Trading 1
+  under both manufacturers.
+
 - **Single-Source-of-Truth Audit Fix (✅ SHIPPED 2026-06-23)** —
   After the user reported the SAME distributor showing different data on
   web vs mobile, a full audit identified three issues:
