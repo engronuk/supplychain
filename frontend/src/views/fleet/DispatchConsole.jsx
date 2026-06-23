@@ -182,16 +182,23 @@ export default function DispatchConsole() {
     const topVehicle = pairedVehicle || rankedVehicles[0] || null;
 
     const reasons = [];
+    let warning = null;
     if (topDriver) {
       if ((topDriver.active_trip_count || 0) === 0) reasons.push("driver is idle");
       else reasons.push(`driver has ${topDriver.active_trip_count} active trip${topDriver.active_trip_count === 1 ? "" : "s"}`);
       if (topDriver.on_time_pct_30d != null) reasons.push(`${topDriver.on_time_pct_30d}% on-time (30d)`);
       if (topDriver._defaultVehicleMatch) reasons.push("paired with the best-fit vehicle");
+      if (["critical", "expired"].includes(topDriver.compliance_severity)) {
+        warning = `Driver compliance is ${topDriver.compliance_severity}`;
+      }
     }
     if (topVehicle) {
       const cap = topVehicle.capacity_units || 0;
       const usePct = cap ? Math.round((units / cap) * 100) : 0;
       reasons.push(`${usePct}% capacity used (${units}/${cap})`);
+      if (["critical", "expired"].includes(topVehicle.compliance_severity)) {
+        warning = (warning ? `${warning}; ` : "") + `vehicle compliance is ${topVehicle.compliance_severity}`;
+      }
     }
 
     return {
@@ -200,6 +207,7 @@ export default function DispatchConsole() {
       driver_name: topDriver?.full_name,
       vehicle_code: topVehicle?.vehicle_code,
       reasons,
+      warning,
     };
   }, [selectedShipment, eligibleVehicles, data.drivers]);
 
@@ -370,14 +378,24 @@ export default function DispatchConsole() {
                 </div>
 
                 {suggestion && (suggestion.driver_id || suggestion.vehicle_id) && (
-                  <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-3" data-testid="auto-suggest-card">
+                  <div
+                    className={`rounded-xl border p-3 ${suggestion.warning ? "border-amber-300 bg-amber-50" : "border-indigo-200 bg-indigo-50"}`}
+                    data-testid="auto-suggest-card"
+                  >
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <div className="text-xs font-semibold uppercase tracking-wider text-indigo-700">Suggested</div>
+                        <div className={`text-xs font-semibold uppercase tracking-wider ${suggestion.warning ? "text-amber-800" : "text-indigo-700"}`}>
+                          {suggestion.warning ? "Suggested — proceed with caution" : "Suggested"}
+                        </div>
                         <div className="mt-1 text-sm text-slate-900">
                           <span className="font-medium">{suggestion.driver_name || "—"}</span>
                           {suggestion.vehicle_code && <> · <span className="font-medium">{suggestion.vehicle_code}</span></>}
                         </div>
+                        {suggestion.warning && (
+                          <div className="mt-1 text-xs text-amber-800 font-medium" data-testid="auto-suggest-warning">
+                            ⚠ {suggestion.warning}
+                          </div>
+                        )}
                         {suggestion.reasons.length > 0 && (
                           <ul className="mt-1 text-xs text-slate-600 list-disc pl-4">
                             {suggestion.reasons.map((r, i) => <li key={i}>{r}</li>)}
@@ -387,7 +405,7 @@ export default function DispatchConsole() {
                       <button
                         onClick={applySuggestion}
                         data-testid="auto-suggest-apply"
-                        className="shrink-0 rounded-full bg-indigo-600 px-3 py-1 text-xs font-medium text-white hover:bg-indigo-700"
+                        className={`shrink-0 rounded-full px-3 py-1 text-xs font-medium text-white ${suggestion.warning ? "bg-amber-600 hover:bg-amber-700" : "bg-indigo-600 hover:bg-indigo-700"}`}
                       >Use</button>
                     </div>
                   </div>

@@ -64,6 +64,7 @@ from services.seed import seed_from_csv
 from services.seed_batches import seed_batches
 from services.seed_demo_users import seed_demo_users
 from services.seed_test_driver import seed_test_driver
+from services.seed_fleet_production import seed_fleet_production
 from services.seed_distributor_orders import seed_distributor_orders
 from services.seed_procurement import seed_procurement
 from services.migrate_organizations import migrate_organizations
@@ -221,6 +222,15 @@ async def _background_bootstrap():
                 logger.info("Test driver seed: %s", result)
         except Exception:
             logger.exception("Test driver seed failed (continuing)")
+
+        try:
+            fleet_result = await seed_fleet_production()
+            if fleet_result.get("totals", {}).get("drivers_created") or \
+                    fleet_result.get("totals", {}).get("vehicles_created"):
+                logger.info("Fleet production seed: %s",
+                            fleet_result.get("totals"))
+        except Exception:
+            logger.exception("Fleet production seed failed (continuing)")
 
         try:
             start_scheduler()

@@ -48,6 +48,7 @@ import DriverRoster from "@/views/fleet/DriverRoster";
 import VehicleRegistry from "@/views/fleet/VehicleRegistry";
 import DispatchConsole from "@/views/fleet/DispatchConsole";
 import ComplianceCentre from "@/views/fleet/ComplianceCentre";
+import CommandCentre from "@/views/fleet/CommandCentre";
 import WMSDashboardPage from "@/views/wms/DashboardPage";
 import { InventoryListPage, InventoryDetailPage } from "@/views/wms/InventoryPages";
 import { ReceivingPage, DispatchPage } from "@/views/wms/ReceivingDispatch";
@@ -158,7 +159,7 @@ function App() {
                 <Route path="vehicles/:vehicleId" element={<VehicleRegistry />} />
                 <Route path="dispatch" element={<DispatchConsole />} />
                 <Route path="compliance" element={<ComplianceCentre />} />
-                <Route path="command-centre" element={<div data-testid="fleet-command-placeholder">Command Centre v2 — final phase</div>} />
+                <Route path="command-centre" element={<CommandCentre />} />
                 <Route path="analytics" element={<div data-testid="fleet-analytics-placeholder">Fleet Analytics — P1</div>} />
               </Route>
               <Route path="/product-intelligence" element={<ProductIntelligenceCenter />} />

@@ -147,6 +147,28 @@ visibility (Manufacturer → Warehouse → Distributor → Wholesaler → Retail
   discriminator and ship_po now emits `wholesaler → retailer` shipments. New
   endpoints: `/api/procurement/retailer/{id}/suppliers` and
   `/api/distributor/{id}/incoming-wholesaler-pos`.
+- **Fleet Management Production Data Hookup (✅ SHIPPED 2026-06-23)** —
+  Every Track A tenant (2 manufacturers + 12 distributors) now has a real,
+  non-simulator fleet in the unified `/fleet/*` workspace. New idempotent
+  seeder `/app/backend/services/seed_fleet_production.py` inserts 4 drivers
+  + 4 vehicles per tenant (Unilever keeps its 8) with Nigerian names, FRSC
+  licence numbers, state-plate registrations, capacity, odometer, last-
+  service date, and `insurance_expiry/roadworthiness_expiry/registration_
+  expiry` deterministically spread across the six severity buckets (ok /
+  info / warning / high / critical / expired) so the Compliance Centre is
+  always populated. Also performed a one-time orphan migration: 7
+  `manual/seed` vehicles with `owner_org_id=""` were reassigned to the
+  primary Unilever tenant. Compliance + KPI jobs re-run automatically after
+  the seed. Net effect: 52 new drivers + 52 new vehicles (total 60 real
+  fleet rows) keyed on `(tenant_id, employee_number)` /
+  `(tenant_id, registration_number)` so re-running is a no-op. Sim guard
+  preserved — the legacy control-tower simulator continues to operate on
+  its own 4,839 `source="simulator"` vehicles which are excluded from
+  every `/api/fleet/*` endpoint. Verified via curl as both Unilever
+  manufacturer and Apex Distributor: each sees only its own production
+  fleet with live compliance buckets and KPIs. Seeder wired into
+  `server.py` startup (production + canonical-rebuild + dev paths).
+
 - **Driver Mobile App W0 Discovery (✅ SHIPPED 2026-06-20)** —
   Four W0 docs created (functional spec + UX plan + build brief + API
   validation), exposed via `/api/public-docs/driver-*`. 17/17 endpoints

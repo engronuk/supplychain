@@ -159,7 +159,7 @@ export default function ComplianceCentre() {
       setLoading(false); setRefreshing(false);
     }
   };
-  useEffect(() => { fetchAll(); /* eslint-disable-next-line */ }, [unackedOnly]);
+  useEffect(() => { fetchAll(); }, [unackedOnly]);
 
   const visibleSeverities = useMemo(
     () => SEVERITY_ORDER.filter((s) => {

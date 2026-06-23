@@ -49,6 +49,34 @@ async def list_notifications(
         "created_at", -1).limit(limit).to_list(limit)
 
 
+@router.get("/notifications/me")
+async def list_my_notifications(
+    limit: int = Query(50, ge=1, le=200),
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    """Personal + tenant inbox shortcut for the dispatcher UI.
+
+    Returns notifications that target the caller's user_id OR their tenant
+    (e.g. fleet_compliance fanouts addressed to ``target_type=manufacturer``,
+    ``target_id=<tenant>``). Sorted desc by created_at.
+    """
+    uid = user.get("id")
+    tenant = user.get("entity_id") or user.get("manufacturer_id")
+    q: Dict[str, Any] = {
+        "$or": [
+            {"user_id": uid},
+            {"target_user_id": uid},
+            {"target_type": user.get("entity_type") or user.get("role"),
+             "target_id": tenant},
+        ],
+    }
+    rows = await db.notifications.find(q, {"_id": 0}).sort(
+        "created_at", -1).limit(limit).to_list(limit)
+    return rows
+
+
+
+
 @router.patch("/notifications/{notif_id}/read")
 async def mark_notification_read(
     notif_id: str,
