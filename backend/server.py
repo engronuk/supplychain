@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import asyncio
 import os
+from datetime import datetime, timezone
+from typing import Any, Dict
 
 from fastapi import APIRouter, FastAPI
 from starlette.middleware.cors import CORSMiddleware
@@ -127,6 +129,26 @@ for r in (
     api_router.include_router(r)
 
 app.include_router(api_router)
+
+
+# Lightweight unauthenticated liveness probe for external monitors + the
+# Mobile Agent's smoke tests. Returns 200 OK as long as the FastAPI process
+# is serving requests; the DB check is intentionally a fast ping so this
+# endpoint stays responsive even when Mongo is slow.
+@app.get("/api/health")
+async def health() -> Dict[str, Any]:
+    db_ok = True
+    try:
+        await client.admin.command("ping")
+    except Exception:
+        db_ok = False
+    return {
+        "status": "ok" if db_ok else "degraded",
+        "service": "tradekonekt-backend",
+        "db": "up" if db_ok else "down",
+        "time": datetime.now(timezone.utc).isoformat(),
+    }
+
 
 # Serve uploaded files (product images, etc.) — mounted under /api so the
 # Kubernetes ingress routes the requests to the backend pod.
