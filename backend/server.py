@@ -66,6 +66,7 @@ from services.seed_demo_users import seed_demo_users
 from services.seed_test_driver import seed_test_driver
 from services.seed_fleet_production import seed_fleet_production
 from services.seed_active_shipments import seed_active_shipments
+from services.seed_distributor_driver_logins import seed_distributor_driver_logins
 from services.seed_distributor_orders import seed_distributor_orders
 from services.seed_procurement import seed_procurement
 from services.migrate_organizations import migrate_organizations
@@ -234,6 +235,14 @@ async def _background_bootstrap():
             logger.exception("Fleet production seed failed (continuing)")
 
         try:
+            login_result = await seed_distributor_driver_logins()
+            if login_result.get("created") or login_result.get("repaired"):
+                logger.info("Distributor driver logins: created=%s repaired=%s",
+                            login_result.get("created"), login_result.get("repaired"))
+        except Exception:
+            logger.exception("Distributor driver logins seed failed (continuing)")
+
+        try:
             ship_result = await seed_active_shipments()
             if sum(ship_result.get("totals", {}).values()):
                 logger.info("Active-shipments demo seed: %s",
@@ -300,6 +309,15 @@ async def _background_bootstrap():
                         fleet_result.get("totals"))
     except Exception:
         logger.exception("Fleet production seed failed (continuing)")
+
+    # One driver login per distributor for mobile QA parallelism.
+    try:
+        login_result = await seed_distributor_driver_logins()
+        if login_result.get("created") or login_result.get("repaired"):
+            logger.info("Distributor driver logins: created=%s repaired=%s",
+                        login_result.get("created"), login_result.get("repaired"))
+    except Exception:
+        logger.exception("Distributor driver logins seed failed (continuing)")
 
     # Idempotent active-shipments demo seed — live trips per distributor.
     try:

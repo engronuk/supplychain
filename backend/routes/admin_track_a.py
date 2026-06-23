@@ -263,3 +263,58 @@ async def seed_track_a_shipment(
             },
         },
     }
+
+
+
+@router.get("/_admin/distributor-driver-logins", response_model=Dict[str, Any])
+async def list_distributor_driver_logins(
+    user: Dict[str, Any] = Depends(require_auth),
+) -> Dict[str, Any]:
+    """Return one driver login per distributor for mobile-app QA.
+
+    Restricted to ``super_admin`` and ``manufacturer`` roles. Lists the
+    email + ``employee_number`` of the driver claimed by
+    ``seed_distributor_driver_logins.py``. Password is the shared
+    ``DEMO_PASSWORD`` env value — same one used by every demo account in
+    /app/memory/test_credentials.md.
+    """
+    role = user.get("role")
+    if role not in ("super_admin", "manufacturer"):
+        raise HTTPException(status_code=403, detail="forbidden")
+
+    rows: List[Dict[str, Any]] = []
+    async for d in db.distributors.find(
+        {}, {"_id": 0, "id": 1, "name": 1, "manufacturer_id": 1},
+    ).sort("name", 1):
+        email = f"driver-{d['id'][:8]}@tradekonekt.io"
+        u = await db.users.find_one(
+            {"email": email, "role": "driver"},
+            {"_id": 0, "id": 1, "entity_id": 1, "status": 1},
+        )
+        if not u:
+            rows.append({
+                "distributor": d.get("name"),
+                "distributor_id": d["id"],
+                "email": email,
+                "status": "missing",
+            })
+            continue
+        drv = await db.drivers.find_one(
+            {"id": u.get("entity_id")},
+            {"_id": 0, "employee_number": 1, "full_name": 1,
+             "assigned_shipment_id": 1, "status": 1},
+        ) or {}
+        rows.append({
+            "distributor": d.get("name"),
+            "distributor_id": d["id"],
+            "email": email,
+            "driver_id": u.get("entity_id"),
+            "driver_code": drv.get("employee_number"),
+            "driver_name": drv.get("full_name"),
+            "driver_status": drv.get("status"),
+            "assigned_shipment_id": drv.get("assigned_shipment_id"),
+            "user_status": u.get("status"),
+            "status": "ok",
+        })
+    return {"rows": rows, "total": len(rows),
+            "password_hint": "Shared DEMO_PASSWORD env (same as other demo accounts)."}

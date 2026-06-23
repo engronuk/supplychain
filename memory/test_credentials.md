@@ -10,6 +10,26 @@ The canonical rebuild stamps a login for **every entity** in the hierarchy
 | Email | Role | Employer | Notes |
 |---|---|---|---|
 | `tunde.e2e+26511@tradekonekt.io` | driver | Unilever Nigeria (manufacturer) | Created by E2E test on 2026-06-20; password `TradeKonekt2026!` |
+| `adaeze.w0+26275@tradekonekt.io` | driver | Unilever Nigeria (manufacturer) | Canonical Track A test driver (`DRV-W0-11542`). Auto-seeded by `seed_test_driver.py` on every boot. |
+
+### Distributor driver logins (12 — auto-seeded, one per distributor)
+
+Pattern: `driver-{distributor_id_short}@tradekonekt.io`. Password:
+`TradeKonekt2026!`. Minted by `services/seed_distributor_driver_logins.py`
+on every backend boot. Fetch the live, current list at any time via:
+
+```
+GET /api/_admin/distributor-driver-logins   (manufacturer or super_admin token)
+```
+
+Sample subset (2026-06-23):
+* Apex Distributors (Apapa)      → `driver-f9dfaf08@tradekonekt.io`
+* Greenfield Distribution        → `driver-ed5ddcbf@tradekonekt.io`
+* Bluewave Logistics (Kano)      → `driver-696a6c7b@tradekonekt.io`
+* Pinnacle Trade Co. (Kano)      → `driver-c10c332c@tradekonekt.io`
+* Vanguard Distributors (PH)     → `driver-7982395c@tradekonekt.io`
+* Horizon Trade Partners (PH)    → `driver-8c263053@tradekonekt.io`
+* …plus 6 more visible via the admin endpoint.
 
 To create new drivers, call `POST /api/drivers` with a manufacturer / distributor / wholesaler JWT. The response includes a one-shot `_initial_password` field (currently always `TradeKonekt2026!`) and the driver must change it on first login (`users.must_change_password=true`).
 

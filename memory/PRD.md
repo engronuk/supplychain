@@ -147,6 +147,23 @@ visibility (Manufacturer → Warehouse → Distributor → Wholesaler → Retail
   discriminator and ship_po now emits `wholesaler → retailer` shipments. New
   endpoints: `/api/procurement/retailer/{id}/suppliers` and
   `/api/distributor/{id}/incoming-wholesaler-pos`.
+- **Distributor Driver Logins for Mobile QA (✅ SHIPPED 2026-06-23)** —
+  Mobile QA team no longer single-threaded on Adaeze. New idempotent
+  seeder `/app/backend/services/seed_distributor_driver_logins.py` mints
+  one driver login per distributor (12 total) and wires the existing
+  seeded driver row's `user_id` field. Email pattern
+  ``driver-{distributor_id_short}@tradekonekt.io``, password = shared
+  `DEMO_PASSWORD`. Auto-runs on every backend boot in both production
+  and dev startup paths. Live list fetchable via
+  ``GET /api/_admin/distributor-driver-logins`` (manufacturer or
+  super_admin token). Credentials documented in
+  `/app/memory/test_credentials.md`. Verified: driver login returns
+  role=driver with proper entity_id linkage; `/api/driver/me` returns
+  the full profile including the new `compliance_severity` field. Some
+  drivers are already `on_trip`/`assigned` from the active-shipments
+  demo seed — mobile QA can replay the lifecycle without first hitting
+  the dispatch endpoint.
+
 - **Active-Shipments Demo Seed (✅ SHIPPED 2026-06-23)** —
   Every distributor now starts with 3 live shipments (1 ``created`` in
   the dispatcher queue + 1 ``assigned`` + 1 ``in_transit``) routed to
