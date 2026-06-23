@@ -147,6 +147,31 @@ visibility (Manufacturer → Warehouse → Distributor → Wholesaler → Retail
   discriminator and ship_po now emits `wholesaler → retailer` shipments. New
   endpoints: `/api/procurement/retailer/{id}/suppliers` and
   `/api/distributor/{id}/incoming-wholesaler-pos`.
+- **Single-Source-of-Truth Audit Fix (✅ SHIPPED 2026-06-23)** —
+  After the user reported the SAME distributor showing different data on
+  web vs mobile, a full audit identified three issues:
+
+  1. **Mobile pointed at preview backend, web pointed at production** —
+     two different databases, guaranteed divergence. Mobile config must
+     be set to `EXPO_PUBLIC_TRADEKONEKT_URL=https://www.app.tradekonekt.com`.
+  2. **Schema split between `wholesalers` and `organizations` collections**
+     — `wholesalers` was EMPTY while `organizations` held 36 wholesaler
+     rows. Some screens read from one, some from the other. Fixed via
+     new idempotent backfill
+     `/app/backend/services/backfill_wholesalers.py` that mirrors orgs
+     (type=wholesaler) into the canonical `wholesalers` table. Runs on
+     every backend boot **and** every 5 minutes via the intel scheduler.
+     Net result: 36 wholesalers now visible to every consumer.
+  3. **Duplicate distributor names across manufacturers** (e.g. "Apex
+     Distributors (Apapa)" exists under both Unilever and FMN). Per the
+     user spec these are intentional (a distributor can serve multiple
+     manufacturers). Added a manufacturer hint to the distributor
+     workspace title bar (TitleBar in DistributorDashboard.jsx + new
+     `manufacturer_name` field on
+     `GET /api/distributor/{id}/operations-intelligence` response and
+     `_empty_payload`) so dispatchers can distinguish duplicate-named
+     distributors at a glance.
+
 - **3 Mobile Backend Gaps Closed (✅ SHIPPED 2026-06-23)** —
   Fulfilled the mobile audit's 3 real backend gaps (gaps 4 + 5 were false
   alarms — endpoints already existed on preview but production was stale).

@@ -89,6 +89,7 @@ export default function DistributorDashboard() {
         <TitleBar
           name={data.distributor?.name}
           region={data.distributor?.region}
+          manufacturerName={data.distributor?.manufacturer_name}
           asOf={data?._snapshot?.as_of || data.as_of}
           refreshing={refreshing}
           onRefresh={onRefresh}
@@ -138,12 +139,21 @@ export default function DistributorDashboard() {
 }
 
 /* ---------- Title bar ---------- */
-function TitleBar({ name, region, asOf, refreshing, onRefresh }) {
+function TitleBar({ name, region, asOf, refreshing, onRefresh, manufacturerName }) {
   return (
     <div className="flex items-start justify-between gap-4" data-testid="dist-titlebar">
       <div>
-        <div className="text-[11px] uppercase tracking-[0.25em] text-slate-400 font-semibold mb-1">
-          Distributor Workspace
+        <div className="text-[11px] uppercase tracking-[0.25em] text-slate-400 font-semibold mb-1 flex items-center gap-2">
+          <span>Distributor Workspace</span>
+          {manufacturerName ? (
+            <span
+              className="inline-flex items-center rounded-full bg-indigo-50 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 tracking-normal normal-case"
+              data-testid="dist-titlebar-manufacturer"
+              title={`Serves ${manufacturerName} — distributor name may repeat across manufacturers`}
+            >
+              ↳ {manufacturerName}
+            </span>
+          ) : null}
         </div>
         <h1 className="text-3xl font-semibold text-slate-900 tracking-tight">
           {name || "Distributor"} Operations Intelligence

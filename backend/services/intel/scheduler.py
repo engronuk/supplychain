@@ -269,6 +269,17 @@ def start_scheduler():
         next_run_time=now + timedelta(minutes=2),  # first pass shortly after boot
     )
 
+    # ---- 2026-06-23 SOT-audit: wholesaler mirror sync ---------------
+    # The canonical `wholesalers` table mirrors organizations(type=wholesaler).
+    # Every 5 minutes catches any drift introduced by org graph edits.
+    from services.backfill_wholesalers import backfill_wholesalers_job
+    scheduler.add_job(
+        _wrap("wholesaler_mirror", backfill_wholesalers_job),
+        IntervalTrigger(minutes=5), id="wholesaler_mirror",
+        max_instances=1, coalesce=True,
+        next_run_time=now + timedelta(seconds=20),
+    )
+
     scheduler.start()
     logger.info(
         "Intel scheduler started. First runs: external=+30s, anomalies=+2m, "

@@ -466,12 +466,24 @@ async def _build_distributor_overview(distributor_id: str) -> dict:
             "detail": "No urgent actions — focus on growth experiments in your strongest territories.",
         })
 
+    # Resolve parent manufacturer so duplicate-name distributors (same name
+    # under different manufacturers) can be distinguished in the UI.
+    mfr_name = ""
+    if distributor.get("manufacturer_id"):
+        mfr = await db.manufacturers.find_one(
+            {"id": distributor["manufacturer_id"]},
+            {"_id": 0, "name": 1},
+        )
+        mfr_name = (mfr or {}).get("name") or ""
+
     return {
         "distributor": {
             "id": distributor_id,
             "name": distributor.get("name") or "",
             "region": distributor.get("region") or "",
             "city": distributor.get("city") or "",
+            "manufacturer_id": distributor.get("manufacturer_id") or "",
+            "manufacturer_name": mfr_name,
         },
         "kpis": kpis,
         "ai_brief": {"insights": insights[:4]},

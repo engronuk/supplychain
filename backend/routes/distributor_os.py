@@ -421,6 +421,17 @@ async def _build_distributor_os(distributor_id: str) -> dict:
         attention_count=len(attention_wholesalers),
     )
 
+    # Resolve parent manufacturer so duplicate-name distributors (same name
+    # under different manufacturers — e.g. "Apex Distributors (Apapa)" exists
+    # under both Unilever and FMN) can be distinguished in the UI title bar.
+    mfr_name = ""
+    if distributor.get("manufacturer_id"):
+        mfr = await db.manufacturers.find_one(
+            {"id": distributor["manufacturer_id"]},
+            {"_id": 0, "name": 1},
+        )
+        mfr_name = (mfr or {}).get("name") or ""
+
     return {
         "as_of": datetime.now(timezone.utc).isoformat(),
         "distributor": {
@@ -429,6 +440,8 @@ async def _build_distributor_os(distributor_id: str) -> dict:
             "region": distributor.get("region", ""),
             "city": distributor.get("city", ""),
             "state": distributor.get("state", ""),
+            "manufacturer_id": distributor.get("manufacturer_id", ""),
+            "manufacturer_name": mfr_name,
         },
         "kpis": kpis,
         "ai_brief": ai_brief,
@@ -586,6 +599,8 @@ def _empty_payload(distributor: dict) -> dict:
             "region": distributor.get("region", ""),
             "city": distributor.get("city", ""),
             "state": distributor.get("state", ""),
+            "manufacturer_id": distributor.get("manufacturer_id", ""),
+            "manufacturer_name": distributor.get("manufacturer_name", ""),
         },
         "kpis": {
             "network_revenue_90d": {"value": 0, "growth_pct": 0, "spark": [0] * 12},

@@ -72,6 +72,7 @@ from services.seed_test_driver import seed_test_driver
 from services.seed_fleet_production import seed_fleet_production
 from services.seed_active_shipments import seed_active_shipments
 from services.seed_distributor_driver_logins import seed_distributor_driver_logins
+from services.backfill_wholesalers import backfill_wholesalers
 from services.seed_distributor_orders import seed_distributor_orders
 from services.seed_procurement import seed_procurement
 from services.migrate_organizations import migrate_organizations
@@ -270,6 +271,15 @@ async def _background_bootstrap():
         except Exception:
             logger.exception("Distributor driver logins seed failed (continuing)")
 
+        # Mirror organizations(type=wholesaler) into the canonical
+        # `wholesalers` collection (single source of truth — 2026-06-23).
+        try:
+            bf = await backfill_wholesalers()
+            if bf.get("inserted") or bf.get("updated"):
+                logger.info("Wholesaler backfill at boot: %s", bf)
+        except Exception:
+            logger.exception("Wholesaler backfill failed (continuing)")
+
         try:
             ship_result = await seed_active_shipments()
             if sum(ship_result.get("totals", {}).values()):
@@ -346,6 +356,14 @@ async def _background_bootstrap():
                         login_result.get("created"), login_result.get("repaired"))
     except Exception:
         logger.exception("Distributor driver logins seed failed (continuing)")
+
+    # Mirror organizations(type=wholesaler) into the canonical wholesalers table.
+    try:
+        bf = await backfill_wholesalers()
+        if bf.get("inserted") or bf.get("updated"):
+            logger.info("Wholesaler backfill at boot: %s", bf)
+    except Exception:
+        logger.exception("Wholesaler backfill failed (continuing)")
 
     # Idempotent active-shipments demo seed — live trips per distributor.
     try:
