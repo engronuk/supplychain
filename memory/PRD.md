@@ -147,6 +147,52 @@ visibility (Manufacturer → Warehouse → Distributor → Wholesaler → Retail
   discriminator and ship_po now emits `wholesaler → retailer` shipments. New
   endpoints: `/api/procurement/retailer/{id}/suppliers` and
   `/api/distributor/{id}/incoming-wholesaler-pos`.
+- **3 Mobile Backend Gaps Closed (✅ SHIPPED 2026-06-23)** —
+  Fulfilled the mobile audit's 3 real backend gaps (gaps 4 + 5 were false
+  alarms — endpoints already existed on preview but production was stale).
+
+  * **`GET /api/search?q=&types=&limit=`** — global federated search across
+    products · shipments · drivers · vehicles · distributors · wholesalers
+    · retailers · warehouses. Tenant-scoped per role; returns
+    ``{query, total, groups: {<type>: [{...,type,title,subtitle}]}}``.
+    Drivers denied (403). New file
+    `/app/backend/routes/search.py`.
+
+  * **`/api/integrations`** — full CRUD over an 8-item integration
+    catalogue (Google Maps · Vertex AI · Resend · Twilio SMS · Stripe ·
+    OpenAI · ElevenLabs · Google OAuth). Endpoints:
+      * ``GET /api/integrations`` — catalogue + connection state per org
+      * ``GET /api/integrations/{slug}``
+      * ``POST /api/integrations/{slug}/connect`` — body
+        ``{config?, credentials_blob?, notes?}`` (secrets never echoed
+        back; ``credentials_present`` flag exposed instead)
+      * ``DELETE /api/integrations/{slug}``
+    Storage: new ``integrations`` collection keyed on
+    ``(org_id, slug)``. Dispatcher roles only (403 for driver/retailer).
+    New file `/app/backend/routes/integrations.py`.
+
+  * **`/api/distributor/{id}/reports`** — five canonical reports per
+    distributor (sales, stock, deliveries, performance, compliance), each
+    available as JSON or streaming CSV via ``?format=csv``. Auth allows
+    the distributor itself, its upstream manufacturer, or super_admin —
+    cross-manufacturer access returns 403 (verified). CSV emits with
+    ``Content-Type: text/csv; charset=utf-8`` + ``Content-Disposition:
+    attachment; filename="..."`` + ``X-Report-Kind`` / ``X-Row-Count``
+    headers so mobile + web can save-as without parsing. New file
+    `/app/backend/routes/distributor_reports.py`.
+
+  All 3 routers wired into `server.py`. Linted clean, smoke-tested
+  end-to-end. **Mobile agent's pending work**: 5-30 min adapter swap per
+  group to replace mock fallback with real API calls + remove the
+  graceful-degradation banners. After the next production redeploy, all
+  five mobile-flagged gaps disappear at once.
+
+- **Health Probe Endpoint (✅ SHIPPED 2026-06-23)** —
+  `GET /api/health` — unauthenticated liveness probe returning
+  ``{status, service, db, time}``. Added so the mobile QA team has a
+  canonical probe instead of mistaking 404s on probe paths
+  (``/api``, ``/api/healthz``) for backend outages.
+
 - **Credentials Bundle Endpoint (✅ SHIPPED 2026-06-23)** —
   New `GET /api/_admin/credentials-bundle` returns every demo login in
   one JSON payload, grouped by role, with each row pre-resolved to its

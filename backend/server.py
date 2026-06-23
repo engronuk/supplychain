@@ -49,6 +49,9 @@ from routes import (
     reports,
     retailer_os,
     sales,
+    search,
+    integrations,
+    distributor_reports,
     seed as seed_route,
     shipments,
     stock_requests,
@@ -125,6 +128,9 @@ for r in (
     admin_sync.router,
     admin_track_a.router,
     public_docs.router,
+    search.router,
+    integrations.router,
+    distributor_reports.router,
 ):
     api_router.include_router(r)
 
