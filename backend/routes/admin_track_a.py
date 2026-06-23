@@ -318,3 +318,129 @@ async def list_distributor_driver_logins(
         })
     return {"rows": rows, "total": len(rows),
             "password_hint": "Shared DEMO_PASSWORD env (same as other demo accounts)."}
+
+
+
+@router.get("/_admin/credentials-bundle", response_model=Dict[str, Any])
+async def credentials_bundle(
+    role: Optional[str] = None,
+    limit: int = 100,
+    user: Dict[str, Any] = Depends(require_auth),
+) -> Dict[str, Any]:
+    """Return every demo login in one JSON payload — grouped by role.
+
+    Each row carries enough context for QA / mobile to pick a usable
+    account without hunting through `test_credentials.md`:
+
+    * ``email`` + the shared ``password_hint`` field at top-level
+    * ``role`` · ``status``
+    * ``entity_id`` + ``entity_name`` (resolved across drivers /
+      manufacturers / distributors / wholesalers / retailers /
+      warehouses)
+    * ``manufacturer_id`` / ``distributor_id`` / ``organization_id`` /
+      ``warehouse_id`` for downstream API scoping
+
+    Restricted to ``super_admin`` and ``manufacturer``. Pass ``?role=driver``
+    to filter; pass ``?limit=`` to cap the count per role (default 100).
+    """
+    requestor_role = user.get("role")
+    if requestor_role not in ("super_admin", "manufacturer"):
+        raise HTTPException(status_code=403, detail="forbidden")
+
+    role_filter: Dict[str, Any] = {"is_demo": True}
+    if role:
+        role_filter["role"] = role
+
+    # ---- 1. Build name-lookup caches keyed by id ------------------------
+    async def _id_to_name(coll: str) -> Dict[str, str]:
+        out: Dict[str, str] = {}
+        async for r in db[coll].find({}, {"_id": 0, "id": 1, "name": 1}):
+            if r.get("id"):
+                out[r["id"]] = r.get("name") or ""
+        return out
+
+    manufacturers = await _id_to_name("manufacturers")
+    distributors = await _id_to_name("distributors")
+    wholesalers = await _id_to_name("wholesalers")
+    retailers = await _id_to_name("retailers")
+    warehouses = await _id_to_name("warehouses")
+    drivers_lookup: Dict[str, Dict[str, Any]] = {}
+    async for d in db.drivers.find(
+        {"is_active": True},
+        {"_id": 0, "id": 1, "full_name": 1, "employee_number": 1, "status": 1,
+         "assigned_shipment_id": 1, "compliance_severity": 1},
+    ):
+        drivers_lookup[d["id"]] = d
+
+    def _resolve_entity_name(role_: str, entity_id: str) -> str:
+        if not entity_id:
+            return ""
+        if role_ == "driver":
+            return (drivers_lookup.get(entity_id) or {}).get("full_name") or ""
+        if role_ == "manufacturer":
+            return manufacturers.get(entity_id, "")
+        if role_ == "distributor":
+            return distributors.get(entity_id, "")
+        if role_ == "wholesaler":
+            return wholesalers.get(entity_id, "")
+        if role_ == "retailer":
+            return retailers.get(entity_id, "")
+        if role_ == "warehouse":
+            return warehouses.get(entity_id, "")
+        return ""
+
+    # ---- 2. Stream demo users grouped by role ---------------------------
+    grouped: Dict[str, List[Dict[str, Any]]] = {}
+    counts: Dict[str, int] = {}
+    cursor = db.users.find(
+        role_filter,
+        {"_id": 0, "id": 1, "email": 1, "role": 1, "status": 1, "name": 1,
+         "entity_id": 1, "manufacturer_id": 1, "distributor_id": 1,
+         "organization_id": 1, "warehouse_id": 1,
+         "must_change_password": 1, "last_login": 1},
+    ).sort([("role", 1), ("email", 1)])
+
+    async for u in cursor:
+        r_ = u.get("role") or "unknown"
+        counts[r_] = counts.get(r_, 0) + 1
+        if counts[r_] > limit:
+            continue
+        row: Dict[str, Any] = {
+            "email": u.get("email"),
+            "name": u.get("name"),
+            "status": u.get("status"),
+            "must_change_password": bool(u.get("must_change_password")),
+            "last_login": u.get("last_login"),
+            "entity_id": u.get("entity_id"),
+            "entity_name": _resolve_entity_name(r_, u.get("entity_id") or ""),
+            "manufacturer_id": u.get("manufacturer_id"),
+            "manufacturer_name": manufacturers.get(u.get("manufacturer_id") or "", ""),
+            "distributor_id": u.get("distributor_id"),
+            "distributor_name": distributors.get(u.get("distributor_id") or "", ""),
+            "organization_id": u.get("organization_id"),
+            "warehouse_id": u.get("warehouse_id"),
+        }
+        if r_ == "driver":
+            drv = drivers_lookup.get(u.get("entity_id") or "") or {}
+            row.update({
+                "driver_code": drv.get("employee_number"),
+                "driver_status": drv.get("status"),
+                "assigned_shipment_id": drv.get("assigned_shipment_id"),
+                "compliance_severity": drv.get("compliance_severity"),
+            })
+        grouped.setdefault(r_, []).append(row)
+
+    summary = {r_: {"total": counts.get(r_, 0),
+                    "returned": len(grouped.get(r_, []))}
+               for r_ in grouped}
+
+    return {
+        "password_hint": ("Every row uses the shared DEMO_PASSWORD env "
+                          "(same password as the rest of the demo "
+                          "accounts in test_credentials.md)."),
+        "generated_at": now_iso(),
+        "summary": summary,
+        "rows_by_role": grouped,
+        "filters_applied": {"role": role, "limit": limit,
+                            "is_demo": True},
+    }

@@ -147,6 +147,18 @@ visibility (Manufacturer → Warehouse → Distributor → Wholesaler → Retail
   discriminator and ship_po now emits `wholesaler → retailer` shipments. New
   endpoints: `/api/procurement/retailer/{id}/suppliers` and
   `/api/distributor/{id}/incoming-wholesaler-pos`.
+- **Credentials Bundle Endpoint (✅ SHIPPED 2026-06-23)** —
+  New `GET /api/_admin/credentials-bundle` returns every demo login in
+  one JSON payload, grouped by role, with each row pre-resolved to its
+  entity name (manufacturer / distributor / wholesaler / retailer /
+  warehouse / driver). Driver rows additionally carry
+  ``driver_code`` · ``driver_status`` · ``assigned_shipment_id`` ·
+  ``compliance_severity`` so mobile QA can pick a driver in any
+  lifecycle state. Supports ``?role=`` filter and ``?limit=`` cap.
+  Role-gated to manufacturer + super_admin (403 for everyone else).
+  Total available demo accounts: **247** (4 mfr · 14 dist · 38
+  wholesaler · 170 retailer · 8 warehouse · 12 driver · 1 super_admin).
+
 - **Distributor Driver Logins for Mobile QA (✅ SHIPPED 2026-06-23)** —
   Mobile QA team no longer single-threaded on Adaeze. New idempotent
   seeder `/app/backend/services/seed_distributor_driver_logins.py` mints
