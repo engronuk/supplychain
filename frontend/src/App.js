@@ -43,12 +43,10 @@ import WholesalerAnalytics from "@/views/WholesalerAnalytics";
 import WholesalerIntelligenceCenter from "@/views/WholesalerIntelligenceCenter";
 import WMSLayout from "@/views/wms/WMSLayout";
 import FleetLayout from "@/views/fleet/FleetLayout";
-import FleetDashboard from "@/views/fleet/FleetDashboard";
 import DriverRoster from "@/views/fleet/DriverRoster";
 import VehicleRegistry from "@/views/fleet/VehicleRegistry";
-import DispatchConsole from "@/views/fleet/DispatchConsole";
 import ComplianceCentre from "@/views/fleet/ComplianceCentre";
-import CommandCentre from "@/views/fleet/CommandCentre";
+import DispatchConsolePage from "@/views/DispatchConsolePage";
 import WMSDashboardPage from "@/views/wms/DashboardPage";
 import { InventoryListPage, InventoryDetailPage } from "@/views/wms/InventoryPages";
 import { ReceivingPage, DispatchPage } from "@/views/wms/ReceivingDispatch";
@@ -151,17 +149,22 @@ function App() {
             <Route element={<Protected><Layout /></Protected>}>
               <Route path="/dashboard" element={<RoleDashboard />} />
               <Route path="/fleet" element={<FleetLayout />}>
-                <Route index element={<Navigate to="/fleet/dashboard" replace />} />
-                <Route path="dashboard" element={<FleetDashboard />} />
+                <Route index element={<Navigate to="/fleet/drivers" replace />} />
                 <Route path="drivers" element={<DriverRoster />} />
                 <Route path="drivers/:driverId" element={<DriverRoster />} />
                 <Route path="vehicles" element={<VehicleRegistry />} />
                 <Route path="vehicles/:vehicleId" element={<VehicleRegistry />} />
-                <Route path="dispatch" element={<DispatchConsole />} />
                 <Route path="compliance" element={<ComplianceCentre />} />
-                <Route path="command-centre" element={<CommandCentre />} />
-                <Route path="analytics" element={<div data-testid="fleet-analytics-placeholder">Fleet Analytics — P1</div>} />
+                {/* Legacy paths kept as redirects so existing bookmarks
+                    keep working. Dashboard + command-centre moved to
+                    /manufacturer/logistics-center → Fleet Status. Dispatch
+                    promoted to a top-level /dispatch route. */}
+                <Route path="dashboard" element={<Navigate to="/manufacturer/logistics-center" replace />} />
+                <Route path="command-centre" element={<Navigate to="/manufacturer/logistics-center" replace />} />
+                <Route path="dispatch" element={<Navigate to="/dispatch" replace />} />
+                <Route path="analytics" element={<Navigate to="/fleet/drivers" replace />} />
               </Route>
+              <Route path="/dispatch" element={<DispatchConsolePage />} />
               <Route path="/product-intelligence" element={<ProductIntelligenceCenter />} />
               <Route path="/inventory" element={<InventoryView />} />
               {/* Shipments module has been merged into Procurement. */}

@@ -40,7 +40,9 @@ function navForRole(role) {
   if (role === "super_admin") {
     return [
       { to: "/dashboard", label: "Console", icon: LayoutDashboard },
-      { to: "/fleet/dashboard", label: "Fleet (Global)", icon: Truck },
+      { to: "/manufacturer/logistics-center", label: "Logistics Center", icon: Radar },
+      { to: "/dispatch", label: "Dispatch", icon: ClipboardList },
+      { to: "/fleet/drivers", label: "Fleet (Global)", icon: Truck },
       { to: "/organizations", label: "Organizations", icon: NetworkIcon },
     ];
   }
@@ -52,8 +54,9 @@ function navForRole(role) {
     base.push({ to: "/inventory", label: "Inventory", icon: Boxes });
   }
   if (role === "manufacturer") {
-    base.push({ to: "/fleet/dashboard", label: "Fleet", icon: Truck });
-    base.push({ to: "/manufacturer/logistics-center", label: "Logistics Center", icon: Truck });
+    base.push({ to: "/manufacturer/logistics-center", label: "Logistics Center", icon: Radar });
+    base.push({ to: "/dispatch", label: "Dispatch", icon: ClipboardList });
+    base.push({ to: "/fleet/drivers", label: "Fleet", icon: Truck });
     // Procurement (which is now the merged Shipment Command Center for mfg)
     base.push({ to: "/procurement", label: "Procurement", icon: ShoppingCart });
     base.push({ to: "/product-intelligence", label: "Product Intelligence", icon: Sparkles });
@@ -62,14 +65,18 @@ function navForRole(role) {
     base.push({ to: "/network", label: "Distributors", icon: Network });
     base.push({ to: "/manufacturer/warehouses", label: "Warehouses", icon: Warehouse });
   } else if (role === "distributor") {
-    base.push({ to: "/fleet/dashboard", label: "Fleet", icon: Truck });
+    base.push({ to: "/manufacturer/logistics-center", label: "Logistics Center", icon: Radar });
+    base.push({ to: "/dispatch", label: "Dispatch", icon: ClipboardList });
+    base.push({ to: "/fleet/drivers", label: "Fleet", icon: Truck });
     base.push({ to: "/intel", label: "Intelligence", icon: BrainCircuit });
     base.push({ to: "/network", label: "Wholesalers", icon: Network });
     base.push({ to: "/procurement", label: "Procurement", icon: ShoppingCart });
   } else if (role === "wholesaler") {
     // Phase 3 nav — Procurement (upstream POs) + dedicated Distributor
     // Orders + Shipments, plus Analytics and the new Intelligence Center.
-    base.push({ to: "/fleet/dashboard", label: "Fleet", icon: Truck });
+    base.push({ to: "/manufacturer/logistics-center", label: "Logistics Center", icon: Radar });
+    base.push({ to: "/dispatch", label: "Dispatch", icon: ClipboardList });
+    base.push({ to: "/fleet/drivers", label: "Fleet", icon: Truck });
     base.push({ to: "/procurement", label: "Procurement", icon: ShoppingCart });
     base.push({ to: "/network", label: "Retailer Network", icon: Network });
     base.push({ to: "/wholesaler/orders", label: "Customer Orders", icon: ClipboardList });

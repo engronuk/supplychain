@@ -1,19 +1,16 @@
 /**
- * Fleet workspace layout — Phase B4+
+ * Fleet workspace layout — master-data only (post-IA-refactor 2026-06-23).
  *
- * Shared `/fleet/*` surface for Manufacturer / Distributor / Wholesaler /
- * Warehouse / Super Admin dispatchers. Driver and Retailer roles are denied
- * with a friendly redirect.
+ * Houses the three master-data tabs (Drivers, Vehicles, Compliance).
+ * Monitoring lives in Logistics Command Center → Fleet Status.
+ * Dispatch actions live in the standalone /dispatch route.
  *
  * Outer chrome lives in the main `Layout` (sidebar + top bar). This file
- * renders the secondary fleet nav (Dashboard / Drivers / Vehicles /
- * Dispatch / Compliance / Command Centre) as a horizontal sub-nav strip
- * above an `<Outlet />` so individual fleet pages remain composable.
+ * renders the secondary fleet nav as a horizontal sub-nav strip above an
+ * `<Outlet />` so individual master-data pages remain composable.
  */
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import {
-  Gauge, Users, Truck, ClipboardList, ShieldAlert, Radio, BarChart3,
-} from "lucide-react";
+import { Users, Truck, ShieldAlert } from "lucide-react";
 import { useSession } from "@/context/SessionContext";
 import { useEffect } from "react";
 
@@ -22,13 +19,9 @@ const FLEET_ROLES = new Set([
 ]);
 
 const TABS = [
-  { to: "/fleet/dashboard",       label: "Dashboard",      icon: Gauge,         testid: "fleet-tab-dashboard" },
-  { to: "/fleet/drivers",         label: "Drivers",        icon: Users,         testid: "fleet-tab-drivers" },
-  { to: "/fleet/vehicles",        label: "Vehicles",       icon: Truck,         testid: "fleet-tab-vehicles" },
-  { to: "/fleet/dispatch",        label: "Dispatch",       icon: ClipboardList, testid: "fleet-tab-dispatch" },
-  { to: "/fleet/compliance",      label: "Compliance",     icon: ShieldAlert,   testid: "fleet-tab-compliance" },
-  { to: "/fleet/command-centre",  label: "Command Centre", icon: Radio,         testid: "fleet-tab-command-centre" },
-  { to: "/fleet/analytics",       label: "Analytics",      icon: BarChart3,     testid: "fleet-tab-analytics" },
+  { to: "/fleet/drivers",    label: "Drivers",    icon: Users,       testid: "fleet-tab-drivers" },
+  { to: "/fleet/vehicles",   label: "Vehicles",   icon: Truck,       testid: "fleet-tab-vehicles" },
+  { to: "/fleet/compliance", label: "Compliance", icon: ShieldAlert, testid: "fleet-tab-compliance" },
 ];
 
 export default function FleetLayout() {

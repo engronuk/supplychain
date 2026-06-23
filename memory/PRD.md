@@ -147,6 +147,52 @@ visibility (Manufacturer → Warehouse → Distributor → Wholesaler → Retail
   discriminator and ship_po now emits `wholesaler → retailer` shipments. New
   endpoints: `/api/procurement/retailer/{id}/suppliers` and
   `/api/distributor/{id}/incoming-wholesaler-pos`.
+- **Logistics IA Refactor — Single Operations Cockpit (✅ SHIPPED 2026-06-23)** —
+  Per the new product spec, monitoring + dispatch + master-data are now
+  cleanly separated:
+
+  • **Logistics Command Center** = single operations cockpit. New 4-tab
+    layout: **Control Tower · Fleet Status · Route Planning · AI
+    Intelligence**. The new **Fleet Status** tab (`/app/frontend/src/
+    views/logistics/FleetStatusView.jsx`) merges the deleted FleetDashboard
+    + Fleet Command Centre into one read-only board (KPI cube · vehicle
+    status board · driver status board · compliance summary · active
+    shipments · fleet alerts with ack). Distributor + wholesaler are now
+    role-gated to **only** see the Fleet Status tab; manufacturer + super
+    admin keep all four. Control Tower / Route Planning / AI Intelligence
+    remain manufacturer-only.
+
+  • **Dispatch Console** promoted to standalone top-level workspace at
+    `/dispatch` (new `DispatchConsolePage.jsx`). Manufacturer + distributor
+    + wholesaler + warehouse + super_admin can access. It is the **only**
+    place where dispatch mutations (assign · reassign-driver · reassign-
+    vehicle · cancel) happen.
+
+  • **Fleet** workspace slimmed to master-data only. TABS reduced to
+    `[Drivers, Vehicles, Compliance]`. `/fleet` index redirect now points
+    to `/fleet/drivers`. Legacy paths (`/fleet/dashboard`,
+    `/fleet/command-centre`, `/fleet/dispatch`, `/fleet/analytics`) kept
+    as 301-style redirects so bookmarks keep working.
+
+  • **Sidebar** restructured for every dispatcher role to expose the new
+    IA: `Logistics Center → Dispatch → Fleet`. Distributor + wholesaler
+    now see the Logistics Center entry (was manufacturer-only).
+
+  • **Backend untouched**: every Phase B endpoint preserved
+    (`/api/fleet/overview`, `/api/drivers/workload`,
+    `/api/vehicles/utilization`, `/api/fleet/compliance/board`, assignment-
+    history, default-pairing). Fleet Status is a pure UI consumer.
+
+  • **Removed files**: `views/fleet/FleetDashboard.jsx`,
+    `views/fleet/CommandCentre.jsx`.
+
+  • **Known follow-up (P1)**: tenant-scoped Control Tower for distributor
+    + wholesaler. The current `/api/logistics/control-tower` endpoint
+    routes through `_scope_manufacturer` which 403s non-manufacturer
+    callers — distributor + wholesaler therefore only see Fleet Status
+    today. A future sibling endpoint or scope helper will deliver the
+    tenant-scoped live map.
+
 - **Fleet Management Production Data Hookup (✅ SHIPPED 2026-06-23)** —
   Every Track A tenant (2 manufacturers + 12 distributors) now has a real,
   non-simulator fleet in the unified `/fleet/*` workspace. New idempotent
