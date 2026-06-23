@@ -147,6 +147,19 @@ visibility (Manufacturer → Warehouse → Distributor → Wholesaler → Retail
   discriminator and ship_po now emits `wholesaler → retailer` shipments. New
   endpoints: `/api/procurement/retailer/{id}/suppliers` and
   `/api/distributor/{id}/incoming-wholesaler-pos`.
+- **Active-Shipments Demo Seed (✅ SHIPPED 2026-06-23)** —
+  Every distributor now starts with 3 live shipments (1 ``created`` in
+  the dispatcher queue + 1 ``assigned`` + 1 ``in_transit``) routed to
+  one of their downstream retailers/wholesalers. Idempotent
+  (`/app/backend/services/seed_active_shipments.py`, keyed on
+  ``source="fleet_demo_v1"``). The assigned + in_transit shipments also
+  flip their driver to ``assigned/on_trip`` and vehicle to
+  ``loading/in_transit`` so every status board on the Fleet Status panel
+  shows live activity. Net: 36 new shipments (12 distributors × 3).
+  Wired into both the production and dev server startup paths after the
+  fleet production seed. Sim guard preserved — these are
+  ``source="fleet_demo_v1"`` shipments, not simulator rows.
+
 - **Logistics IA Refactor — Single Operations Cockpit (✅ SHIPPED 2026-06-23)** —
   Per the new product spec, monitoring + dispatch + master-data are now
   cleanly separated:

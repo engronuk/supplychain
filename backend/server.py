@@ -65,6 +65,7 @@ from services.seed_batches import seed_batches
 from services.seed_demo_users import seed_demo_users
 from services.seed_test_driver import seed_test_driver
 from services.seed_fleet_production import seed_fleet_production
+from services.seed_active_shipments import seed_active_shipments
 from services.seed_distributor_orders import seed_distributor_orders
 from services.seed_procurement import seed_procurement
 from services.migrate_organizations import migrate_organizations
@@ -233,6 +234,14 @@ async def _background_bootstrap():
             logger.exception("Fleet production seed failed (continuing)")
 
         try:
+            ship_result = await seed_active_shipments()
+            if sum(ship_result.get("totals", {}).values()):
+                logger.info("Active-shipments demo seed: %s",
+                            ship_result.get("totals"))
+        except Exception:
+            logger.exception("Active-shipments demo seed failed (continuing)")
+
+        try:
             start_scheduler()
         except Exception:
             logger.exception("Failed to start intel scheduler")
@@ -281,6 +290,25 @@ async def _background_bootstrap():
             logger.info("Test driver seed: %s", result)
     except Exception:
         logger.exception("Test driver seed failed (continuing)")
+
+    # Idempotent production fleet seed — drivers + vehicles for every Track A tenant.
+    try:
+        fleet_result = await seed_fleet_production()
+        if fleet_result.get("totals", {}).get("drivers_created") or \
+                fleet_result.get("totals", {}).get("vehicles_created"):
+            logger.info("Fleet production seed: %s",
+                        fleet_result.get("totals"))
+    except Exception:
+        logger.exception("Fleet production seed failed (continuing)")
+
+    # Idempotent active-shipments demo seed — live trips per distributor.
+    try:
+        ship_result = await seed_active_shipments()
+        if sum(ship_result.get("totals", {}).values()):
+            logger.info("Active-shipments demo seed: %s",
+                        ship_result.get("totals"))
+    except Exception:
+        logger.exception("Active-shipments demo seed failed (continuing)")
 
     # Idempotent batch seed — ensures every product has 3 traceable batches.
     try:
