@@ -188,6 +188,24 @@ visibility (Manufacturer → Warehouse → Distributor → Wholesaler → Retail
   login `unilever.wholesaler@tradekonekt.io` which sees Royal Trading 1
   under both manufacturers.
 
+- **Mobile Wholesaler-Mismatch Fix — `/api/organizations` Alias Layer (✅ SHIPPED 2026-06-23)** —
+  Mobile QA reported Apex Distributors showing 3 wholesalers on web but 0
+  on Expo Go. Reproduction: mobile called
+  `GET /api/organizations?type=wholesaler&distributor_id=…` while the
+  endpoint expected `organization_type=` and `parent_organization_id=`.
+  The unknown params were silently dropped, the user's whole subtree was
+  returned, and the mobile client-side filter on `.type` rejected every
+  row (response field is `organization_type`). Fix:
+  * Accept aliases `type` / `distributor_id` / `wholesaler_id` /
+    `parent_id` as direct-parent equivalents.
+  * Accept `manufacturer_id` as an ancestor-scope filter resolved via
+    lineage_path on the manufacturer's org_code.
+  * Mirror `type` / `parent_id` / `name` aliases into the response so
+    mobile readers using either key shape now work.
+  Regression locked at
+  `/app/backend/tests/test_organizations_alias.py` (3/3 PASS). The bug
+  cannot recur. Production redeploy required to push the change live.
+
 - **Single-Source-of-Truth Audit Fix (✅ SHIPPED 2026-06-23)** —
   After the user reported the SAME distributor showing different data on
   web vs mobile, a full audit identified three issues:

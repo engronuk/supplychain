@@ -172,8 +172,27 @@ async def list_organizations(
     status: Optional[str] = None,
     q: Optional[str] = None,
     region: Optional[str] = None,
+    # ---- Mobile-friendly aliases (kept for client compat) -----------------
+    # Mobile clients historically sent `type=` / `distributor_id=` /
+    # `parent_id=` / `manufacturer_id=` which the strict schema silently
+    # ignored, producing a misleading 200 with the wrong rows. Accept the
+    # aliases explicitly so the request behaves as the caller intended.
+    type: Optional[str] = Query(None, include_in_schema=False),
+    distributor_id: Optional[str] = Query(None, include_in_schema=False),
+    manufacturer_id: Optional[str] = Query(None, include_in_schema=False),
+    wholesaler_id: Optional[str] = Query(None, include_in_schema=False),
+    parent_id: Optional[str] = Query(None, include_in_schema=False),
     user: dict = Depends(get_current_user),
 ):
+    # Resolve aliases (canonical wins, alias only fills gaps).
+    organization_type = organization_type or type
+    parent_organization_id = (
+        parent_organization_id
+        or parent_id
+        or distributor_id
+        or wholesaler_id
+    )
+
     user_org = await _resolve_user_org(user)
     query: Dict[str, Any] = {}
     if organization_type:
@@ -182,6 +201,21 @@ async def list_organizations(
         query["parent_organization_id"] = None
     elif parent_organization_id:
         query["parent_organization_id"] = parent_organization_id
+    if manufacturer_id:
+        # `manufacturer_id` is a logical scope (manufacturer = ancestor).
+        # The canonical record stores the manufacturer's org_code inside
+        # lineage_path (e.g. "MFR-0001/.../..."). Resolve the org_code from
+        # the supplied UUID and filter on the path.
+        m_org = await db.organizations.find_one(
+            {"id": manufacturer_id, "organization_type": "manufacturer"},
+            {"_id": 0, "organization_code": 1},
+        )
+        code = (m_org or {}).get("organization_code")
+        if code:
+            query["lineage_path"] = {"$regex": f"(^|/){code}(/|$)"}
+        else:
+            # Unknown manufacturer → return nothing rather than the whole tree.
+            return []
     if status:
         query["status"] = status
     if region:
@@ -198,6 +232,17 @@ async def list_organizations(
         docs = [d for d in docs
                 if ql in (d.get("organization_name", "") or "").lower()
                 or ql in (d.get("organization_code", "") or "").lower()]
+
+    # Add `type` alias alongside `organization_type` so mobile clients that
+    # read `.type` no longer silently filter every row out. Same for
+    # `parent_id` ↔ `parent_organization_id` and `name` ↔ `organization_name`.
+    for d in docs:
+        if "organization_type" in d and "type" not in d:
+            d["type"] = d["organization_type"]
+        if "parent_organization_id" in d and "parent_id" not in d:
+            d["parent_id"] = d["parent_organization_id"]
+        if "organization_name" in d and "name" not in d:
+            d["name"] = d["organization_name"]
     return docs
 
 
