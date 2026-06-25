@@ -416,10 +416,74 @@ class SaleCreate(BaseModel):
     customer_name: Optional[str] = ""
     attendant: Optional[str] = ""
     notes: Optional[str] = ""
+    # ---- Offline-first additions (Retailer Phase C, D, E) ----------------
+    # Free-form opaque id minted by the mobile client. Used by the
+    # idempotency layer as a fallback when the `Idempotency-Key` header
+    # is not sent; also echoed back in the response.
+    client_op_id: Optional[str] = None
+    # Optional FK to /retailer/{rid}/customers — the mobile POS allows
+    # attaching a sale to a known customer in addition to the legacy
+    # free-text `customer_name`.
+    customer_id: Optional[str] = None
+    # Wall-clock at which the sale actually occurred on the device, for
+    # offline backdating. Server uses this as the canonical `occurred_at`
+    # but always stamps its own `created_at` on persistence.
+    occurred_at: Optional[str] = None
 
 
 class SaleMarkPaid(BaseModel):
     payment_method: Literal["cash", "transfer", "pos"] = "cash"
+
+
+# ---- Retailer Customers CRM (Phase D — offline-first) ----------------------
+class RetailerCustomerCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    address: Optional[str] = Field(default=None, max_length=500)
+    notes: Optional[str] = None
+    tags: Optional[List[str]] = None
+    client_op_id: Optional[str] = None
+
+
+class RetailerCustomerUpdate(BaseModel):
+    name: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    address: Optional[str] = Field(default=None, max_length=500)
+    notes: Optional[str] = None
+    tags: Optional[List[str]] = None
+
+
+# ---- Retailer Inventory Adjustments (Phase E — delta-only) -----------------
+INVENTORY_ADJUST_REASONS = (
+    "sale", "shipment_received", "count", "damage", "return", "other",
+)
+
+
+class InventoryAdjustCreate(BaseModel):
+    product_id: str
+    delta: int
+    reason: Literal["sale", "shipment_received", "count", "damage", "return", "other"]
+    source_local_id: Optional[str] = None
+    occurred_at: Optional[str] = None
+    notes: Optional[str] = None
+    client_op_id: Optional[str] = None
+
+
+class InventoryAdjustBatchItem(BaseModel):
+    product_id: str
+    delta: int
+    reason: Literal["sale", "shipment_received", "count", "damage", "return", "other"]
+    client_delta_op_id: str
+    source_local_id: Optional[str] = None
+    occurred_at: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class InventoryAdjustBatch(BaseModel):
+    adjustments: List[InventoryAdjustBatchItem]
+    client_op_id: Optional[str] = None
 
 
 

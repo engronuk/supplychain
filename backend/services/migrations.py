@@ -125,6 +125,35 @@ INDEX_SPECS: List[Tuple[str, list, dict]] = [
     ("sales",              [("organization_id", ASCENDING)], {"name": "by_organization"}),
     ("daily_sales",        [("organization_id", ASCENDING)], {"name": "by_organization"}),
     ("shipments",          [("organization_id", ASCENDING)], {"name": "by_organization"}),
+
+    # Retailer Offline-First (P0 — 2026-06-24): idempotency, customers,
+    # inventory adjustment ledger.
+    ("idempotency_keys",
+     [("retailer_id", ASCENDING), ("endpoint", ASCENDING), ("key", ASCENDING)],
+     {"unique": True, "name": "uniq_retailer_endpoint_key"}),
+    ("idempotency_keys", [("expires_at", ASCENDING)],
+     {"name": "ttl_expires_at", "expireAfterSeconds": 0}),
+    ("retailer_customers", [("id", ASCENDING)],
+     {"unique": True, "name": "uniq_id"}),
+    ("retailer_customers", [("retailer_id", ASCENDING), ("normalized_phone", ASCENDING)],
+     {"unique": True, "name": "uniq_retailer_phone_partial",
+      "partialFilterExpression": {"normalized_phone": {"$type": "string"}}}),
+    ("retailer_customers", [("retailer_id", ASCENDING), ("updated_at", ASCENDING)],
+     {"name": "by_retailer_updated"}),
+    ("retailer_customers", [("retailer_id", ASCENDING), ("deleted_at", ASCENDING)],
+     {"name": "by_retailer_deleted"}),
+    ("retailer_inventory_adjustments", [("id", ASCENDING)],
+     {"unique": True, "name": "uniq_id"}),
+    ("retailer_inventory_adjustments",
+     [("retailer_id", ASCENDING), ("product_id", ASCENDING),
+      ("applied_at", DESCENDING)],
+     {"name": "by_retailer_product_recent"}),
+    ("retailer_inventory_adjustments",
+     [("retailer_id", ASCENDING), ("applied_at", DESCENDING)],
+     {"name": "by_retailer_recent"}),
+    # Sales: support `updated_since` cursor reads (Phase E offline sync)
+    ("sales", [("retailer_id", ASCENDING), ("updated_at", ASCENDING)],
+     {"name": "by_retailer_updated"}),
 ]
 
 
@@ -135,6 +164,11 @@ INDEX_SPECS: List[Tuple[str, list, dict]] = [
 # 500s the exec-summary endpoint in production.
 STALE_INDEXES: List[Tuple[str, str]] = [
     ("intel_executive_summaries", "uniq_tenant"),
+    # 2026-06-25: the sparse unique index treated null as a real value
+    # and collided on the second customer without a phone. Replaced by
+    # ``uniq_retailer_phone_partial`` with a partialFilterExpression that
+    # only indexes string phones.
+    ("retailer_customers", "uniq_retailer_phone"),
 ]
 
 

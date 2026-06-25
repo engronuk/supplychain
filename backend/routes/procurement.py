@@ -359,6 +359,7 @@ async def list_purchase_orders(
     date_to: Optional[str] = None,
     product_id: Optional[str] = None,
     q: Optional[str] = None,
+    updated_since: Optional[str] = None,
     limit: int = 500,
 ):
     query: Dict[str, Any] = {}
@@ -376,7 +377,17 @@ async def list_purchase_orders(
         query.setdefault("created_at", {})["$lte"] = date_to
     if product_id:
         query["items.product_id"] = product_id
-    docs = await db.purchase_orders.find(query, {"_id": 0}).sort("created_at", -1).to_list(limit)
+    # Offline-sync cursor: rows where updated_at > since, sorted ASC.
+    if updated_since:
+        query["$or"] = [
+            {"updated_at": {"$gt": updated_since}},
+            {"updated_at": {"$exists": False},
+             "created_at": {"$gt": updated_since}},
+        ]
+        sort_key, sort_dir = "updated_at", 1
+    else:
+        sort_key, sort_dir = "created_at", -1
+    docs = await db.purchase_orders.find(query, {"_id": 0}).sort(sort_key, sort_dir).to_list(limit)
     distributors, retailers, products, wholesalers = await _load_lookups()
     enriched = []
     for d in docs:

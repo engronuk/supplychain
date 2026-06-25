@@ -16,13 +16,14 @@ import io
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
 from core import db, logger, new_id, now_iso
 from models import SaleCreate, SaleMarkPaid
 from services.ai_insights import generate_ai_insights
 from services.helpers import push_notification
+from services.idempotency import IdempotencyContext, idempotent
 
 router = APIRouter()
 
@@ -37,12 +38,30 @@ def _gen_tx_code() -> str:
 # Create sale  (atomic inventory deduction)
 # ============================================================================
 @router.post("/retailer/{retailer_id}/sales")
-async def create_sale(retailer_id: str, payload: SaleCreate):
+async def create_sale(
+    retailer_id: str, payload: SaleCreate,
+    ctx: IdempotencyContext = Depends(idempotent("retailer.sales.create")),
+):
+    if ctx.replay is not None:
+        return ctx.replay
     retailer = await db.retailers.find_one({"id": retailer_id}, {"_id": 0})
     if not retailer:
         raise HTTPException(404, "Retailer not found")
     if not payload.items:
         raise HTTPException(400, "Sale must include at least one line item")
+
+    # Validate customer FK if supplied. We allow soft-deleted customers
+    # to remain referenceable (existing sales must keep resolving) but
+    # block CREATING new sales against a deleted record.
+    customer_doc: Optional[Dict[str, Any]] = None
+    if payload.customer_id:
+        customer_doc = await db.retailer_customers.find_one(
+            {"id": payload.customer_id, "retailer_id": retailer_id,
+             "deleted_at": None},
+            {"_id": 0},
+        )
+        if not customer_doc:
+            raise HTTPException(400, "customer_id not found for this retailer")
 
     products = {p["id"]: p for p in await db.products.find({}, {"_id": 0}).to_list(5000)}
 
@@ -116,6 +135,7 @@ async def create_sale(retailer_id: str, payload: SaleCreate):
     # 3) Persist sale + per-line daily_sales rows. On any failure, rollback the
     # inventory deductions so we never leave inventory out of sync with sales.
     try:
+        server_now = now_iso()
         sale = {
             "id": new_id(),
             "transaction_code": _gen_tx_code(),
@@ -125,11 +145,18 @@ async def create_sale(retailer_id: str, payload: SaleCreate):
             "units_total": units_total,
             "payment_method": payload.payment_method,
             "payment_status": "pending" if payload.payment_method == "credit" else "paid",
-            "customer_name": (payload.customer_name or "").strip(),
+            "customer_id": payload.customer_id or None,
+            "customer_name": (
+                (customer_doc.get("name") if customer_doc else None)
+                or (payload.customer_name or "").strip()
+            ),
             "attendant": (payload.attendant or "").strip(),
             "notes": (payload.notes or "").strip(),
-            "created_at": now_iso(),
-            "paid_at": None if payload.payment_method == "credit" else now_iso(),
+            "client_op_id": payload.client_op_id or None,
+            "occurred_at": (payload.occurred_at or server_now),
+            "created_at": server_now,
+            "updated_at": server_now,
+            "paid_at": None if payload.payment_method == "credit" else server_now,
         }
         await db.sales.insert_one(sale)
         for li, line in zip(payload.items, line_docs):
@@ -143,6 +170,22 @@ async def create_sale(retailer_id: str, payload: SaleCreate):
                 "revenue": line["line_total"],
                 "source": "sales_book",
             })
+        # Update the customer CRM rollups if a customer was attached.
+        if payload.customer_id:
+            update_set: Dict[str, Any] = {
+                "last_purchase_at": server_now,
+                "updated_at": server_now,
+            }
+            if not (customer_doc or {}).get("first_purchase_at"):
+                update_set["first_purchase_at"] = server_now
+            await db.retailer_customers.update_one(
+                {"id": payload.customer_id, "retailer_id": retailer_id},
+                {
+                    "$inc": {"lifetime_orders": 1,
+                             "total_spent": round(grand_total, 2)},
+                    "$set": update_set,
+                },
+            )
     except Exception:
         logger.exception("Sale persist failed — rolling back inventory")
         await _rollback()
@@ -157,7 +200,7 @@ async def create_sale(retailer_id: str, payload: SaleCreate):
         )
 
     sale.pop("_id", None)
-    return sale
+    return await ctx.set_response(200, sale)
 
 
 # ============================================================================
@@ -172,6 +215,7 @@ async def list_sales(
     payment_method: Optional[str] = None,
     payment_status: Optional[str] = None,
     search: Optional[str] = None,
+    updated_since: Optional[str] = Query(None),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
 ):
@@ -193,10 +237,30 @@ async def list_sales(
             {"attendant": {"$regex": search, "$options": "i"}},
             {"items.product_name": {"$regex": search, "$options": "i"}},
         ]
+    # Incremental-sync cursor: rows where updated_at > since, sorted ASC.
+    # Falls back to created_at for legacy rows that pre-date offline-sync.
+    if updated_since:
+        since_clause = [
+            {"updated_at": {"$gt": updated_since}},
+            {"updated_at": {"$exists": False},
+             "created_at": {"$gt": updated_since}},
+        ]
+        if "$or" in q:
+            # combine with existing search-$or using $and
+            q["$and"] = [{"$or": q.pop("$or")}, {"$or": since_clause}]
+        else:
+            q["$or"] = since_clause
+        sort_key, sort_dir = "updated_at", 1
+    else:
+        sort_key, sort_dir = "created_at", -1
 
     total = await db.sales.count_documents(q)
-    rows = await db.sales.find(q, {"_id": 0}).sort("created_at", -1).skip(offset).limit(limit).to_list(limit)
-    return {"total": total, "limit": limit, "offset": offset, "rows": rows}
+    rows = await db.sales.find(q, {"_id": 0}).sort(sort_key, sort_dir).skip(offset).limit(limit).to_list(limit)
+    payload = {"total": total, "limit": limit, "offset": offset, "rows": rows}
+    if updated_since and rows:
+        last = rows[-1]
+        payload["next_cursor"] = last.get("updated_at") or last.get("created_at")
+    return payload
 
 
 # ============================================================================
@@ -433,7 +497,8 @@ async def mark_sale_paid(retailer_id: str, sale_id: str, payload: SaleMarkPaid):
     await db.sales.update_one(
         {"id": sale_id},
         {"$set": {"payment_status": "paid", "paid_at": now_iso(),
-                  "payment_method": payload.payment_method}},
+                  "payment_method": payload.payment_method,
+                  "updated_at": now_iso()}},
     )
     updated = await db.sales.find_one({"id": sale_id}, {"_id": 0})
     return updated

@@ -188,6 +188,39 @@ visibility (Manufacturer → Warehouse → Distributor → Wholesaler → Retail
   login `unilever.wholesaler@tradekonekt.io` which sees Royal Trading 1
   under both manufacturers.
 
+- **Retailer Offline-First Backend — Phases C/D/E Enabled (✅ SHIPPED 2026-06-25)** —
+  Cross-cutting idempotency contract + 8 new endpoints unblocking the
+  mobile retailer offline initiative.
+  * `services/idempotency.py` — single helper, used by all mutating
+    retailer endpoints. Honours `Idempotency-Key` header (or
+    `client_op_id` body fallback). Same key + same payload → byte-for-byte
+    replay with `Idempotent-Replay: true`. Same key + different payload →
+    409 with `original_request_at`. TTL 48h via Mongo TTL index.
+  * Idempotent sale create — `POST /api/retailer/{rid}/sales` now
+    accepts `customer_id` (FK to new customers collection, auto-updates
+    CRM rollups), `occurred_at` (offline backdating), `client_op_id`.
+  * Customers CRUD — 5 endpoints under `/api/retailer/{rid}/customers`:
+    list (paginated + `updated_since` cursor + soft-delete filter),
+    get-one, create (phone-based upsert + idempotency), patch
+    (optimistic `If-Match` ETag → 412 on stale), soft-delete.
+  * Inventory adjustment ledger — 3 endpoints under
+    `/api/retailer/{rid}/inventory/adjust`: single delta (atomic
+    `$inc`, returns `warning="negative_balance"` if total < 0), batch
+    with per-delta idempotency (`client_delta_op_id`) and partial-OK
+    semantics, ledger read with product/reason/since filters.
+  * Incremental sync cursors — `updated_since` accepted on
+    `/sales`, `/procurement/purchase-orders`, `/inventory` (legacy bare
+    list shape preserved when no cursor).
+  * JWT auth + retailer ownership enforced on every new endpoint;
+    cross-tenant access → 403.
+  * Storage: new collections `idempotency_keys`, `retailer_customers`,
+    `retailer_inventory_adjustments`. Partial-unique index on
+    `(retailer_id, normalized_phone)` (sparse was buggy on null).
+  * Regression: `tests/test_retailer_offline.py` — **19/19 PASS** end-to-end.
+  * Validation report: `/app/docs/RETAILER_OFFLINE_VALIDATION_REPORT.md`.
+  * Backwards-compat verified: in-market builds that don't send any of
+    the new headers/fields continue to work unchanged.
+
 - **Mobile Wholesaler-Mismatch Fix — `/api/organizations` Alias Layer (✅ SHIPPED 2026-06-23)** —
   Mobile QA reported Apex Distributors showing 3 wholesalers on web but 0
   on Expo Go. Reproduction: mobile called
