@@ -1,0 +1,44 @@
+[
+  {
+    "event": "Retailer Sale",
+    "system": "Orders/Sales",
+    "status": "PASS",
+    "evidence": "sale_id=6d70b9b1-0553-4681-8270-296ee1e0a5ca"
+  },
+  {
+    "event": "Retailer Sale",
+    "system": "Idempotency",
+    "status": "PASS",
+    "evidence": "replay returned same sale_id"
+  },
+  {
+    "event": "Retailer Sale",
+    "system": "Inventory",
+    "status": "PASS",
+    "evidence": "qty 89\u219287"
+  },
+  {
+    "event": "Retailer Sale",
+    "system": "Dashboard",
+    "status": "PASS",
+    "evidence": "keys=['retailer', 'kpis', 'recent_shipments', 'top_selling', 'fast_moving', 'near_stockout']"
+  },
+  {
+    "event": "Retailer Sale",
+    "system": "Analytics/sales-trend",
+    "status": "PASS",
+    "evidence": "len=dict"
+  },
+  {
+    "event": "Retailer Sale",
+    "system": "Reorder Suggestions",
+    "status": "PASS",
+    "evidence": "endpoint live"
+  },
+  {
+    "event": "Retailer Sale",
+    "system": "Customer Rollups",
+    "status": "PASS",
+    "evidence": "lifetime_orders=1 total_spent=200.0"
+  }
+]
