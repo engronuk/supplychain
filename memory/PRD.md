@@ -188,6 +188,25 @@ visibility (Manufacturer → Warehouse → Distributor → Wholesaler → Retail
   login `unilever.wholesaler@tradekonekt.io` which sees Royal Trading 1
   under both manufacturers.
 
+- **P0 Cross-Tenant Retailer Data Leak — CLOSED (✅ SHIPPED 2026-06-26)** —
+  E2E business audit (iteration_32) found that any authenticated retailer
+  could read every other retailer's `/sales`, `/dashboard`, `/sales-trend`,
+  `/reorder-suggestions`, `/insights`, `/inventory-command-center`,
+  `/product/{pid}`, and the raw `/api/inventory?owner_type=retailer`
+  endpoint. Fix:
+  * `services/auth.py` — new `require_retailer_ownership_async()` helper
+    centralises the check. Allows super_admin, the retailer itself, and a
+    manufacturer/distributor in the upstream tree (intentional cross-tier).
+  * Applied to every leaking endpoint in `routes/sales.py`,
+    `routes/retailer_os.py`, `routes/retailer_inventory.py`.
+  * `routes/inventory.py` now requires JWT, auto-scopes to the caller
+    when no `owner_type/owner_id` is supplied (retailer/dist/wholesaler
+    get their own data), and blocks cross-tenant retailer reads.
+  * Verified by `tests/test_p0_ownership_fix.py` (31/31 PASS) +
+    `tests/test_e2e_business_audit.py` (33/34 PASS, one carry-over skip).
+  * Existing regression suites unaffected (19/19 + 3/3 still PASS).
+  * Readiness score 78 → 88; retail readiness 55 → 90.
+
 - **Retailer Offline-First Backend — Phases C/D/E Enabled (✅ SHIPPED 2026-06-25)** —
   Cross-cutting idempotency contract + 8 new endpoints unblocking the
   mobile retailer offline initiative.
