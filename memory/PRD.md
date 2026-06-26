@@ -188,6 +188,32 @@ visibility (Manufacturer → Warehouse → Distributor → Wholesaler → Retail
   login `unilever.wholesaler@tradekonekt.io` which sees Royal Trading 1
   under both manufacturers.
 
+- **Retailer Freedom — Off-Ecosystem Product Onboarding (✅ SHIPPED 2026-06-26)** —
+  Retailers can now sell products from manufacturers that are NOT in the
+  TradeKonekt ecosystem (local brands, private-label SKUs, off-platform
+  vendors).
+  * `routes/retailer_products.py` — full CRUD under
+    `/api/retailer/{rid}/products`: list (paginated, `updated_since`,
+    `include_deleted`), idempotent create (auto-generates `PRIV-…` SKU
+    + auto-creates inventory row at qty 0), patch, soft-delete.
+  * `models.py` — `Product` extended with `source`, `owner_type`,
+    `owner_id`, `external_manufacturer`, `is_private`, `deleted_at`.
+  * `routes/entities.py` — `GET /api/products` filters out
+    `source=retailer_private` for every caller except the owning
+    retailer and super_admin. Manufacturers / wholesalers / other
+    retailers cannot see another retailer's private catalogue.
+  * Sales work natively: `POST /api/retailer/{rid}/sales` accepts
+    private `product_id` with no code change; inventory `$inc` is
+    product-agnostic.
+  * Off-ecosystem isolation: private SKUs do NOT roll up to wholesaler
+    or manufacturer demand analytics (they remain `source=retailer_private`
+    and any future analytics aggregator filters on `source=ecosystem`).
+  * Verified by `tests/test_retailer_private_products.py` (7/7 PASS)
+    + the testing agent's iteration_34 audit (60/60 PASS across new
+    suite + 19 offline-first + 29 P0 ownership + 3 org-aliases).
+  * Scorecard added new Retail-Freedom dimension — every isolation case
+    PASS.
+
 - **P0 Cross-Tenant Retailer Data Leak — CLOSED (✅ SHIPPED 2026-06-26)** —
   E2E business audit (iteration_32) found that any authenticated retailer
   could read every other retailer's `/sales`, `/dashboard`, `/sales-trend`,
