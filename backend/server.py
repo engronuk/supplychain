@@ -170,6 +170,23 @@ _static_dir = os.path.join(os.path.dirname(__file__), "static")
 os.makedirs(_static_dir, exist_ok=True)
 app.mount("/api/static", StaticFiles(directory=_static_dir), name="static")
 
+# Read-only mount of the engineering reports + docs so the user can open
+# them in a browser without having to SSH into the pod. These directories
+# are NOT secret (PRD is already in source control); test_credentials.md
+# is in /app/memory which is intentionally NOT mounted here.
+_reports_root = "/app/test_reports"
+if os.path.isdir(_reports_root):
+    app.mount(
+        "/api/reports", StaticFiles(directory=_reports_root, html=False),
+        name="reports",
+    )
+_docs_root = "/app/docs"
+if os.path.isdir(_docs_root):
+    app.mount(
+        "/api/docs", StaticFiles(directory=_docs_root, html=False),
+        name="docs",
+    )
+
 # CORS: when CORS_ORIGINS is unset (or "*"), use a regex that matches any
 # origin AND echoes it back per-request. The CORS spec forbids responding
 # with `Access-Control-Allow-Origin: *` when `Allow-Credentials: true`, which
