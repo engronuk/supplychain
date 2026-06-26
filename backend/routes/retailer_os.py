@@ -4,10 +4,11 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from core import db, now_iso
 from models import QuickReorderPayload, RequestLine, StockRequest
+from services.auth import get_current_user, require_retailer_ownership_async
 from services.helpers import push_notification
 from services.retailer import retailer_inventory_enriched
 
@@ -15,7 +16,11 @@ router = APIRouter()
 
 
 @router.get("/retailer/{retailer_id}/dashboard")
-async def retailer_dashboard(retailer_id: str):
+async def retailer_dashboard(
+    retailer_id: str,
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    await require_retailer_ownership_async(user, retailer_id)
     retailer = await db.retailers.find_one({"id": retailer_id}, {"_id": 0})
     if not retailer:
         raise HTTPException(404, "Retailer not found")
@@ -87,7 +92,11 @@ async def retailer_dashboard(retailer_id: str):
 
 
 @router.get("/retailer/{retailer_id}/insights")
-async def retailer_insights_endpoint(retailer_id: str):
+async def retailer_insights_endpoint(
+    retailer_id: str,
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    await require_retailer_ownership_async(user, retailer_id)
     inv = await retailer_inventory_enriched(retailer_id)
     insights: List[Dict[str, Any]] = []
 
@@ -139,7 +148,11 @@ async def retailer_insights_endpoint(retailer_id: str):
 
 
 @router.get("/retailer/{retailer_id}/reorder-suggestions")
-async def reorder_suggestions(retailer_id: str):
+async def reorder_suggestions(
+    retailer_id: str,
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    await require_retailer_ownership_async(user, retailer_id)
     inv = await retailer_inventory_enriched(retailer_id)
     out = []
     target_days_cover = 14
@@ -165,7 +178,11 @@ async def reorder_suggestions(retailer_id: str):
 
 
 @router.post("/retailer/{retailer_id}/quick-reorder")
-async def quick_reorder(retailer_id: str, payload: QuickReorderPayload):
+async def quick_reorder(
+    retailer_id: str, payload: QuickReorderPayload,
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    await require_retailer_ownership_async(user, retailer_id)
     retailer = await db.retailers.find_one({"id": retailer_id}, {"_id": 0})
     if not retailer:
         raise HTTPException(404, "Retailer not found")
@@ -198,7 +215,11 @@ async def quick_reorder(retailer_id: str, payload: QuickReorderPayload):
 
 
 @router.get("/retailer/{retailer_id}/sales-trend")
-async def sales_trend(retailer_id: str, days: int = 7):
+async def sales_trend(
+    retailer_id: str, days: int = 7,
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    await require_retailer_ownership_async(user, retailer_id)
     days = max(1, min(30, days))
     today = datetime.now(timezone.utc).date()
     start = (today - timedelta(days=days - 1)).isoformat()
@@ -239,7 +260,11 @@ async def sales_trend(retailer_id: str, days: int = 7):
 
 
 @router.get("/retailer/{retailer_id}/activity")
-async def retailer_activity(retailer_id: str, limit: int = 30):
+async def retailer_activity(
+    retailer_id: str, limit: int = 30,
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    await require_retailer_ownership_async(user, retailer_id)
     retailer = await db.retailers.find_one({"id": retailer_id}, {"_id": 0})
     if not retailer:
         raise HTTPException(404, "Retailer not found")

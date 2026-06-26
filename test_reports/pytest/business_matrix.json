@@ -3,7 +3,7 @@
     "event": "Retailer Sale",
     "system": "Orders/Sales",
     "status": "PASS",
-    "evidence": "sale_id=6d70b9b1-0553-4681-8270-296ee1e0a5ca"
+    "evidence": "sale_id=449037bf-a3fb-43ff-a072-6b6125f4abcf"
   },
   {
     "event": "Retailer Sale",
@@ -15,7 +15,7 @@
     "event": "Retailer Sale",
     "system": "Inventory",
     "status": "PASS",
-    "evidence": "qty 89\u219287"
+    "evidence": "qty 56\u219254"
   },
   {
     "event": "Retailer Sale",
@@ -40,5 +40,77 @@
     "system": "Customer Rollups",
     "status": "PASS",
     "evidence": "lifetime_orders=1 total_spent=200.0"
+  },
+  {
+    "event": "Logistics CC",
+    "system": "Control Tower",
+    "status": "PARTIAL",
+    "evidence": "present=['kpis', 'events', 'tier_inventory'] got=['kpis', 'fleet', 'shipments', 'tier_inventory', 'digital_twin', 'retailer_clusters', 'events', 'generated_at']"
+  },
+  {
+    "event": "Capability Audit",
+    "system": "Demand Planning",
+    "status": "MISSING",
+    "evidence": "/analytics/demand-planning \u2192 404"
+  },
+  {
+    "event": "Capability Audit",
+    "system": "Supplier Scorecards",
+    "status": "MISSING",
+    "evidence": "/scorecards/suppliers \u2192 404"
+  },
+  {
+    "event": "Capability Audit",
+    "system": "Retailer Scorecards",
+    "status": "MISSING",
+    "evidence": "/scorecards/retailers \u2192 404"
+  },
+  {
+    "event": "Capability Audit",
+    "system": "Driver Performance",
+    "status": "MISSING",
+    "evidence": "/analytics/driver-performance \u2192 404"
+  },
+  {
+    "event": "Capability Audit",
+    "system": "Vehicle Performance",
+    "status": "MISSING",
+    "evidence": "/analytics/vehicle-performance \u2192 404"
+  },
+  {
+    "event": "Capability Audit",
+    "system": "Route Optimization",
+    "status": "MISSING",
+    "evidence": "/route-optimization \u2192 404"
+  },
+  {
+    "event": "Capability Audit",
+    "system": "OTIF",
+    "status": "MISSING",
+    "evidence": "/analytics/otif \u2192 404"
+  },
+  {
+    "event": "Capability Audit",
+    "system": "Fill Rate",
+    "status": "MISSING",
+    "evidence": "/analytics/fill-rate \u2192 404"
+  },
+  {
+    "event": "Capability Audit",
+    "system": "Inventory Aging",
+    "status": "MISSING",
+    "evidence": "/analytics/inventory-aging \u2192 404"
+  },
+  {
+    "event": "Capability Audit",
+    "system": "Product Expiry",
+    "status": "MISSING",
+    "evidence": "/analytics/product-expiry \u2192 404"
+  },
+  {
+    "event": "Capability Audit",
+    "system": "Promotion Effectiveness",
+    "status": "MISSING",
+    "evidence": "/analytics/promotion-effectiveness \u2192 404"
   }
 ]

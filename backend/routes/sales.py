@@ -22,6 +22,9 @@ from fastapi.responses import StreamingResponse
 from core import db, logger, new_id, now_iso
 from models import SaleCreate, SaleMarkPaid
 from services.ai_insights import generate_ai_insights
+from services.auth import (
+    get_current_user, require_retailer_ownership_async,
+)
 from services.helpers import push_notification
 from services.idempotency import IdempotencyContext, idempotent
 
@@ -40,8 +43,10 @@ def _gen_tx_code() -> str:
 @router.post("/retailer/{retailer_id}/sales")
 async def create_sale(
     retailer_id: str, payload: SaleCreate,
+    user: Dict[str, Any] = Depends(get_current_user),
     ctx: IdempotencyContext = Depends(idempotent("retailer.sales.create")),
 ):
+    await require_retailer_ownership_async(user, retailer_id)
     if ctx.replay is not None:
         return ctx.replay
     retailer = await db.retailers.find_one({"id": retailer_id}, {"_id": 0})
@@ -218,7 +223,9 @@ async def list_sales(
     updated_since: Optional[str] = Query(None),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
+    user: Dict[str, Any] = Depends(get_current_user),
 ):
+    await require_retailer_ownership_async(user, retailer_id)
     q: Dict[str, Any] = {"retailer_id": retailer_id}
     if date_from:
         q.setdefault("created_at", {})["$gte"] = date_from
@@ -267,7 +274,11 @@ async def list_sales(
 # Today's summary KPIs + AI insights
 # ============================================================================
 @router.get("/retailer/{retailer_id}/sales/summary")
-async def sales_summary(retailer_id: str):
+async def sales_summary(
+    retailer_id: str,
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    await require_retailer_ownership_async(user, retailer_id)
     today = datetime.now(timezone.utc).date()
     start_iso = today.isoformat()
     week_start = (today - timedelta(days=6)).isoformat()
@@ -325,7 +336,11 @@ async def sales_summary(retailer_id: str):
 # Analytics — trends, products, payments, hours
 # ============================================================================
 @router.get("/retailer/{retailer_id}/sales/analytics")
-async def sales_analytics(retailer_id: str, days: int = Query(30, ge=7, le=90)):
+async def sales_analytics(
+    retailer_id: str, days: int = Query(30, ge=7, le=90),
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    await require_retailer_ownership_async(user, retailer_id)
     today = datetime.now(timezone.utc).date()
     start = (today - timedelta(days=days - 1)).isoformat()
 
@@ -488,7 +503,11 @@ or reduce credit risk."""
 # Mark credit sale as paid
 # ============================================================================
 @router.patch("/retailer/{retailer_id}/sales/{sale_id}/mark-paid")
-async def mark_sale_paid(retailer_id: str, sale_id: str, payload: SaleMarkPaid):
+async def mark_sale_paid(
+    retailer_id: str, sale_id: str, payload: SaleMarkPaid,
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    await require_retailer_ownership_async(user, retailer_id)
     sale = await db.sales.find_one({"id": sale_id, "retailer_id": retailer_id})
     if not sale:
         raise HTTPException(404, "Sale not found")
@@ -508,9 +527,13 @@ async def mark_sale_paid(retailer_id: str, sale_id: str, payload: SaleMarkPaid):
 # CSV export
 # ============================================================================
 @router.get("/retailer/{retailer_id}/sales/export.csv")
-async def export_sales_csv(retailer_id: str,
-                           date_from: Optional[str] = None,
-                           date_to: Optional[str] = None):
+async def export_sales_csv(
+    retailer_id: str,
+    date_from: Optional[str] = None,
+    date_to: Optional[str] = None,
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    await require_retailer_ownership_async(user, retailer_id)
     q: Dict[str, Any] = {"retailer_id": retailer_id}
     if date_from:
         q.setdefault("created_at", {})["$gte"] = date_from

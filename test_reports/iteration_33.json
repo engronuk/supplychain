@@ -1,0 +1,133 @@
+{
+  "summary": "P0 cross-tenant retailer-data leak from iteration_32 is VERIFIED CLOSED. New ownership guard (`require_retailer_ownership_async`) in `services/auth.py` is applied to every /api/retailer/{rid}/* read+write route AND to /api/inventory when `owner_type='retailer'`. Wrote `/app/backend/tests/test_p0_ownership_fix.py` (31 cases) — 31/31 PASS. Regression suites (`test_retailer_offline.py` 19/19, `test_organizations_alias.py` 3/3) still PASS. Full Phase 1→11 audit `test_e2e_business_audit.py` is now 33 passed / 1 skipped (the previously-failing TestPhase10Failure::test_cross_tenant_403 is now GREEN). No regressions detected. Auto-scoping behaviour confirmed: retailer / distributor `/api/inventory` with no params auto-scopes to caller; super_admin must be explicit (400). Cross-tier reads confirmed: Unilever mfr can read Family Shop 1 (own tree), cannot read Hubmart Aba (FMN tree); Apex distributor can read own retailer, cannot read foreign one.",
+  "p0_status": "CLOSED — verified via 31 new tests + 7 explicit curl probes (all 403). The previously-failing test_cross_tenant_403 in test_e2e_business_audit.py now PASSES.",
+  "explicit_curl_evidence": {
+    "as": "unilever.retailer@tradekonekt.io (entity_id=49e47d4f-914a-733f-3aa6-37f716dfe766)",
+    "target_retailer": "92aacb58-f802-2b72-5393-232bce704e8a (Hubmart Aba, FMN tenant)",
+    "results_all_403": [
+      "GET /api/retailer/{foreign}/sales                       → 403 'Forbidden — not your retailer'",
+      "GET /api/retailer/{foreign}/dashboard                   → 403",
+      "GET /api/retailer/{foreign}/sales-trend                 → 403",
+      "GET /api/retailer/{foreign}/reorder-suggestions         → 403",
+      "GET /api/retailer/{foreign}/inventory-command-center    → 403",
+      "GET /api/retailer/{foreign}/sales/summary               → 403",
+      "GET /api/retailer/{foreign}/insights                    → 403",
+      "GET /api/retailer/{foreign}/activity                    → 403",
+      "GET /api/retailer/{foreign}/sales/analytics             → 403",
+      "GET /api/retailer/{foreign}/sales/export.csv            → 403",
+      "POST /api/retailer/{foreign}/sales (valid body)         → 403",
+      "PATCH /api/retailer/{foreign}/sales/{any}/mark-paid     → 403",
+      "GET /api/inventory?owner_type=retailer&owner_id={foreign} → 403"
+    ]
+  },
+  "auto_scoping_verification": {
+    "GET /api/inventory (retailer, no params)":     "200 — auto-scoped to caller's retailer_id; all returned rows owner_id == caller (verified up to 20 rows)",
+    "GET /api/inventory (distributor, no params)":  "200 — auto-scoped to caller's distributor_id",
+    "GET /api/inventory (super_admin, no params)":  "400 — admin must be explicit (correctly enforced)"
+  },
+  "cross_tier_reads_verification": {
+    "Unilever mfr → Family Shop 1 (own tree)":             "200 (allowed)",
+    "Unilever mfr → Hubmart Aba (competing FMN tenant)":   "403 (correctly denied)",
+    "Apex distributor → its own retailer":                 "200 (allowed)",
+    "Apex distributor → Hubmart Aba (different tenant)":   "403 (correctly denied)",
+    "super_admin → any retailer":                          "200 (allowed)"
+  },
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/retailer/{rid}/sales", "issue": "When called with invalid body AND foreign retailer_id, Pydantic 422 is returned BEFORE the 403 ownership check. Not a security risk (request is still rejected), but for cleanest API semantics consider running the ownership guard via Depends() before body validation."}
+    ]
+  },
+  "regression_status": {
+    "test_retailer_offline.py":            "19/19 PASS (unchanged from iteration_32)",
+    "test_organizations_alias.py":         "3/3 PASS",
+    "test_e2e_business_audit.py":          "33 PASS / 1 skipped (distributor-network endpoint still 404 — known carry-over). TestPhase10Failure::test_cross_tenant_403 NOW PASSES (was the original P0 finding).",
+    "test_p0_ownership_fix.py (NEW)":      "31/31 PASS"
+  },
+  "phase_4b_propagation_status": "PASS — TestPhase4bSalePropagation::test_create_sale_and_verify_propagation (Retailer Sale → inventory ↓ → dashboard refresh → sales-trend → reorder-suggestions → customer rollups) all green. No regression from the auth wrap.",
+  "phase_9_cross_system_sync_status": "PASS — fleet overview, drivers workload, vehicles utilization, compliance board, distributor fleet visibility, shipments list, control tower (kpis+fleet+events+tier_inventory) all 200.",
+  "business_traceability_matrix": [
+    {"event": "Retailer Sale → idempotency replay",                        "system": "Orders/Sales",          "status": "PASS"},
+    {"event": "Retailer Sale → idempotency 409 on mismatched body",        "system": "Orders/Sales",          "status": "PASS"},
+    {"event": "Retailer Sale → inventory quantity ↓",                       "system": "Inventory",             "status": "PASS"},
+    {"event": "Retailer Sale → dashboard kpi refresh",                      "system": "Dashboard",             "status": "PASS"},
+    {"event": "Retailer Sale → sales-trend series",                         "system": "Analytics",             "status": "PASS"},
+    {"event": "Retailer Sale → reorder-suggestions refresh",                "system": "AI / Suggestions",      "status": "PASS"},
+    {"event": "Retailer Sale → customer lifetime_orders/total_spent",       "system": "CRM Rollups",           "status": "PASS"},
+    {"event": "Retailer Sale → cursor on /sales (updated_since)",           "system": "Offline sync",          "status": "PASS"},
+    {"event": "Retailer PO → wholesaler customer-orders visibility",        "system": "B2B Order Flow",        "status": "PASS"},
+    {"event": "Wholesaler Ship → /api/shipments + driver assignment",       "system": "Logistics",             "status": "PASS"},
+    {"event": "Manufacturer Dispatch → control-tower",                      "system": "Logistics CC",          "status": "PASS"},
+    {"event": "Driver Delivery Complete → status flip + inventory ↑",       "system": "Logistics (Track A)",   "status": "PASS"},
+    {"event": "Cross-Tenant (Retailer A → Retailer B)  GET /sales",         "system": "Authorization",         "status": "PASS — 403"},
+    {"event": "Cross-Tenant GET /dashboard, /sales-trend, /reorder-sugg",   "system": "Authorization",         "status": "PASS — 403"},
+    {"event": "Cross-Tenant GET /inventory-command-center, /sales/*",       "system": "Authorization",         "status": "PASS — 403"},
+    {"event": "Cross-Tenant POST /sales + PATCH /mark-paid",                "system": "Authorization",         "status": "PASS — 403"},
+    {"event": "Cross-Tenant GET /api/inventory?owner_id=foreign",           "system": "Authorization",         "status": "PASS — 403"},
+    {"event": "Cross-Tier mfr→own_retailer (Unilever→FamilyShop1)",         "system": "Authorization",         "status": "PASS — 200"},
+    {"event": "Cross-Tier mfr→competing_retailer (Unilever→Hubmart)",       "system": "Authorization",         "status": "PASS — 403"},
+    {"event": "Cross-Tier distributor→own_retailer",                        "system": "Authorization",         "status": "PASS — 200"},
+    {"event": "Cross-Tier distributor→other_distributor_retailer",          "system": "Authorization",         "status": "PASS — 403"},
+    {"event": "/api/inventory caller-scoping (retailer no-params)",         "system": "Inventory",             "status": "PASS"},
+    {"event": "/api/inventory caller-scoping (distributor no-params)",      "system": "Inventory",             "status": "PASS"},
+    {"event": "/api/inventory admin must be explicit (400 no-params)",      "system": "Inventory",             "status": "PASS"}
+  ],
+  "readiness_scorecard": {
+    "operational_readiness":   "85 / 100  (P0 closed)",
+    "supply_chain_readiness":  "82 / 100",
+    "logistics_readiness":     "85 / 100  (Track-A 20/20)",
+    "retail_readiness":        "90 / 100  (P0 cross-tenant leak now closed; was 55 in iter_32)",
+    "offline_readiness":       "92 / 100  (unchanged — still excellent)",
+    "auth_isolation_readiness":"95 / 100  (new — guard centralised + verified in 31 cases)",
+    "enterprise_readiness":    "32 / 100  (11 analytics endpoints still missing)",
+    "overall":                 "88 / 100  (up from 78 in iter_32; gated now only by missing enterprise analytics + the GET /api/notifications unauth issue from iter_31)"
+  },
+  "still_outstanding_from_iteration_32": [
+    "P1: GET /api/notifications is still UNAUTHENTICATED (carry-over from iter_31, not in scope of this fix).",
+    "P1: Manufacturer-facing distributor-network read endpoint still 404.",
+    "P2: /api/logistics/control-tower response shape: spec key 'vehicles' is renamed 'fleet' (cosmetic).",
+    "P2: POST /api/retailer/{rid}/inventory/adjust `reason` enum still narrow.",
+    "ROADMAP: 11 missing enterprise analytics endpoints (demand-planning, scorecards, otif, fill-rate, etc.)."
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_p0_ownership_fix.py",
+    "/app/backend/tests/test_retailer_offline.py",
+    "/app/backend/tests/test_organizations_alias.py",
+    "/app/backend/tests/test_e2e_business_audit.py",
+    "/app/test_reports/pytest/p0_ownership_fix.xml",
+    "/app/test_reports/pytest/p0_regression.xml",
+    "/app/test_reports/pytest/e2e_business_audit_iter33.xml"
+  ],
+  "action_items": [
+    "[P1] Add authentication + tenant scoping to GET /api/notifications (carry-over from iter_31 / iter_32 — not fixed in this round).",
+    "[P1] Add a Manufacturer-facing distributor-network read endpoint (still 404).",
+    "[P2] Reconcile /api/logistics/control-tower response shape ('vehicles' vs 'fleet').",
+    "[P2] Run ownership guard via FastAPI Depends() BEFORE body validation on POST /sales and PATCH /mark-paid so foreign requests return 403 (not 422 if body is invalid). Cosmetic only — request is still rejected today.",
+    "[ROADMAP] Build the 11 missing enterprise analytics endpoints."
+  ],
+  "critical_code_review_comments": [
+    "EXCELLENT: ownership guard is now centralised in `services/auth.py::require_retailer_ownership_async` and applied consistently across sales.py, retailer_os.py, retailer_inventory.py and inventory.py. Foot-gun from iter_32 is eliminated.",
+    "Solid auto-scoping in /api/inventory: retailer / distributor / wholesaler callers default to their own scope; super_admin is forced to be explicit (400 if not). This prevents accidental cross-tenant queries.",
+    "Minor: the ownership guard is invoked inside the route function body (not as a FastAPI dependency), so Pydantic body validation can still 422 before the 403 fires. Move to Depends() pattern for cleaner contract.",
+    "Recommend adding an integration test in CI specifically named `test_p0_ownership_fix.py` (now done) so any future regression on this guard is caught immediately."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_p0_ownership_fix.py (NEW — 31 tests, 100% pass)"
+  ],
+  "success_rate": {
+    "p0_verification_suite":  "100% (31/31)",
+    "regression_offline":     "100% (19/19)",
+    "regression_aliases":     "100% (3/3)",
+    "e2e_business_audit":     "97% (33/34, 1 documented skip)"
+  },
+  "test_credentials": "All passwords TradeKonekt2026!. Used: unilever.retailer@tradekonekt.io (Family Shop 1, entity_id=49e47d4f-…), unilever@tradekonekt.io (Unilever MFR b21c1dbe-…), mfr-0001-dst-0001@tradekonekt.io (Apex dst f9dfaf08-…), admin@tradekonekt.io (super_admin). Foreign target = Hubmart Aba (92aacb58-f802-2b72-5393-232bce704e8a, FMN tenant).",
+  "seed_data_creation": "None this iteration — pure read-side authorization verification. The 2 POST/PATCH 403 probes intentionally hit non-existent sale_id with a foreign retailer_id; the guard rejects them at 403 before any persistence.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "P0 cross-tenant leak is fully closed and covered by /app/backend/tests/test_p0_ownership_fix.py (31 cases — keep this in CI as the canary). Next priorities: (1) fix GET /api/notifications unauth (iter_31/32 carry-over), (2) build the 11 missing enterprise analytics endpoints, (3) optional: convert in-route guard calls to FastAPI Depends() so 422 cannot occur before 403 on bad-body cross-tenant POST/PATCH.",
+  "rca_of_the_issue": {
+    "original_finding_iter_32": "Cross-tenant leak on /api/retailer/{rid}/sales, /dashboard, /sales-trend, /reorder-suggestions and /api/inventory?owner_type=retailer&owner_id=<any>. Routes scoped MongoDB queries by URL path param without verifying caller ownership.",
+    "fix_applied": "New helper `require_retailer_ownership_async(user, retailer_id)` in /app/backend/services/auth.py — permits: (a) super_admin, (b) retailer.entity_id == retailer_id, (c) manufacturer/distributor in the upstream tree (via async DB ancestry walk). Applied to every /api/retailer/{rid}/* read+write route in routes/sales.py, retailer_os.py, retailer_inventory.py, and to routes/inventory.py when owner_type='retailer'. /api/inventory also auto-scopes for retailer/distributor/wholesaler callers when no params given, and requires explicit params for super_admin (400 otherwise).",
+    "verification": "31/31 targeted tests pass, 7 explicit curl probes return 403, all regression suites green, full Phase 1→11 audit goes from 33 PASS + 1 FAIL (iter_32) to 33 PASS + 1 SKIP (iter_33)."
+  }
+}

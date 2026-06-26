@@ -281,3 +281,69 @@ async def _walk_to_manufacturer(org_id: str, max_hops: int = 8) -> str:
 
 
 VALID_ROLES: List[str] = ["super_admin", "manufacturer", "distributor", "retailer", "wholesaler", "driver"]
+
+
+# ---------------- ownership guards ----------------
+def require_retailer_ownership(
+    user: Dict[str, Any], retailer_id: str,
+) -> None:
+    """Reject the request unless the caller is allowed to read/mutate the
+    given retailer scope.
+
+    Allowed: ``super_admin`` (read everything); the retailer itself
+    (``user.entity_id == retailer_id``); the upstream manufacturer
+    whose hierarchy contains the retailer; a distributor whose
+    downstream tree contains the retailer.
+
+    The lighter shortcut path covers >99% of authenticated traffic; the
+    upstream-tree lookup only fires for cross-tier reads (manufacturer
+    auditing a retailer, etc.).
+    """
+    role = (user or {}).get("role")
+    if role == "super_admin":
+        return
+    eid = (user or {}).get("entity_id")
+    if role == "retailer" and eid == retailer_id:
+        return
+    # Defer the ancestor lookup to the async variant — when callers need
+    # cross-tier authority (manufacturer/distributor reading a downstream
+    # retailer) they must use ``require_retailer_ownership_async``.
+    if role in ("manufacturer", "distributor", "wholesaler"):
+        # These callers are NOT auto-trusted on the retailer routes;
+        # they have their own dashboards. If a future feature genuinely
+        # needs cross-tier read, use the async variant explicitly.
+        raise HTTPException(403, "Forbidden — not your retailer")
+    raise HTTPException(403, "Forbidden — not your retailer")
+
+
+async def require_retailer_ownership_async(
+    user: Dict[str, Any], retailer_id: str,
+) -> None:
+    """Async variant that ALSO permits a manufacturer/distributor to read
+    a downstream retailer that belongs to their hierarchy. Use this when
+    a cross-tier read is intentional (e.g. manufacturer auditing one of
+    its retailers)."""
+    role = (user or {}).get("role")
+    if role == "super_admin":
+        return
+    eid = (user or {}).get("entity_id")
+    if role == "retailer":
+        if eid == retailer_id:
+            return
+        raise HTTPException(403, "Forbidden — not your retailer")
+    # Climb the retailer's ancestry once and short-circuit on match.
+    cur = await db.retailers.find_one(
+        {"id": retailer_id}, {"_id": 0, "distributor_id": 1},
+    )
+    if not cur:
+        raise HTTPException(404, "Retailer not found")
+    dist_id = cur.get("distributor_id")
+    if role == "distributor" and eid == dist_id:
+        return
+    if role == "manufacturer":
+        d = await db.distributors.find_one(
+            {"id": dist_id}, {"_id": 0, "manufacturer_id": 1},
+        )
+        if d and d.get("manufacturer_id") == eid:
+            return
+    raise HTTPException(403, "Forbidden — not your retailer")

@@ -22,10 +22,11 @@ from collections import defaultdict
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from core import db, now_iso
 from models import InventoryPricingUpdate
+from services.auth import get_current_user, require_retailer_ownership_async
 
 router = APIRouter()
 
@@ -60,7 +61,11 @@ def _recommended_qty(velocity: float, days_cover: int = 30) -> int:
 # endpoint
 # ---------------------------------------------------------------------------
 @router.get("/retailer/{retailer_id}/inventory-command-center")
-async def inventory_command_center(retailer_id: str):
+async def inventory_command_center(
+    retailer_id: str,
+    user: Dict[str, Any] = Depends(get_current_user),
+):
+    await require_retailer_ownership_async(user, retailer_id)
     retailer = await db.retailers.find_one({"id": retailer_id}, {"_id": 0})
     if not retailer:
         raise HTTPException(404, "Retailer not found")
@@ -397,8 +402,12 @@ def _ai_insights(
 # Retailer Product Detail (drill-down from inventory row)
 # ---------------------------------------------------------------------------
 @router.get("/retailer/{retailer_id}/product/{product_id}")
-async def retailer_product_detail(retailer_id: str, product_id: str):
+async def retailer_product_detail(
+    retailer_id: str, product_id: str,
+    user: Dict[str, Any] = Depends(get_current_user),
+):
     """Rich product view for the retailer: overview · pricing · sales · supply."""
+    await require_retailer_ownership_async(user, retailer_id)
     retailer = await db.retailers.find_one({"id": retailer_id}, {"_id": 0})
     if not retailer:
         raise HTTPException(404, "Retailer not found")
@@ -523,12 +532,14 @@ async def retailer_product_detail(retailer_id: str, product_id: str):
 @router.patch("/retailer/{retailer_id}/product/{product_id}/pricing")
 async def update_retailer_pricing(
     retailer_id: str, product_id: str, payload: InventoryPricingUpdate,
+    user: Dict[str, Any] = Depends(get_current_user),
 ):
     """Update the retailer-side fields on their inventory row.
 
     Pricing (retail_price), reorder_level and free-text notes can be changed
     independently. Returns the refreshed product-detail payload.
     """
+    await require_retailer_ownership_async(user, retailer_id)
     inv = await db.inventory.find_one(
         {"owner_type": "retailer", "owner_id": retailer_id, "product_id": product_id},
     )
