@@ -1,7 +1,7 @@
 """Entity directory endpoints (manufacturers, distributors, retailers, products)."""
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, Depends, Request
 
@@ -48,16 +48,40 @@ async def list_retailers(distributor_id: Optional[str] = None):
 async def list_products(request: Request, manufacturer_id: Optional[str] = None):
     """Default-scoped by the authenticated user's tenant so multi-tenant
     isolation holds. Super-admin (and unauthenticated legacy callers) see
-    everything; non-admin authenticated users only see products owned by
-    their tenant unless they explicitly pass `manufacturer_id`.
+    everything ecosystem; non-admin authenticated users only see products
+    owned by their tenant unless they explicitly pass `manufacturer_id`.
+
+    Retailer-private products (``source == "retailer_private"``) are
+    EXCLUDED by default so they never leak into manufacturer catalogues
+    or wholesaler ordering screens. A retailer caller transparently
+    sees both ecosystem products AND their own private SKUs by also
+    matching ``owner_id == retailer.entity_id``.
     """
+    user = await _maybe_user(request)
+    base_filter: Dict[str, Any]
     if manufacturer_id:
-        q = {"manufacturer_id": manufacturer_id}
+        base_filter = {"manufacturer_id": manufacturer_id}
+    elif user and user.get("role") != "super_admin":
+        tenant_id = await resolve_user_tenant(user)
+        base_filter = {"manufacturer_id": tenant_id} if tenant_id else {}
     else:
-        user = await _maybe_user(request)
-        if user and user.get("role") != "super_admin":
-            tenant_id = await resolve_user_tenant(user)
-            q = {"manufacturer_id": tenant_id} if tenant_id else {}
-        else:
-            q = {}
+        base_filter = {}
+
+    # Strip retailer-private SKUs from every consumer except the owning
+    # retailer (and super_admin who already has the wildcard scope).
+    if user and user.get("role") == "retailer":
+        rid = user.get("entity_id")
+        # Owning retailer sees ecosystem + their own private products.
+        q = {
+            "$or": [
+                {**base_filter, "source": {"$ne": "retailer_private"}},
+                {"source": "retailer_private",
+                 "owner_type": "retailer", "owner_id": rid},
+            ]
+        }
+    elif user and user.get("role") == "super_admin":
+        q = base_filter
+    else:
+        # All non-retailer + unauthenticated callers: ecosystem only.
+        q = {**base_filter, "source": {"$ne": "retailer_private"}}
     return await db.products.find(q, {"_id": 0}).sort("name", 1).to_list(2000)
